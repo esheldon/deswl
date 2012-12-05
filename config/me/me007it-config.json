@@ -1,0 +1,14 @@
+{
+ "comment":"requiring match with good SE shear",
+ "run_type":"me",
+ "run":"me007it",
+ "wlvers":"trunk",
+ "fileclass":"wlbnl",
+ "dataset":"dr012",
+ "band":"i",
+ "wl_config":"$DESFILES_DIR/wl.config/wldc6b-require-match-v2.config",
+ "tmvvers":"trunk",
+ "serun":"se015it",
+ "esutilvers":"trunk",
+ "pyvers":"v2.7.2"
+}

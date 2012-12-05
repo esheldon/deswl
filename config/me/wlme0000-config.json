@@ -1,0 +1,12 @@
+{
+ "run_type":"wlme",
+ "esutilvers":"v0.1.6",
+ "localid":"tutti2",
+ "pyvers":"v2.6.2",
+ "fileclass":"wlbnl",
+ "dataset":"dc4coadd",
+ "wlvers":"v0.51",
+ "run":"wlme0000",
+ "tmvvers":"v0.62.5",
+ "serun":"wlse0001"
+}

@@ -1,0 +1,13 @@
+{
+ "run_type":"me",
+ "run":"me003it",
+ "wlvers":"trunk",
+ "fileclass":"wlbnl",
+ "dataset":"dr012",
+ "band":"i",
+ "wl_config":"$DESFILES_DIR/wl.config/wldc6b.config",
+ "tmvvers":"trunk",
+ "serun":"wlse0012t",
+ "esutilvers":"trunk",
+ "pyvers":"v2.7.2"
+}

@@ -1,0 +1,12 @@
+{
+ "run_type":"impyp",
+ "run":"impyp002i",
+ "pyvers":"v2.7.2",
+ "fileclass":"impyp",
+ "dataset":"dr012",
+ "band":"i",
+ "wlvers":"trunk",
+ "esutilvers":"trunk",
+ "impypvers":"0.01.08",
+ "serun":"se015it"
+}

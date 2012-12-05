@@ -1,0 +1,10 @@
+{
+ "run_type":"wlse",
+ "run":"wlsetest0001",
+ "esutilvers":"trunk",
+ "wlvers":"trunk",
+ "pyvers":"v2.6.2",
+ "fileclass":"wlbnl",
+ "tmvvers":"v0.62.5",
+ "dataset":"dc4"
+}

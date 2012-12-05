@@ -1,0 +1,11 @@
+{
+ "comment":"testing new coord xforms",
+ "run_type":"wlse",
+ "run":"wlsetest0000",
+ "esutilvers":"trunk",
+ "wlvers":"trunk",
+ "pyvers":"v2.6.2",
+ "fileclass":"wlbnl",
+ "tmvvers":"v0.62.5",
+ "dataset":"dc4"
+}

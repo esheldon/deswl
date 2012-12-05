@@ -1,0 +1,11 @@
+{
+ "run_type":"am",
+ "espyvers":"trunk",
+ "run":"am001i",
+ "pyvers":"v2.7.2",
+ "fileclass":"am",
+ "dataset":"dr012",
+ "band":"i",
+ "wlvers":"trunk",
+ "esutilvers":"trunk"
+}

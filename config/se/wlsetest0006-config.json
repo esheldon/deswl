@@ -1,0 +1,12 @@
+{
+ "comment":"Test run for new training/validation split on PSF stars",
+ "run_type":"wlse",
+ "run":"wlsetest0006",
+ "esutilvers":"trunk",
+ "wlvers":"trunk",
+ "pyvers":"v2.6.2",
+ "wl_config":"$DESFILES_DIR/wl.config/wl02.config",
+ "fileclass":"wlbnl",
+ "tmvvers":"v0.63",
+ "dataset":"dc4"
+}

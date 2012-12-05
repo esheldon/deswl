@@ -1,0 +1,11 @@
+{
+ "run_type":"wlse",
+ "run":"wlse0010t",
+ "esutilvers":"trunk",
+ "wlvers":"trunk",
+ "pyvers":"v2.6.6",
+ "wl_config":"$DESFILES_DIR/wl.config/wl06.config",
+ "fileclass":"wlbnl",
+ "tmvvers":"trunk",
+ "dataset":"dc5b"
+}
