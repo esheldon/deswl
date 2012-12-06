@@ -36,14 +36,14 @@ def main():
 
     rc=deswl.files.Runconfig()
 
-    rc.generate_new_runconfig(run_type, 
-                              dataset, 
-                              band,
-                              config=options.config,
-                              run_name=options.run_name,
-                              test=options.test, 
-                              dryrun=options.dryrun, 
-                              comment=options.comment,
-                              serun=options.serun)
+    config=rc.generate_new_runconfig(run_type, 
+                                     dataset, 
+                                     band,
+                                     config=options.config,
+                                     run_name=options.run_name,
+                                     test=options.test, 
+                                     dryrun=options.dryrun, 
+                                     comment=options.comment,
+                                     serun=options.serun)
 
 main()

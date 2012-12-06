@@ -91,19 +91,26 @@ class Runconfig(dict):
         if run is not None:
             self.load(run)
 
-    def get_basedir(self,run_type):
-        dir=getenv_check('DESWL_CHECKOUT')
-        dir=os.path.join(dir,'config',run_type)
+    def get_basedir(self,run_type, checkout=False):
+        """
+        checkout is for when we are generating the file
+        """
+        if checkout:
+            dir=getenv_check('DESWL_CHECKOUT')
+            dir=os.path.join(dir,'runconfig',run_type)
+        else:
+            dir=getenv_check('DESWL_DIR')
+            dir=os.path.join(dir,'etc','runconfig')
         return dir
 
-    def getpath(self, run_type, run=None):
+    def getpath(self, run_type, run=None, checkout=False):
         if run is None:
             if self.run is None:
                 raise ValueError("Either send run= keyword or "
                                  "load a runconfig")
             else:
                 run=self.run
-        rdir = self.get_basedir(run_type)
+        rdir = self.get_basedir(run_type, checkout=checkout)
         return path_join(rdir, run+'-config.json')
     
 
@@ -133,13 +140,13 @@ class Runconfig(dict):
 
         run_name=self._run_name_from_type_number(run_type, band, starti, test=test)
 
-        fullpath=self.getpath(run_type,run=run_name)
+        fullpath=self.getpath(run_type,run=run_name, checkout=True)
 
         i=starti
         while os.path.exists(fullpath):
             i+=1
             run_name=self._run_name_from_type_number(run_type, band, i, test=test)
-            fullpath=self.getpath(run_type,run=run_name)
+            fullpath=self.getpath(run_type,run=run_name, checkout=True)
 
         return run_name
 
@@ -179,7 +186,7 @@ class Runconfig(dict):
         config: string path, optional
             The location of a config file for this run/code.
 
-            E.g.  '$SHAPELETS_DIR/etc/production/wldc6b-v2.config'
+            E.g.  '$DESWL_DIR/etc/shapelets/wldc6b-v2.config'
 
         run_name: string, optional
             If not sent, will be generated.
@@ -204,8 +211,6 @@ class Runconfig(dict):
             tmp=Runconfig(serun)
 
 
-        if run_type in ['me','se'] and config is None:
-            raise ValueError("Send config for run type '%s'" % run_type)
 
         if run_name is None:
             run_name=self.generate_new_runconfig_name(run_type, band, test=test)
@@ -220,6 +225,11 @@ class Runconfig(dict):
                    'fileclass': fileclass,
                    'dataset':dataset}
 
+        if run_type in ['me','se']:
+            if config is None:
+                raise ValueError("Send config for run type '%s'" % run_type)
+            runconfig['wl_config'] = config
+
         env_keys=self.get_required_env_keys(run_type)
         env=get_proc_environ(extra=env_keys)
         for k in env:
@@ -232,7 +242,9 @@ class Runconfig(dict):
             if e not in runconfig:
                 runconfig[e] = extra[e]
 
-        fullpath=self.getpath(run_type,run_name)
+        pprint.pprint(runconfig)
+
+        fullpath=self.getpath(run_type,run_name,checkout=True)
         stdout.write('Writing to file: %s\n' % fullpath)
         if not dryrun:
             json_util.write(runconfig, fullpath)
@@ -240,7 +252,6 @@ class Runconfig(dict):
         else:
             stdout.write(" .... dry run, skipping file write\n")
 
-        return runconfig
 
     def get_required_env_keys(self, run_type):
         """
