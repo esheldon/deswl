@@ -1,0 +1,152 @@
+#!/usr/bin/env python
+"""
+    %prog config_file
+
+Some log messages go to stderr.  The actual data in dict form go to stdout
+"""
+
+import sys, os
+from sys import stderr, stdout
+import copy
+import esutil as eu
+from esutil.io import fexists
+#import deswl
+
+from optparse import OptionParser
+parser = OptionParser(__doc__)
+
+parser.add_option("-v","--verbose",action='store_true',
+                  help="verbose, default %default")
+def process_status(info, verbose=False):
+    """
+    """
+
+    info['error_string'] = ''
+
+    stat_file=info['output_files']['stat']
+
+    """
+    # get the local version
+    statbase=os.path.basename(stat_file)
+    local_stat_dir=deswl.files.wq_dir(info['run'],subdir='stat-files')
+    if not os.path.exists(local_stat_dir):
+        raise RuntimeError("You need to run get-stat-files.sh")
+
+    stat_file=os.path.join(local_stat_dir,statbase)
+    """
+    if not fexists(stat_file):
+        info['error_string'] = 'stat file not found'
+    else:
+        stat_read=False
+        try:
+            if verbose:
+                print >>stderr,'    reading:',stat_file
+            stat=eu.io.read(stat_file)
+            stat_read=True
+            for k,v in stat.iteritems():
+                info[k] = v
+        except ValueError as e:
+            print >>stderr,"Error reading stat file:",stat_file
+            info['error_string'] = 'Error reading stat file'
+
+        if stat_read:
+            exit_status= stat['exit_status']
+            if exit_status != 0:
+                print >>stderr,"Found non-zero exit status %s in stat file" \
+                        % exit_status
+                info['error_string'] = 'Processing error'
+            else:
+                missing=[]
+                for ftype,f in info['output_files'].iteritems():
+                    if verbose:
+                        print >>stderr,'    checking:',f
+                    if not fexists(f):
+                        # only print first missing one
+                        if len(missing) == 0:
+                            print >>stderr,'file missing:',f
+                        missing.append(ftype)
+
+                if len(missing) > 0:
+                    fmiss=' '.join(missing)
+                    info['error_string'] = 'files missing: %s' % fmiss
+    return info
+
+def main():
+    options, args = parser.parse_args(sys.argv[1:])
+    if len(args) < 1:
+        parser.print_help()
+        sys.exit(45)
+
+    verbose=options.verbose
+    fname=args[0]
+    if verbose:
+        print >>stderr,'reading:',fname
+    info={'config':fname,'error_string':''}
+
+    if not fexists(fname):
+        info['error_string'] = 'config file not found'
+    else:
+        config_read = False
+        try:
+            config=eu.io.read(fname)
+            config_read = True
+            for k,v in config.iteritems():
+                info[k] = v
+        except ValueError as e:
+            print >>stderr,"Error reading file:",fname
+            info['error_string'] = 'Error reading config file'
+
+        if config_read:
+            info = process_status(info,verbose=verbose)
+    
+    eu.io.write(stdout, info, type='json')
+ 
+def main_crap():
+    options, args = parser.parse_args(sys.argv[1:])
+    if len(args) < 1:
+        parser.print_help()
+        sys.exit(45)
+
+    run=args[0]
+
+    goodfile=deswl.files.collated_path(run, 'goodlist')
+    badfile=deswl.files.collated_path(run, 'badlist')
+    print >>stderr,"will write\n\t%s\n\t%s" % (goodfile, badfile)
+    eu.ostools.makedirs_fromfile(goodfile)
+
+    rc=deswl.files.Runconfig(run)
+
+    if rc['run_type'] == 'impyp':
+        cfobj = deswl.impyp.ImpypConfig(run)
+    else:
+        raise ValueError("unsupported run type: '%s'" % rc['run_type'])
+
+    cdata=cfobj.get_config_data()
+    goodlist=[]
+    badlist=[]
+    nf=len(cdata)*62
+    print >>stderr,"Checking",nf,"processes"
+    i=0
+    for expname,fdict_list in cdata.iteritems():
+        for fd in fdict_list:
+            i+=1
+            if i == 1 or (i % 10) == 0:
+                print >>stderr,'%i/%i' % (i,nf)
+                verbose=True
+            else:
+                verbose=False
+
+            info = process_status(fd, verbose=verbose)
+            if info['error_string'] != '':
+                badlist.append(info)
+            else:
+                goodlist.append(info)
+
+    print >>stderr,"Found %s/%s problems" % (len(badlist),nf)
+
+    print >>stderr,"Writing goodlist:",goodfile
+    eu.io.write(goodfile,goodlist)
+    print >>stderr,"Writing badlist:",badfile
+    eu.io.write(badfile,badlist)
+ 
+main()

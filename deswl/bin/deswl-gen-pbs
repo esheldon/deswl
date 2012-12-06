@@ -1,0 +1,125 @@
+#!/usr/bin/env python
+"""
+    %prog [options] run
+
+Generate all the job files for the given run.  Also generate a script for
+checking the result of each exposure.
+
+Finally, generate a script to reduce the results of the parallelized check
+scripts
+
+"""
+
+import os,sys
+from sys import stderr
+import deswl
+import desdb
+
+from optparse import OptionParser
+parser = OptionParser(__doc__)
+parser.add_option("-q","--queue",default='serial', 
+                  help="queue for processing %default")
+parser.add_option("-t","--types",default='config,pbs,reduce', 
+                  help="types to write, default %default")
+
+
+def write_reducer(run,expected_num):
+    text="""# run through the ./byccd/*-check.json files to find problems
+# write out the "goodlist" and "badlist" in the collated dir for this run
+# $DESDATA/fileclass/run/collated/
+from sys import stderr
+import glob
+import deswl
+import esutil as eu
+
+files=glob.glob('byccd/*-check.json')
+if len(files) != {expected_num}:
+    raise ValueError("expected {expected_num} files, found %s" % len(files))
+goodlist=[]
+badlist=[]
+nf=len(files)
+for i,f in enumerate(files,1):
+    if (i % 1000) == 0 or (i == 1):
+        print >>stderr,f,"%s/%s" % (i,nf)
+    d=eu.io.read(f)
+    if d['error_string'] == '':
+        goodlist.append(d)
+    else:
+        if 'output_files' not in d:
+            pv=d
+        else:
+            pv=d['output_files']['stat']
+        print >>stderr,pv,'\\n',d['error_string']
+        badlist.append(d)
+goodfile=deswl.files.collated_path('{run}', 'goodlist')
+badfile=deswl.files.collated_path('{run}', 'badlist')
+eu.ostools.makedirs_fromfile(goodfile)
+
+print >>stderr,"Found %s/%s problems" % (len(badlist),nf)
+
+print >>stderr,"Writing goodlist:",goodfile
+eu.io.write(goodfile,goodlist,clobber=True)
+print >>stderr,"Writing badlist:",badfile
+eu.io.write(badfile,badlist,clobber=True)\n""".format(run=run,
+                                         expected_num=expected_num)
+
+    d=deswl.files.get_pbs_dir(run)
+    f=os.path.join(d,'check-reduce.py')
+    print >>stderr,"writing check reduce script:",f
+    with open(f,'w') as fobj:
+        fobj.write(text)
+
+
+
+
+def main():
+
+    options, args = parser.parse_args(sys.argv[1:])
+    if len(args) < 1:
+        parser.print_help()
+        sys.exit(45)
+
+    run=args[0]
+    types = options.types.split(',')
+    modnum=20
+
+    rc=deswl.files.Runconfig(run)
+
+    if rc['run_type'] == 'impyp':
+        cfobj = deswl.impyp.ImpypConfig(run)
+    elif rc['run_type'] == 'am':
+        cfobj = deswl.am.AMConfig(run)
+    else:
+        raise ValueError("unsupported run type: '%s'" % rc['run_type'])
+
+    if 'config' in types:
+        # write all the config files by ccd
+        print >>stderr,"writing all config files"
+        cfobj.write()
+
+    if 'pbs' in types:
+        # every class must have the get_config_data method
+        expnames = list(cfobj.get_config_data().keys())
+        expnames.sort()
+
+        # number of exposures
+        nexp=len(expnames)
+
+        print >>stderr,'writing scripts for',nexp,'exposures'
+        for i,expname in enumerate(expnames):
+            job=deswl.generic.GenericSEPBSJob(run,expname, queue=options.queue)
+            if ((i+1) % modnum) == 0:
+                print >>stderr,'%d/%d %s' % (i+1,nexp,job['job_file'])
+
+            job.write()
+            job.write(check=True)
+
+    if 'reduce' in types:
+        print >>stderr,"writing reducer"
+        expected_num = 0
+        cdata=cfobj.get_config_data()
+        for expname in cdata:
+            expected_num += len(cdata[expname])
+        write_reducer(run,expected_num)
+main()
+

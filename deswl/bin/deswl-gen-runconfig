@@ -1,0 +1,49 @@
+#!/usr/bin/env python
+"""
+    %prog [options] run_type dataset band
+
+Generate a new runconfig
+"""
+
+import sys
+import deswl
+
+from optparse import OptionParser
+parser = OptionParser(__doc__)
+parser.add_option("-c","--config",default=None, 
+                  help="Location of config file. Default %default")
+parser.add_option("-t","--test",action='store_true',
+                  help="This is a test run not a production run.")
+parser.add_option("-d","--dryrun",action='store_true',
+                  help="This is dry run, don't actually write a file.")
+
+parser.add_option("--run-name",default=None,
+                  help="Force run name. Default %default")
+parser.add_option("--comment",default=None,
+                  help="Add a comment. Default %default")
+parser.add_option("--serun",default=None,
+                  help="Serun to associate. Default %default")
+
+def main():
+    options, args = parser.parse_args(sys.argv[1:])
+    if len(args) < 3:
+        parser.print_help()
+        sys.exit(45)
+
+    run_type=args[0]
+    dataset=args[1]
+    band=args[2]
+
+    rc=deswl.files.Runconfig()
+
+    rc.generate_new_runconfig(run_type, 
+                              dataset, 
+                              band,
+                              config=options.config,
+                              run_name=options.run_name,
+                              test=options.test, 
+                              dryrun=options.dryrun, 
+                              comment=options.comment,
+                              serun=options.serun)
+
+main()

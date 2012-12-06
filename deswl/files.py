@@ -91,17 +91,19 @@ class Runconfig(dict):
         if run is not None:
             self.load(run)
 
-    def get_basedir(self):
-        return '/tmp'
+    def get_basedir(self,run_type):
+        dir=getenv_check('DESWL_CHECKOUT')
+        dir=os.path.join(dir,'config',run_type)
+        return dir
 
-    def getpath(self, run=None):
+    def getpath(self, run_type, run=None):
         if run is None:
             if self.run is None:
                 raise ValueError("Either send run= keyword or "
                                  "load a runconfig")
             else:
                 run=self.run
-        rdir = self.get_basedir()
+        rdir = self.get_basedir(run_type)
         return path_join(rdir, run+'-config.json')
     
 
@@ -117,21 +119,27 @@ class Runconfig(dict):
             raise ValueError(mess)
 
         if run_type == 'me':
-            starti=3
+            if test:
+                starti=3
+            else:
+                starti=1
         elif run_type == 'se':
-            starti=16
+            if test:
+                starti=13
+            else:
+                starti=1
         else:
             starti=1
 
         run_name=self._run_name_from_type_number(run_type, band, starti, test=test)
 
-        fullpath=self.getpath(run_name)
+        fullpath=self.getpath(run_type,run=run_name)
 
         i=starti
         while os.path.exists(fullpath):
             i+=1
             run_name=self._run_name_from_type_number(run_type, band, i, test=test)
-            fullpath=self.getpath(run_name)
+            fullpath=self.getpath(run_type,run=run_name)
 
         return run_name
 
@@ -152,14 +160,13 @@ class Runconfig(dict):
                                run_name=None,
                                test=False, 
                                dryrun=False, 
-                               python_vers=None,
-                               esutil_vers=None,
-                               deswl_vers=None,
-                               tmvvers=None,
                                comment=None,
                                **extra):
         """
         generate a new runconfig file
+
+        You should load all the appropriate modules before running this so that
+        the environment matches that which will be used in the run.
 
         parameters
         ----------
@@ -172,7 +179,7 @@ class Runconfig(dict):
         config: string path, optional
             The location of a config file for this run/code.
 
-            E.g.  '$SHAPELETS_DIR/etc/deswl/wldc6b-v2.config'
+            E.g.  '$SHAPELETS_DIR/etc/production/wldc6b-v2.config'
 
         run_name: string, optional
             If not sent, will be generated.
@@ -181,8 +188,6 @@ class Runconfig(dict):
             se008t
         dryrun: bool, optional
             If true, just show what would have been written to the file.
-        python_vers, esutil_vers, deswl_vers, tmvvers: string, optional
-            The versions to use.  Default is the current version.
 
         comment: string, optional
             Add an additional comment.
@@ -215,7 +220,7 @@ class Runconfig(dict):
                    'fileclass': fileclass,
                    'dataset':dataset}
 
-        env_keys=self.get_required_env_keys()
+        env_keys=self.get_required_env_keys(run_type)
         env=get_proc_environ(extra=env_keys)
         for k in env:
             runconfig[k] = env[k]
@@ -227,7 +232,7 @@ class Runconfig(dict):
             if e not in runconfig:
                 runconfig[e] = extra[e]
 
-        fullpath=self.getpath(run_name)
+        fullpath=self.getpath(run_type,run_name)
         stdout.write('Writing to file: %s\n' % fullpath)
         if not dryrun:
             json_util.write(runconfig, fullpath)
@@ -245,7 +250,9 @@ class Runconfig(dict):
         """
         keys=[]
         if run_type in ['me','se']:
-            keys += ['TMV_VERS','SHAPELETS_VERS']
+            # need DIR since we don't set PATH
+            keys += ['TMV_VERS',
+                     'SHAPELETS_VERS','SHAPELETS_DIR']
 
         if run_type=='am':
             keys += ['ADMOM_VERS','ESPY_VERS','ESPY_DIR']
