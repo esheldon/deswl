@@ -1918,6 +1918,11 @@ def get_se_config_path(run, expname, typ='fullpipe', ccd=None):
     f=f[0:f.rfind('.')]+'-config.yaml'
     return f
 
+def get_se_script_path(run, expname, typ='fullpipe', ccd=None):
+    f=get_se_pbs_path(run, expname, typ=typ, ccd=ccd)
+    f=f[0:f.rfind('.')]+'.sh'
+    return f
+
 
 
 #

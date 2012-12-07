@@ -5,24 +5,25 @@ In short
     - Generate a runconfig
     - /bin/deswl-gen-pbs
 
-        - ~/des-wq/{run}/{expname}.yaml
+        - /{run}/{expname}.pbs
             These are the actual process jobs; calls the code
             for each ccd using the config files under /byccd
 
         - for each ccd, there are config file
-            ~/des-wq/{run}/byccd/{expname}-{ccd}-config.yaml
+            /{run}/byccd/{expname}-{ccd}-config.yaml
 
-        - ~/des-wq/{run}/{expname}-check.yaml
+        - there can be a script, name of your choosing, e.g.
+            /{run}/byccd/{expname}-{ccd}.sh
+
+        - /{run}/{expname}-check.pbs
             These are jobs to check the processing
 
-        - ~/des-wq/{run}/check-reduce.py
+        - /{run}/check-reduce.py
             Run this to collate the results into the "goodlist"
             and "badlist"
 
-    - submit wq jobs
-        Follow the .wqlog files for very brief updates.
+    - submit pbs jobs
     - submit the check wq jobs
-        Follow the .wqlog files for very brief updates.
     - run the reducer to generate the goodlist and badlist
 
 The GenericProcessor will send stdout and stderr for process, and
@@ -156,6 +157,14 @@ class GenericConfig(dict):
                     print >>stderr,"Writing config (%d/%d) %s" % (i,ne,config_file)
                 eu.ostools.makedirs_fromfile(config_file)
                 eu.io.write(config_file, fd)
+
+                if 'script' in fd:
+                    script_file=fd['script']
+                    if (i % 1000) == 0:
+                        print >>stderr,"    %s" % script_file
+                    with open(script_file,'w') as fobj:
+                        script_data=self.get_script(fd)
+                        fobj.write(script_data)
                 i += 1
 
 
@@ -528,15 +537,17 @@ class GenericSEPBSJob(dict):
         text = """#!/bin/bash -l
 #PBS -q %(queue)s
 #PBS -l nodes=1:ppn=1
-#PBS -l walltime=00:30:00
+#PBS -l walltime=02:00:00
 #PBS -N %(job_name)s
 #PBS -e %(job_file_base)s.err
 #PBS -o %(job_file_base)s.out
 #PBS -V
 
-if [[ "Y${PBS_O_WORKDIR}" != "Y" ]]; then
-    cd $PBS_O_WORKDIR
+if [[ "Y${PBS_O_WORKDIR}" == "Y" ]]; then
+    echo "PBS_O_WORKDIR not set"
+    exit 1
 fi
+cd $PBS_O_WORKDIR
 
 %(esutil_load)s
 %(desdb_load)s

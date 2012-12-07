@@ -60,46 +60,96 @@ class ShapeletsSEConfig(generic.GenericConfig):
                 
                 fdict['command'] = self.get_command(fdict)
                 fdict['timeout'] = 15*60 # fifteen minute timeout
+
+                script_file=self.get_script_file(fd)
+                fdict['script'] = script_file
                 odict[expname].append(fdict)
 
         self.config_data = odict 
         return odict
 
+    def get_script_file(self, fdict):
+        script_file=deswl.files.get_se_script_path(self['run'],
+                                                   fdict['expname'],
+                                                   ccd=fdict['ccd'])
+        return script_file
+
     def get_command(self, fdict):
+        script_file=self.get_script_file(fdict)
+        return 'bash %s' % script_file
+
+    def get_script(self, fdict):
         rc=self.rc
         shapelets_load = 'module unload shapelets && module load shapelets/%s' % rc['SHAPELETS_VERS']
         deswl_load = 'module unload deswl && module load deswl/%s' % rc['DESWL_VERS']
 
-        wl_config='$DESWL_DIR/share/config/%(fileclass)s/%(wl_config)s'
-        wl_config=wl_config % self.rc
+        wl_config='$SHAPELETS_DIR/etc/wl.config'
+        wl_config_desdm='$SHAPELETS_DIR/etc/wl_desdm.config'
+
+        wl_config_local='$DESWL_DIR/share/config/%(fileclass)s/%(wl_config)s'
+        wl_config_local=wl_config_local % self.rc
 
         # note only the {key} are set at this time
-        command = """
-source ~esheldon/.bashrc
+        command = """#!/bin/bash
+%(deswl_load)s
+%(shapelets_load)s
 
-{deswl_load}
-{shapelets_load}
+wl_config=%(wl_config)s
+wl_config_desdm=%(wl_config_desdm)s
+wl_config_local=%(wl_config_local)s
 
-wl_config={wl_config}
 image=%(image)s
 cat=%(cat)s
 stars=%(stars)s
 fitpsf=%(fitpsf)s
 psf=%(psf)s
 shear=%(shear)s
-export OMP_NUM_THREADS=1
-$SHAPELETS_DIR/bin/fullpipe $wl_config \
-    image_file=$image     \
-    cat_file=$cat         \
-    stars_file=$stars     \
-    fitpsf_file=$fitpsf   \
-    psf_file=$psf         \
-    shear_file=$shear
 
+export OMP_NUM_THREADS=1
+
+for prog in findstars measurepsf measureshear; do
+    $SHAPELETS_DIR/bin/$prog  \\
+        $wl_config            \\
+        +$wl_config_desdm     \\
+        +$wl_config_local     \\
+        image_file=$image     \\
+        cat_file=$cat         \\
+        stars_file=$stars     \\
+        fitpsf_file=$fitpsf   \\
+        psf_file=$psf         \\
+        shear_file=$shear     \\
+        output_dots=false
+    err=$?
+    if [[ $err != "0" ]]; then
+        echo "error running $prog: $err"
+        exit $err
+    fi
+done
         \n"""
 
+        """
         command = command.format(deswl_load=deswl_load,
                                  shapelets_load=shapelets_load,
-                                 wl_config=wl_config)
+                                 wl_config=wl_config,
+                                 wl_config_desdm=wl_config_desdm,
+                                 wl_config_local=wl_config_local)
+        """
+        # now interpolate the rest
+        allkeys={}
+        allkeys['deswl_load'] = deswl_load
+        allkeys['shapelets_load'] = shapelets_load
+        allkeys['wl_config'] = wl_config
+        allkeys['wl_config_desdm'] = wl_config_desdm
+        allkeys['wl_config_local'] = wl_config_local
+        for k,v in fdict.iteritems():
+            if k not in ['input_files','output_files']:
+                allkeys[k] = v
+        for k,v in fdict['input_files'].iteritems():
+            allkeys[k] = v
+        for k,v in fdict['output_files'].iteritems():
+            allkeys[k] = v
+
+
+        command = command % allkeys
         return command
 
