@@ -38,11 +38,8 @@ except:
     #stderr.write('Could not import cwl\n')
     pass
 
-import wlpipe
-import files
+from . import wlpipe
+from . import files
+from . import generic
 
-import generic
-import impyp
-import am
-
-
+from . import modules

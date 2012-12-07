@@ -9,11 +9,12 @@
  "dataset":"dr012",
  "DESWL_DIR":"/global/homes/e/esheldon/exports/deswl-work",
  "band":"i",
- "SHAPELETS_VERS":"local",
+ "SHAPELETS_VERS":"work",
  "serun":null,
  "ESUTIL_DIR":"/global/homes/e/esheldon/exports/esutil-work",
+ "wl_config":"wldc6b-v3.config",
  "DESDB_VERS":"work",
  "ESUTIL_VERS":"work",
- "SHAPELETS_DIR":"/global/homes/e/esheldon/exports/shapelets-local",
+ "SHAPELETS_DIR":"/global/homes/e/esheldon/exports/shapelets-work",
  "TMV_VERS":"0.71"
 }

@@ -14,6 +14,7 @@ import os,sys
 from sys import stderr
 import deswl
 import desdb
+import esutil as eu
 
 from optparse import OptionParser
 parser = OptionParser(__doc__)
@@ -66,6 +67,8 @@ eu.io.write(badfile,badlist,clobber=True)\n""".format(run=run,
     d=deswl.files.get_pbs_dir(run)
     f=os.path.join(d,'check-reduce.py')
     print >>stderr,"writing check reduce script:",f
+
+    eu.ostools.makedirs_fromfile(f)
     with open(f,'w') as fobj:
         fobj.write(text)
 
@@ -86,11 +89,11 @@ def main():
     rc=deswl.files.Runconfig(run)
 
     if rc['run_type'] == 'sse':
-        cfobj = deswl.shapelets.ShapeletsSEConfig(run)
+        cfobj = deswl.modules.shapelets.ShapeletsSEConfig(run)
     elif rc['run_type'] == 'impyp':
-        cfobj = deswl.impyp.ImpypConfig(run)
+        cfobj = deswl.modules.impyp.ImpypConfig(run)
     elif rc['run_type'] == 'am':
-        cfobj = deswl.am.AMConfig(run)
+        cfobj = deswl.modules.am.AMConfig(run)
     else:
         raise ValueError("unsupported run type: '%s'" % rc['run_type'])
 

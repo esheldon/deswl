@@ -3,7 +3,7 @@ The process is similar to what happens for the SE and ME runs
 
 In short
     - Generate a runconfig
-    - /bin/generate-generic-wq
+    - /bin/deswl-gen-pbs
 
         - ~/des-wq/{run}/{expname}.yaml
             These are the actual process jobs; calls the code
@@ -149,9 +149,9 @@ class GenericConfig(dict):
         for expname,fdlist in all_fd.iteritems():
             # now by ccd
             for fd in fdlist:
-                config_file=deswl.files.se_config_path(self['run'],
-                                                       fd['expname'],
-                                                       ccd=fd['ccd'])
+                config_file=deswl.files.get_se_config_path(self['run'],
+                                                           fd['expname'],
+                                                           ccd=fd['ccd'])
                 if (i % 1000) == 0:
                     print >>stderr,"Writing config (%d/%d) %s" % (i,ne,config_file)
                 eu.ostools.makedirs_fromfile(config_file)
@@ -227,7 +227,7 @@ class GenericProcessor(dict):
         self.setup_files()
 
         log_name = self.outf['log']['local_url']
-        #eu.ostools.makedirs_fromfile(log_name)
+        eu.ostools.makedirs_fromfile(log_name)
         self._log = open(log_name,'w')
 
     def __enter__(self):
@@ -239,7 +239,6 @@ class GenericProcessor(dict):
                 self._log.close()
 
     def run(self):
-
         self['exit_status'] = -9999
         #self._dorun()
         try:
@@ -427,9 +426,9 @@ class GenericSEWQJob(dict):
         esutil_load = deswl.files._make_load_command('esutil', rc['esutilvers'])
 
         # naming schemem for this generic type figurd out from run
-        config_file1=deswl.files.se_config_path(self['run'], 
-                                                self['expname'], 
-                                                ccd=1)
+        config_file1=deswl.files.get_se_config_path(self['run'], 
+                                                    self['expname'], 
+                                                    ccd=1)
         config_file1=os.path.join('byccd',os.path.basename(config_file1))
         conf=config_file1.replace('01-config.yaml','$i-config.yaml')
         if check:
@@ -437,12 +436,12 @@ class GenericSEWQJob(dict):
             err=config_file1.replace('01-config.yaml','$i-check.err')
 
             #cmd="wl-check-generic {conf} 1> {chk} 2> {err}"
-            cmd="wl-check-generic {conf} 1> {chk}"
+            cmd="deswl-check {conf} 1> {chk}"
             cmd=cmd.format(conf=conf, chk=chk, err=err)
         else:
             # log is now automatically created by GenericProcessor
             # and written into hdfs
-            cmd="wl-run-generic {conf}".format(conf=conf)
+            cmd="deswl-run {conf}".format(conf=conf)
 
         text = """
 command: |
@@ -490,10 +489,9 @@ class GenericSEPBSJob(dict):
     def write(self, check=False):
 
         expname=self['expname']
-        groups = self['groups']
+        queue = self['queue']
 
         if check:
-            groups=None # can run anywhere for sure
             job_file=self['job_file'].replace('.pbs','-check.pbs')
             job_name=expname+'-chk'
         else:
@@ -502,32 +500,28 @@ class GenericSEPBSJob(dict):
 
         job_file_base=os.path.basename(job_file).replace('.pbs','')
 
-        if groups is None:
-            groups=''
-        else:
-            groups='group: ['+groups+']'
 
         rc=deswl.files.Runconfig(self['run'])
-        desdb_load = 'module unload desdb && module load desdb/{vers}' % rc['DESDB_VERS']
-        deswl_load = 'module unload deswl && module load deswl/{vers}' % rc['DESWL_VERS']
-        esutil_load = 'module unload esutil && module load esutil/{vers}' % rc['ESUTIL_VERS']
+        desdb_load = 'module unload desdb && module load desdb/%s' % rc['DESDB_VERS']
+        deswl_load = 'module unload deswl && module load deswl/%s' % rc['DESWL_VERS']
+        esutil_load = 'module unload esutil && module load esutil/%s' % rc['ESUTIL_VERS']
 
         # naming scheme for this generic type figured out from run
-        config_file1=deswl.files.se_config_path(self['run'], 
-                                                self['expname'], 
-                                                ccd=1)
+        config_file1=deswl.files.get_se_config_path(self['run'], 
+                                                    self['expname'], 
+                                                    ccd=1)
         config_file1=os.path.join('byccd',os.path.basename(config_file1))
         conf=config_file1.replace('01-config.yaml','$i-config.yaml')
         if check:
             chk=config_file1.replace('01-config.yaml','$i-check.json')
             err=config_file1.replace('01-config.yaml','$i-check.err')
 
-            cmd="wl-check-generic {conf} 1> {chk}"
+            cmd="deswl-check {conf} 1> {chk}"
             cmd=cmd.format(conf=conf, chk=chk, err=err)
         else:
             # log is now automatically created by GenericProcessor
             # and written into hdfs
-            cmd="wl-run-generic {conf}".format(conf=conf)
+            cmd="deswl-run {conf}".format(conf=conf)
 
         # need -l for login shell because of all the crazy module stuff
         # we have to load
@@ -540,7 +534,9 @@ class GenericSEPBSJob(dict):
 #PBS -o %(job_file_base)s.out
 #PBS -V
 
-cd $PBS_O_WORKDIR
+if [[ "Y${PBS_O_WORKDIR}" != "Y" ]]; then
+    cd $PBS_O_WORKDIR
+fi
 
 %(esutil_load)s
 %(desdb_load)s
@@ -554,11 +550,11 @@ done
                  'desdb_load':desdb_load,
                  'deswl_load':deswl_load,
                  'cmd':cmd,
-                 'groups':groups,
                  'queue':queue,
                  'job_name':job_name,'job_file_base':job_file_base}
 
 
+        eu.ostools.makedirs_fromfile(job_file)
         with open(job_file,'w') as fobj:
             fobj.write(text)
 

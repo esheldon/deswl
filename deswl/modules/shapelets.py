@@ -1,5 +1,6 @@
 import os
 from sys import stderr
+import desdb
 import deswl
 from deswl import generic
 import esutil as eu
@@ -7,7 +8,7 @@ import desdb
 
 _output_patterns={'stars':'%(run)s-%(expname)s-%(ccd)02d-stars.fits',
                   'psf':'%(run)s-%(expname)s-%(ccd)02d-psf.fits',
-                  'fitspsf':'%(run)s-%(expname)s-%(ccd)02d-fitpsf.fits',
+                  'fitpsf':'%(run)s-%(expname)s-%(ccd)02d-fitpsf.fits',
                   'shear':'%(run)s-%(expname)s-%(ccd)02d-shear.fits',
                   'qa':'%(run)s-%(expname)s-%(ccd)02d-qa.fits',
                   'stat':'%(run)s-%(expname)s-%(ccd)02d-stat.yaml',
@@ -31,7 +32,7 @@ class ShapeletsSEConfig(generic.GenericConfig):
         if self.config_data is not None:
             return self.config_data
 
-        desdata=deswl.files.des_rootdir()
+        desdata=desdb.files.get_des_rootdir()
         expdict = desdb.files.get_red_info_byexp(self.rc['dataset'],
                                                  self.rc['band'],
                                                  desdata=desdata)
@@ -66,7 +67,8 @@ class ShapeletsSEConfig(generic.GenericConfig):
 
     def get_command(self, fdict):
         rc=self.rc
-        shapelets_load = 'module unload shapelets && module load shapelets/{vers}' % rc['SHAPELETS_VERS']
+        shapelets_load = 'module unload shapelets && module load shapelets/%s' % rc['SHAPELETS_VERS']
+        deswl_load = 'module unload deswl && module load deswl/%s' % rc['DESWL_VERS']
 
         wl_config='$DESWL_DIR/share/config/%(fileclass)s/%(wl_config)s'
         wl_config=wl_config % self.rc
@@ -75,6 +77,7 @@ class ShapeletsSEConfig(generic.GenericConfig):
         command = """
 source ~esheldon/.bashrc
 
+{deswl_load}
 {shapelets_load}
 
 wl_config={wl_config}
@@ -84,6 +87,7 @@ stars=%(stars)s
 fitpsf=%(fitpsf)s
 psf=%(psf)s
 shear=%(shear)s
+export OMP_NUM_THREADS=1
 $SHAPELETS_DIR/bin/fullpipe $wl_config \
     image_file=$image     \
     cat_file=$cat         \
@@ -94,7 +98,8 @@ $SHAPELETS_DIR/bin/fullpipe $wl_config \
 
         \n"""
 
-        command = command.format(shapelets_load=shapelets_load,
-                                 wl_config=self.rc['wl_config'])
+        command = command.format(deswl_load=deswl_load,
+                                 shapelets_load=shapelets_load,
+                                 wl_config=wl_config)
         return command
 

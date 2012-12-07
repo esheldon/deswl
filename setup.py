@@ -10,7 +10,7 @@ scripts= ['deswl-gen-runconfig',
 scripts=[os.path.join('bin',s) for s in scripts]
 
 runconfig_files=glob.glob('runconfig/*.json')
-config_files=glob.glob('config/*/*')
+config_files=glob.glob('config/*/*.config')
 all_files=runconfig_files+config_files
 
 data_files=[]
@@ -27,7 +27,7 @@ setup(name="deswl",
       license = "GPL",
       author="Erin Scott Sheldon",
       author_email="erin.sheldon@gmail.com",
-      packages=['deswl'], 
+      packages=['deswl','deswl/modules'], 
       data_files=data_files,
       scripts=scripts)
 

@@ -204,7 +204,7 @@ class Runconfig(dict):
         """
 
         # me runs depend on se runs
-        if run_type in ['me','impyp']:
+        if run_type in ['sme','impyp']:
             serun=extra.get('serun',None)
             if serun is None:
                 raise RuntimeError("You must send serun=something for run "
@@ -227,7 +227,7 @@ class Runconfig(dict):
                    'fileclass': fileclass,
                    'dataset':dataset}
 
-        if run_type in ['me','se']:
+        if run_type in ['sme','sse']:
             if config is None:
                 raise ValueError("Send config for run type '%s'" % run_type)
             runconfig['wl_config'] = config
@@ -1885,7 +1885,7 @@ def get_me_pbs_name(tilename, band):
     
 def get_me_pbs_path(merun, tilename, band):
     pbsdir=get_pbs_dir(merun)
-    pbsfile=me_pbs_name(tilename,band)
+    pbsfile=get_me_pbs_name(tilename,band)
     pbsfile=path_join(pbsdir, pbsfile)
     return pbsfile
 
@@ -1908,12 +1908,15 @@ def get_se_pbs_path(serun, expname, typ='fullpipe', ccd=None):
         subdir=None
 
     pbsdir=get_pbs_dir(serun, subdir=subdir)
-    pbsfile=se_pbs_name(expname, typ=typ, ccd=ccd)
+    pbsfile=get_se_pbs_name(expname, typ=typ, ccd=ccd)
     pbsfile=path_join(pbsdir, pbsfile)
     return pbsfile
 
 
-
+def get_se_config_path(run, expname, typ='fullpipe', ccd=None):
+    f=get_se_pbs_path(run, expname, typ=typ, ccd=ccd)
+    f=f[0:f.rfind('.')]+'-config.yaml'
+    return f
 
 
 

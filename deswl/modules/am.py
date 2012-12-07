@@ -27,7 +27,7 @@ class AMConfig(generic.GenericConfig):
         if self.config_data is not None:
             return self.config_data
 
-        desdata=deswl.files.des_rootdir()
+        desdata=desdb.files.get_des_rootdir()
         expdict = desdb.files.get_red_info_byexp(self.rc['dataset'],
                                                  self.rc['band'],
                                                  desdata=desdata)
