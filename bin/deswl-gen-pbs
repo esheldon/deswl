@@ -85,7 +85,9 @@ def main():
 
     rc=deswl.files.Runconfig(run)
 
-    if rc['run_type'] == 'impyp':
+    if rc['run_type'] == 'shapelets':
+        cfobj = deswl.shapelets.ShapeletsSEConfig(run)
+    elif rc['run_type'] == 'impyp':
         cfobj = deswl.impyp.ImpypConfig(run)
     elif rc['run_type'] == 'am':
         cfobj = deswl.am.AMConfig(run)

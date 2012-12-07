@@ -508,8 +508,9 @@ class GenericSEPBSJob(dict):
             groups='group: ['+groups+']'
 
         rc=deswl.files.Runconfig(self['run'])
-        wl_load = deswl.files._make_load_command('wl',rc['wlvers'])
-        esutil_load = deswl.files._make_load_command('esutil', rc['esutilvers'])
+        desdb_load = 'module unload desdb && module load desdb/{vers}' % rc['DESDB_VERS']
+        deswl_load = 'module unload deswl && module load deswl/{vers}' % rc['DESWL_VERS']
+        esutil_load = 'module unload esutil && module load esutil/{vers}' % rc['ESUTIL_VERS']
 
         # naming scheme for this generic type figured out from run
         config_file1=deswl.files.se_config_path(self['run'], 
@@ -528,6 +529,8 @@ class GenericSEPBSJob(dict):
             # and written into hdfs
             cmd="wl-run-generic {conf}".format(conf=conf)
 
+        # need -l for login shell because of all the crazy module stuff
+        # we have to load
         text = """#!/bin/bash -l
 #PBS -q %(queue)s
 #PBS -l nodes=1:ppn=1
@@ -540,14 +543,16 @@ class GenericSEPBSJob(dict):
 cd $PBS_O_WORKDIR
 
 %(esutil_load)s
-%(wl_load)s
+%(desdb_load)s
+%(deswl_load)s
 
 for i in `seq -w 1 62`; do
     echo "ccd: $i"
     %(cmd)s
 done
         \n""" % {'esutil_load':esutil_load,
-                 'wl_load':wl_load,
+                 'desdb_load':desdb_load,
+                 'deswl_load':deswl_load,
                  'cmd':cmd,
                  'groups':groups,
                  'queue':queue,

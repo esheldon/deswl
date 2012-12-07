@@ -246,6 +246,7 @@ class Runconfig(dict):
 
         fullpath=self.getpath(run_type,run_name,checkout=True)
         stdout.write('Writing to file: %s\n' % fullpath)
+        eu.ostools.makedirs_fromfile(fullpath)
         if not dryrun:
             json_util.write(runconfig, fullpath)
             stdout.write("Don't forget to check in the file!\n")
@@ -260,7 +261,7 @@ class Runconfig(dict):
         These are in addition to the defaults
         """
         keys=[]
-        if run_type in ['me','se']:
+        if run_type in ['sme','sse']:
             # need DIR since we don't set PATH
             keys += ['TMV_VERS',
                      'SHAPELETS_VERS','SHAPELETS_DIR']

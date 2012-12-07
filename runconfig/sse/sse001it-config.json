@@ -1,0 +1,19 @@
+{
+ "PYTHON_VERS":"v2.7.3",
+ "DES_FILE_LISTS":"/global/project/projectdirs/des/wl/DES/file-lists",
+ "run_type":"sse",
+ "DESDB_DIR":"/global/homes/e/esheldon/exports/desdb-work",
+ "run":"sse001it",
+ "DESWL_VERS":"work",
+ "fileclass":"shapelets",
+ "dataset":"dr012",
+ "DESWL_DIR":"/global/homes/e/esheldon/exports/deswl-work",
+ "band":"i",
+ "SHAPELETS_VERS":"local",
+ "serun":null,
+ "ESUTIL_DIR":"/global/homes/e/esheldon/exports/esutil-work",
+ "DESDB_VERS":"work",
+ "ESUTIL_VERS":"work",
+ "SHAPELETS_DIR":"/global/homes/e/esheldon/exports/shapelets-local",
+ "TMV_VERS":"0.71"
+}
