@@ -50,6 +50,10 @@ class Runconfig(dict):
         self.run_types['impyp'] = {'name':'impyp', 'fileclass': 'impyp'}
         self.run_types['am']    = {'name':'am',    'fileclass': 'am'}
 
+        if run is not None:
+            self.load(run)
+
+        """
         self.se_executables = ['findstars','measurepsf','measureshear']
 
         self.se_filetypes = ['stars', 'stars1','stars2',
@@ -87,9 +91,7 @@ class Runconfig(dict):
 
 
         self.me_executables = ['multishear']
-
-        if run is not None:
-            self.load(run)
+        """
 
     def get_basedir(self,run_type, checkout=False):
         """
@@ -309,7 +311,7 @@ class Runconfig(dict):
     def read(self, run):
         name=self.getpath(run)
         if not os.path.exists(name):
-            mess="runconfig '%s' not found for %s\n" % (run, name)
+            mess="runconfig for '%s' not found: %s\n" % (run, name)
             raise RuntimeError(mess)
         runconfig = json_util.read(name)
         return runconfig
