@@ -41,8 +41,8 @@ class Runconfig(dict):
         self.run=run
 
         self.run_types={}
-        self.run_types['se'] = {'name':'se', 'fileclass': 'wlbnl'}
-        self.run_types['me'] = {'name':'me', 'fileclass': 'wlbnl'}
+        self.run_types['sse'] = {'name':'se', 'fileclass': 'shapelets'}
+        self.run_types['sme'] = {'name':'me', 'fileclass': 'shapelets'}
 
         # these are "external" codes.  The only places we explicitly work with
         # them is in this class, otherwise operations specific to these are are
@@ -100,7 +100,7 @@ class Runconfig(dict):
             dir=os.path.join(dir,'runconfig',run_type)
         else:
             dir=getenv_check('DESWL_DIR')
-            dir=os.path.join(dir,'etc','runconfig')
+            dir=os.path.join(dir,'share','runconfig')
         return dir
 
     def getpath(self, run_type, run=None, checkout=False):
@@ -186,7 +186,7 @@ class Runconfig(dict):
         config: string path, optional
             The location of a config file for this run/code.
 
-            E.g.  '$DESWL_DIR/etc/shapelets/wldc6b-v2.config'
+            E.g.  'wldc6b-v2.config'
 
         run_name: string, optional
             If not sent, will be generated.

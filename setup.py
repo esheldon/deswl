@@ -2,9 +2,12 @@ import os
 import glob
 from distutils.core import setup
 
-scripts= ['deswl-gen-runconfig']
+scripts= ['deswl-gen-runconfig',
+          'deswl-gen-pbs',
+          'deswl-run',
+          'deswl-check']
 
-scripts=[os.path.join('deswl','bin',s) for s in scripts]
+scripts=[os.path.join('bin',s) for s in scripts]
 
 runconfig_files=glob.glob('runconfig/*/*')
 config_files=glob.glob('config/*/*')
