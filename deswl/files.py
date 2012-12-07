@@ -93,26 +93,26 @@ class Runconfig(dict):
         self.me_executables = ['multishear']
         """
 
-    def get_basedir(self,run_type, checkout=False):
+    def get_basedir(self, checkout=False):
         """
         checkout is for when we are generating the file
         """
         if checkout:
             dir=getenv_check('DESWL_CHECKOUT')
-            dir=os.path.join(dir,'runconfig',run_type)
+            dir=os.path.join(dir,'runconfig')
         else:
             dir=getenv_check('DESWL_DIR')
             dir=os.path.join(dir,'share','runconfig')
         return dir
 
-    def getpath(self, run_type, run=None, checkout=False):
+    def getpath(self, run=None, checkout=False):
         if run is None:
             if self.run is None:
                 raise ValueError("Either send run= keyword or "
                                  "load a runconfig")
             else:
                 run=self.run
-        rdir = self.get_basedir(run_type, checkout=checkout)
+        rdir = self.get_basedir(checkout=checkout)
         return path_join(rdir, run+'-config.json')
     
 
@@ -142,13 +142,13 @@ class Runconfig(dict):
 
         run_name=self._run_name_from_type_number(run_type, band, starti, test=test)
 
-        fullpath=self.getpath(run_type,run=run_name, checkout=True)
+        fullpath=self.getpath(run=run_name, checkout=True)
 
         i=starti
         while os.path.exists(fullpath):
             i+=1
             run_name=self._run_name_from_type_number(run_type, band, i, test=test)
-            fullpath=self.getpath(run_type,run=run_name, checkout=True)
+            fullpath=self.getpath(run=run_name, checkout=True)
 
         return run_name
 
@@ -246,7 +246,7 @@ class Runconfig(dict):
 
         pprint.pprint(runconfig)
 
-        fullpath=self.getpath(run_type,run_name,checkout=True)
+        fullpath=self.getpath(run=run_name,checkout=True)
         stdout.write('Writing to file: %s\n' % fullpath)
         eu.ostools.makedirs_fromfile(fullpath)
         if not dryrun:
@@ -309,7 +309,7 @@ class Runconfig(dict):
         self.run=run
 
     def read(self, run):
-        name=self.getpath(run)
+        name=self.getpath(run=run)
         if not os.path.exists(name):
             mess="runconfig for '%s' not found: %s\n" % (run, name)
             raise RuntimeError(mess)

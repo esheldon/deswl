@@ -9,7 +9,7 @@ scripts= ['deswl-gen-runconfig',
 
 scripts=[os.path.join('bin',s) for s in scripts]
 
-runconfig_files=glob.glob('runconfig/*/*')
+runconfig_files=glob.glob('runconfig/*.json')
 config_files=glob.glob('config/*/*')
 all_files=runconfig_files+config_files
 
