@@ -18,7 +18,7 @@ class ImpypConfig(dict):
     We just use deswl.files.ShearFiles to generate filenames and then put in
     the special output_files and input_files sub-dicts.
     """
-    def __init__(self,run):
+    def __init__(self,run, **keys):
         self['run'] = run
         # this has serun in it
         self.rc = deswl.files.Runconfig(self['run'])

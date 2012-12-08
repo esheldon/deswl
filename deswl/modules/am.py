@@ -14,7 +14,7 @@ class AMConfig(generic.GenericConfig):
     to create and write the "config" files, which hold the command
     to run, input/output file lists, and other metadata.
     """
-    def __init__(self,run):
+    def __init__(self,run, **keys):
         super(AMConfig,self).__init__(run)
 
     def write(self):

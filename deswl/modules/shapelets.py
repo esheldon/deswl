@@ -19,7 +19,7 @@ class ShapeletsSEConfig(generic.GenericConfig):
     to create and write the "config" files, which hold the command
     to run, input/output file lists, and other metadata.
     """
-    def __init__(self,run):
+    def __init__(self,run, **keys):
         super(ShapeletsSEConfig,self).__init__(run)
 
     def write(self):
@@ -76,12 +76,12 @@ class ShapeletsSEConfig(generic.GenericConfig):
 
     def get_command(self, fdict):
         script_file=self.get_script_file(fdict)
-        return 'bash %s' % script_file
+        return 'time bash %s' % script_file
+
 
     def get_script(self, fdict):
         rc=self.rc
         shapelets_load = 'module unload shapelets && module load shapelets/%s' % rc['SHAPELETS_VERS']
-        deswl_load = 'module unload deswl && module load deswl/%s' % rc['DESWL_VERS']
 
         wl_config='$SHAPELETS_DIR/etc/wl.config'
         wl_config_desdm='$SHAPELETS_DIR/etc/wl_desdm.config'
@@ -90,8 +90,7 @@ class ShapeletsSEConfig(generic.GenericConfig):
         wl_config_local=wl_config_local % self.rc
 
         # note only the {key} are set at this time
-        command = """#!/bin/bash
-%(deswl_load)s
+        text = """#!/bin/bash
 %(shapelets_load)s
 
 wl_config=%(wl_config)s
@@ -108,6 +107,7 @@ shear=%(shear)s
 export OMP_NUM_THREADS=1
 
 for prog in findstars measurepsf measureshear; do
+    echo "running $prog"
     $SHAPELETS_DIR/bin/$prog  \\
         $wl_config            \\
         +$wl_config_desdm     \\
@@ -127,16 +127,8 @@ for prog in findstars measurepsf measureshear; do
 done
         \n"""
 
-        """
-        command = command.format(deswl_load=deswl_load,
-                                 shapelets_load=shapelets_load,
-                                 wl_config=wl_config,
-                                 wl_config_desdm=wl_config_desdm,
-                                 wl_config_local=wl_config_local)
-        """
         # now interpolate the rest
         allkeys={}
-        allkeys['deswl_load'] = deswl_load
         allkeys['shapelets_load'] = shapelets_load
         allkeys['wl_config'] = wl_config
         allkeys['wl_config_desdm'] = wl_config_desdm
@@ -150,6 +142,6 @@ done
             allkeys[k] = v
 
 
-        command = command % allkeys
-        return command
+        text = text % allkeys
+        return text
 

@@ -20,7 +20,7 @@ from optparse import OptionParser
 parser = OptionParser(__doc__)
 parser.add_option("-q","--queue",default='serial', 
                   help="queue for processing %default")
-parser.add_option("-t","--types",default='config,pbs,reduce', 
+parser.add_option("-t","--types",default='config,pbs,mpibatch,reduce', 
                   help="types to write, default %default")
 
 
@@ -89,18 +89,22 @@ def main():
     rc=deswl.files.Runconfig(run)
 
     if rc['run_type'] == 'sse':
-        cfobj = deswl.modules.shapelets.ShapeletsSEConfig(run)
+        cfobj = deswl.modules.shapelets.ShapeletsSEConfig(run, queue=options.queue)
     elif rc['run_type'] == 'impyp':
-        cfobj = deswl.modules.impyp.ImpypConfig(run)
+        cfobj = deswl.modules.impyp.ImpypConfig(run, queue=options.queue)
     elif rc['run_type'] == 'am':
-        cfobj = deswl.modules.am.AMConfig(run)
+        cfobj = deswl.modules.am.AMConfig(run, queue=options.queue)
     else:
         raise ValueError("unsupported run type: '%s'" % rc['run_type'])
 
+
     if 'config' in types:
         # write all the config files by ccd
-        print >>stderr,"writing all config files"
+        print >>stderr,"writing all config and script filescmds"
         cfobj.write()
+
+    if 'mpibatch' in types:
+        cfobj.write_mpibatch()
 
     if 'pbs' in types:
         # every class must have the get_config_data method

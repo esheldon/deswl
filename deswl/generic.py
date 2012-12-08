@@ -48,6 +48,15 @@ import deswl
 _url_pattern_byexp='%(run)s-%(expname)s-%(ftype)s.%(ext)s'
 _url_pattern_byccd='%(run)s-%(expname)s-%(ccd)02d-%(ftype)s.%(ext)s'
 
+def get_run_command(config_file):
+    return 'deswl-run %s' % config_file
+
+def get_mpibatch_cmd(fd, i):
+    mpiscript_file=deswl.files.get_se_mpiscript_path(fd['run'],
+                                                     fd['expname'],
+                                                     ccd=fd['ccd'])
+    return "cmd(%d)='%s'," % (i,mpiscript_file)
+
 def gendir(fileclass, run, expname, **keys):
     """
     Generate a directory url.
@@ -132,41 +141,148 @@ class GenericConfig(dict):
     """
     to create and write the "config" files, which hold the command
     to run, input/output file lists, and other metadata.
+
+    also write script files if needed
     """
-    def __init__(self,run):
+    def __init__(self,run, **keys):
         self['run'] = run
+        for k,v in keys.iteritems():
+            self[k] = v
+
         # this has serun in it
         self.rc = deswl.files.Runconfig(self['run'])
 
         self.config_data=None
 
+        self['desdb_load'] = 'module unload desdb && module load desdb/%s' % self.rc['DESDB_VERS']
+        self['deswl_load'] = 'module unload deswl && module load deswl/%s' % self.rc['DESWL_VERS']
+        self['esutil_load'] = 'module unload esutil && module load esutil/%s' % self.rc['ESUTIL_VERS']
+
     def write_byccd(self):
         """
         Write all config files for expname/ccd
         """
-        all_fd = self.get_config_data()
-        i=1
-        ne=62*len(all_fd)
-        for expname,fdlist in all_fd.iteritems():
-            # now by ccd
-            for fd in fdlist:
-                config_file=deswl.files.get_se_config_path(self['run'],
-                                                           fd['expname'],
-                                                           ccd=fd['ccd'])
-                if (i % 1000) == 0:
-                    print >>stderr,"Writing config (%d/%d) %s" % (i,ne,config_file)
-                eu.ostools.makedirs_fromfile(config_file)
-                eu.io.write(config_file, fd)
 
-                if 'script' in fd:
-                    script_file=fd['script']
+        mpibatch_cmds=deswl.files.get_mpibatch_cmds_file(self['run'])
+        print 'writing mpibatch commands to',mpibatch_cmds
+        eu.ostools.makedirs_fromfile(mpibatch_cmds)
+        with open(mpibatch_cmds,'w') as cmds:
+            cmds.write('&listcmd\n')
+
+            all_fd = self.get_config_data()
+            i=1
+            ne=62*len(all_fd)
+            for expname,fdlist in all_fd.iteritems():
+                # now by ccd
+                for fd in fdlist:
+                    config_file=deswl.files.get_se_config_path(fd['run'],
+                                                               fd['expname'],
+                                                               ccd=fd['ccd'])
+                    log_file=deswl.files.get_se_log_path(fd['run'],
+                                                         fd['expname'],
+                                                         ccd=fd['ccd'])
+                    fd['output_files']['log']=log_file
+
                     if (i % 1000) == 0:
-                        print >>stderr,"    %s" % script_file
-                    with open(script_file,'w') as fobj:
-                        script_data=self.get_script(fd)
-                        fobj.write(script_data)
-                i += 1
+                        print >>stderr,"Writing config (%d/%d) %s" % (i,ne,config_file)
+                    eu.ostools.makedirs_fromfile(config_file)
+                    eu.io.write(config_file, fd)
 
+                    cmd=get_mpibatch_cmd(fd, i)
+                    cmds.write("%s\n" % cmd)
+
+                    if 'script' in fd:
+                        script_file=fd['script']
+                        if (i % 1000) == 0:
+                            print >>stderr,"    %s" % script_file
+                        with open(script_file,'w') as fobj:
+                            script_data=self.get_script(fd)
+                            fobj.write(script_data)
+
+                    self.write_mpi_script(fd)
+
+                    i += 1
+
+
+            cmds.write('/\n')
+
+    def write_mpi_script(self, fd):
+
+        config_file=deswl.files.get_se_config_path(fd['run'],
+                                                   fd['expname'],
+                                                   ccd=fd['ccd'])
+        cmd=get_run_command(config_file)
+        text="""#!/bin/bash -l
+{esutil_load}
+{desdb_load}
+{deswl_load}
+
+{cmd}
+        \n""".format(esutil_load=self['esutil_load'],
+                     desdb_load=self['desdb_load'],
+                     deswl_load=self['deswl_load'],
+                     cmd=cmd)
+
+        mpiscript_file=deswl.files.get_se_mpiscript_path(self['run'],
+                                                         fd['expname'],
+                                                         ccd=fd['ccd'])
+        
+        eu.ostools.makedirs_fromfile(mpiscript_file)
+        with open(mpiscript_file,'w') as fobj:
+            fobj.write(text)
+        os.system('chmod u+x %s' % mpiscript_file)
+
+    def write_mpibatch(self):
+        """
+        Batching individual jobs using mpi
+
+        requires the program mpibatch installed
+        """
+        rc=self.rc
+        job_name='%s-batch' % self['run']
+        nodes=16
+        ppn=8
+        np=nodes*ppn
+        walltime='36:00:00'
+        queue=self.get('queue','regular')
+
+        job_file=deswl.files.get_mpibatch_pbs_file(self['run'])
+        job_file_base=os.path.basename(job_file).replace('.pbs','')
+        cmdlist_file=deswl.files.get_mpibatch_cmds_file(self['run'])
+
+        mpibatch_text="""#!/bin/bash -l
+#PBS -N {job_name}
+#PBS -j oe
+#PBS -l nodes={nodes}:ppn={ppn},walltime={walltime}
+#PBS -q {queue}
+#PBS -o {job_file_base}.out
+#PBS -A des
+
+if [[ "Y${{PBS_O_WORKDIR}}" != "Y" ]]; then
+    cd $PBS_O_WORKDIR
+fi
+
+
+# mpibatch takes the cmdlist file name on stdin
+cmdlist={cmdlist_file}
+echo "$cmdlist" | mpirun -np {np} mpibatch
+
+        \n"""
+
+        mpibatch_text=mpibatch_text.format(job_name=job_name,
+                         nodes=nodes,
+                         ppn=ppn,
+                         np=np,
+                         walltime=walltime,
+                         queue=queue,
+                         job_file_base=job_file_base,
+                         cmdlist_file=cmdlist_file)
+
+        print 'Writing mpibatch pbs file:',job_file
+        eu.ostools.makedirs_fromfile(job_file)
+        with open(job_file,'w') as fobj:
+            fobj.write(mpibatch_text)
+        
 
     def get_config_data(self):
         raise RuntimeError("you must over-ride get_config_data")
@@ -450,7 +566,7 @@ class GenericSEWQJob(dict):
         else:
             # log is now automatically created by GenericProcessor
             # and written into hdfs
-            cmd="deswl-run {conf}".format(conf=conf)
+            cmd=get_run_command(conf)
 
         text = """
 command: |
@@ -500,20 +616,17 @@ class GenericSEPBSJob(dict):
         expname=self['expname']
         queue = self['queue']
 
+        job_name='se-'+expname.replace('decam-','')
         if check:
             job_file=self['job_file'].replace('.pbs','-check.pbs')
-            job_name=expname+'-chk'
+            job_name += '-chk'
         else:
             job_file=self['job_file']
-            job_name=expname
 
         job_file_base=os.path.basename(job_file).replace('.pbs','')
 
 
         rc=deswl.files.Runconfig(self['run'])
-        desdb_load = 'module unload desdb && module load desdb/%s' % rc['DESDB_VERS']
-        deswl_load = 'module unload deswl && module load deswl/%s' % rc['DESWL_VERS']
-        esutil_load = 'module unload esutil && module load esutil/%s' % rc['ESUTIL_VERS']
 
         # naming scheme for this generic type figured out from run
         config_file1=deswl.files.get_se_config_path(self['run'], 
@@ -530,7 +643,7 @@ class GenericSEPBSJob(dict):
         else:
             # log is now automatically created by GenericProcessor
             # and written into hdfs
-            cmd="deswl-run {conf}".format(conf=conf)
+            cmd=get_run_command(config_file)
 
         # need -l for login shell because of all the crazy module stuff
         # we have to load
@@ -539,9 +652,10 @@ class GenericSEPBSJob(dict):
 #PBS -l nodes=1:ppn=1
 #PBS -l walltime=02:00:00
 #PBS -N %(job_name)s
-#PBS -e %(job_file_base)s.err
+#PBS -j oe
 #PBS -o %(job_file_base)s.out
 #PBS -V
+#PBS -A des
 
 if [[ "Y${PBS_O_WORKDIR}" == "Y" ]]; then
     echo "PBS_O_WORKDIR not set"
@@ -557,9 +671,9 @@ for i in `seq -w 1 62`; do
     echo "ccd: $i"
     %(cmd)s
 done
-        \n""" % {'esutil_load':esutil_load,
-                 'desdb_load':desdb_load,
-                 'deswl_load':deswl_load,
+        \n""" % {'esutil_load':self['esutil_load'],
+                 'desdb_load':self['desdb_load'],
+                 'deswl_load':self['deswl_load'],
                  'cmd':cmd,
                  'queue':queue,
                  'job_name':job_name,'job_file_base':job_file_base}

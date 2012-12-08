@@ -1877,6 +1877,17 @@ def get_pbs_dir(run, subdir=None):
     outdir=os.path.expanduser(outdir)
     return outdir
 
+def get_mpibatch_pbs_file(run):
+    d=get_pbs_dir(run)
+    f='%s-mpibatch.pbs' % run
+    f=os.path.join(d,f)
+    return f
+
+def get_mpibatch_cmds_file(run):
+    d=get_pbs_dir(run)
+    f='%s-mpibatch-cmds.txt' % run
+    f=os.path.join(d,f)
+    return f
 
 def get_me_pbs_name(tilename, band):
     pbsfile=[tilename,band]
@@ -1918,10 +1929,25 @@ def get_se_config_path(run, expname, typ='fullpipe', ccd=None):
     f=f[0:f.rfind('.')]+'-config.yaml'
     return f
 
+def get_se_log_path(run, expname, typ='fullpipe', ccd=None):
+    f=get_se_pbs_path(run, expname, typ=typ, ccd=ccd)
+    f=f[0:f.rfind('.')]+'.log'
+    return f
+
+
 def get_se_script_path(run, expname, typ='fullpipe', ccd=None):
     f=get_se_pbs_path(run, expname, typ=typ, ccd=ccd)
     f=f[0:f.rfind('.')]+'.sh'
     return f
+
+def get_se_mpiscript_path(run, expname, typ='fullpipe', ccd=None):
+    """
+    For calling deswl-run from mpi workers. Sets up environment.
+    """
+    f=get_se_pbs_path(run, expname, typ=typ, ccd=ccd)
+    f=f[0:f.rfind('.')]+'-mpi.sh'
+    return f
+
 
 
 
