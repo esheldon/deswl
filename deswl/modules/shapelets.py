@@ -14,6 +14,12 @@ _output_patterns={'stars':'%(run)s-%(expname)s-%(ccd)02d-stars.fits',
                   'stat':'%(run)s-%(expname)s-%(ccd)02d-stat.yaml',
                   'log':'%(run)s-%(expname)s-%(ccd)02d.log'}
 
+def get_se_filename(type, run, expname, ccd):
+    if type not in _output_patterns:
+        raise ValueError("type '%s' not found in patterns" % type)
+    pattern=_output_patterns[type]
+    return deswl.generic.genurl(pattern, 'shapelets', run, expname, ccd=ccd)
+
 class ShapeletsSEConfig(generic.GenericConfig):
     """
     to create and write the "config" files, which hold the command

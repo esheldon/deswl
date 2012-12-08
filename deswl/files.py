@@ -41,8 +41,8 @@ class Runconfig(dict):
         self.run=run
 
         self.run_types={}
-        self.run_types['sse'] = {'name':'se', 'fileclass': 'shapelets'}
-        self.run_types['sme'] = {'name':'me', 'fileclass': 'shapelets'}
+        self.run_types['sse'] = {'name':'sse', 'fileclass': 'shapelets'}
+        self.run_types['sme'] = {'name':'sme', 'fileclass': 'shapelets'}
 
         # these are "external" codes.  The only places we explicitly work with
         # them is in this class, otherwise operations specific to these are are
@@ -481,7 +481,7 @@ def mohrify_name(name):
 def se_dir(run, expname, **keys):
     rc=Runconfig()
 
-    fileclass=rc.run_types['se']['fileclass']
+    fileclass=rc.run_types['sse']['fileclass']
     rundir=run_dir(fileclass, run, **keys)
     dir=path_join(rundir, expname)
     return dir
@@ -596,7 +596,7 @@ def se_test_path(serun, subdir=None, extra=None, fext='fits'):
 
 def collated_dir(run):
 
-    if run[0:2] == 'se' or run[0:2] == 'me':
+    if run[0:2] == 'sse' or run[0:2] == 'sme':
         dir=run_dir('wlbnl',run,fs='nfs')
     elif run[0:2] == 'am':
         dir=run_dir('am',run,fs='nfs')
@@ -621,7 +621,7 @@ def collated_path(run,
         rc=Runconfig()
 
 
-        if run[0:2] in ['se','am'] or run[0:5] == 'impyp':
+        if run[0:2] in ['sse','am'] or run[0:5] == 'impyp':
             ctypes = rc.se_collated_filetypes
         elif run[0:2] == 'me':
             ctypes = rc.me_collated_filetypes

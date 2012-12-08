@@ -104,8 +104,7 @@ def genurl(pattern, fileclass, run, expname, **keys):
                             'ccd':int(ccd)}
     else:
         basename=pattern % {'run':run,
-                            'expname':expname,
-                            'ccd':int(ccd)}
+                            'expname':expname}
 
     dir = gendir(fileclass, run, expname, **keys)
 
