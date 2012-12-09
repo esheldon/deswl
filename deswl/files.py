@@ -1889,6 +1889,20 @@ def get_mpibatch_cmds_file(run):
     f=os.path.join(d,f)
     return f
 
+def get_exp_mpibatch_pbs_file(run, expname):
+    d=get_pbs_dir(run, subdir='byexp')
+    f='%s-mpibatch.pbs' % expname
+    f=os.path.join(d,f)
+    return f
+
+def get_exp_mpibatch_cmds_file(run,expname):
+    d=get_pbs_dir(run, subdir='byexp')
+    f='%s-mpibatch-cmds.txt' % expname
+    f=os.path.join(d,f)
+    return f
+
+
+
 def get_me_pbs_name(tilename, band):
     pbsfile=[tilename,band]
     pbsfile='-'.join(pbsfile)+'.pbs'

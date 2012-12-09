@@ -51,10 +51,10 @@ _url_pattern_byccd='%(run)s-%(expname)s-%(ccd)02d-%(ftype)s.%(ext)s'
 def get_run_command(config_file):
     return 'deswl-run %s' % config_file
 
-def get_mpibatch_cmd(fd, i):
-    mpiscript_file=deswl.files.get_se_mpiscript_path(fd['run'],
-                                                     fd['expname'],
-                                                     ccd=fd['ccd'])
+def get_mpibatch_cmd(run, expname, ccd,i):
+    mpiscript_file=deswl.files.get_se_mpiscript_path(run,
+                                                     expname,
+                                                     ccd=ccd)
     return "cmd(%d)='%s'," % (i,mpiscript_file)
 
 def gendir(fileclass, run, expname, **keys):
@@ -167,43 +167,100 @@ class GenericConfig(dict):
         eu.ostools.makedirs_fromfile(mpibatch_cmds)
         with open(mpibatch_cmds,'w') as cmds:
             cmds.write('&listcmd\n')
+            cmds.write('cmd=\n')
 
             all_fd = self.get_config_data()
             i=1
             ne=62*len(all_fd)
             for expname,fdlist in all_fd.iteritems():
-                # now by ccd
-                for fd in fdlist:
-                    config_file=deswl.files.get_se_config_path(fd['run'],
-                                                               fd['expname'],
-                                                               ccd=fd['ccd'])
-                    log_file=deswl.files.get_se_log_path(fd['run'],
-                                                         fd['expname'],
-                                                         ccd=fd['ccd'])
-                    fd['output_files']['log']=log_file
+                # commands for by-exposure processing
+                cmdlist_file=deswl.files.get_exp_mpibatch_cmds_file(self['run'], expname)
+                eu.ostools.makedirs_fromfile(cmdlist_file)
+                with open(cmdlist_file,'w') as ecmds:
+                    ecmds.write('&listcmd\n')
+                    ecmds.write('cmd=\n')
 
-                    if (i % 1000) == 0:
-                        print >>stderr,"Writing config (%d/%d) %s" % (i,ne,config_file)
-                    eu.ostools.makedirs_fromfile(config_file)
-                    eu.io.write(config_file, fd)
+                    # mpi pbs script to submit all those ecmds
+                    self.write_expname_mpi(self['run'],expname)
 
-                    cmd=get_mpibatch_cmd(fd, i)
-                    cmds.write("%s\n" % cmd)
+                    # now by ccd
+                    for iccd,fd in enumerate(fdlist):
+                        config_file=deswl.files.get_se_config_path(fd['run'],
+                                                                   fd['expname'],
+                                                                   ccd=fd['ccd'])
+                        log_file=deswl.files.get_se_log_path(fd['run'],
+                                                             fd['expname'],
+                                                             ccd=fd['ccd'])
+                        fd['output_files']['log']=log_file
 
-                    if 'script' in fd:
-                        script_file=fd['script']
-                        if (i % 1000) == 0:
-                            print >>stderr,"    %s" % script_file
-                        with open(script_file,'w') as fobj:
-                            script_data=self.get_script(fd)
-                            fobj.write(script_data)
+                        if i==1 or (i % 1000) == 0:
+                            print >>stderr,"Writing config (%d/%d) %s" % (i,ne,config_file)
+                        eu.ostools.makedirs_fromfile(config_file)
+                        eu.io.write(config_file, fd)
 
-                    self.write_mpi_script(fd)
+                        mpiscript_file=deswl.files.get_se_mpiscript_path(fd['run'],
+                                                                         fd['expname'],
+                                                                         ccd=fd['ccd'])
+                        cmds.write("'%s',\n" % mpiscript_file)
+                        ecmds.write("'%s',\n" % mpiscript_file)
 
-                    i += 1
+                        if 'script' in fd:
+                            script_file=fd['script']
+                            if i==1 or (i % 1000) == 0:
+                                print >>stderr,"    %s" % script_file
+                            with open(script_file,'w') as fobj:
+                                script_data=self.get_script(fd)
+                                fobj.write(script_data)
 
+                        self.write_mpi_script(fd)
+
+                        i += 1
+
+                    ecmds.write('/\n')
 
             cmds.write('/\n')
+
+    def write_expname_mpi(self, run, expname):
+        job_file=deswl.files.get_exp_mpibatch_pbs_file(run, expname)
+        cmdlist_file=deswl.files.get_exp_mpibatch_cmds_file(run, expname)
+
+        self['job_file']= deswl.files.get_se_pbs_path(run, expname)
+        job_file_base=os.path.basename(job_file).replace('.pbs','')
+        job_name='%s-%s' % (run,expname.replace('decam-',''))
+
+        nodes=2
+        ppn=8
+        np=nodes*ppn
+        walltime="1:00:00"
+
+        text="""#!/bin/bash -l
+#PBS -N {job_name}
+#PBS -j oe
+#PBS -l nodes={nodes}:ppn={ppn},walltime={walltime}
+#PBS -q regular
+#PBS -o {job_file_base}.out
+#PBS -A des
+
+if [[ "Y${{PBS_O_WORKDIR}}" != "Y" ]]; then
+    cd $PBS_O_WORKDIR
+fi
+
+# mpibatch takes the cmdlist file name on stdin
+cmdlist={cmdlist_file}
+echo "$cmdlist" | mpirun -np {np} mpibatch
+
+        \n""".format(job_name=job_name,
+                     nodes=nodes,
+                     ppn=ppn,
+                     walltime=walltime,
+                     job_file_base=job_file_base,
+                     cmdlist_file=cmdlist_file,
+                     np=np)
+
+        eu.ostools.makedirs_fromfile(job_file)
+        with open(job_file,'w') as fobj:
+            fobj.write(text)
+
 
     def write_mpi_script(self, fd):
 
@@ -242,6 +299,11 @@ class GenericConfig(dict):
         nodes=16
         ppn=8
         np=nodes*ppn
+        # assuming 31,000 jobs (ccds), 7 minutes
+        # per job and 16*8=128 cores, we need ~29
+        # hours.  36 should be plenty
+        # using 128 and less than 48 hours cores means means
+        # we expect to end up in the reg_small exec queue
         walltime='36:00:00'
         queue=self.get('queue','regular')
 
@@ -350,8 +412,9 @@ class GenericProcessor(dict):
 
         self.setup_files()
 
-        log_name = self.outf['log']['local_url']
-        eu.ostools.makedirs_fromfile(log_name)
+        for f,v in self.outf.iteritems():
+            eu.ostools.makedirs_fromfile(v['local_url'])
+        log_name=self.outf['log']['local_url']
         self._log = open(log_name,'w')
 
     def __enter__(self):
