@@ -51,12 +51,6 @@ _url_pattern_byccd='%(run)s-%(expname)s-%(ccd)02d-%(ftype)s.%(ext)s'
 def get_run_command(config_file):
     return 'deswl-run %s' % config_file
 
-def get_mpibatch_cmd(run, expname, ccd,i):
-    mpiscript_file=deswl.files.get_se_mpiscript_path(run,
-                                                     expname,
-                                                     ccd=ccd)
-    return "cmd(%d)='%s'," % (i,mpiscript_file)
-
 def gendir(fileclass, run, expname, **keys):
     """
     Generate a directory url.
