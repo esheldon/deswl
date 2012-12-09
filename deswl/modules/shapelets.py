@@ -131,6 +131,7 @@ for prog in findstars measurepsf measureshear; do
         exit $err
     fi
 done
+echo "time-seconds: $SECONDS"
         \n"""
 
         # now interpolate the rest
