@@ -1514,7 +1514,7 @@ class ShearFiles(dict):
         """
 
         import desdb
-        infolist=desdb.files.get_red_info(self.rc['dataset'],self.rc['band'])
+        infolist=desdb.files.get_red_info_byrelease(self.rc['dataset'],self.rc['band'])
         for info in infolist:
             # rename to be consistent
             image=info.pop('image_url')
