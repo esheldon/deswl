@@ -557,7 +557,9 @@ def coldir(run, fits=False, suffix=''):
 
 
 def se_test_dir(serun, subdir=None):
-    dir=run_dir('wlbnl',serun)
+    rc=Runconfig(run)
+    fileclass=rc['fileclass']
+    dir=run_dir(fileclass,serun)
     dir = path_join(dir, 'test')
     if subdir is not None:
         dir = path_join(dir, subdir)
@@ -595,15 +597,9 @@ def se_test_path(serun, subdir=None, extra=None, fext='fits'):
 
 
 def collated_dir(run):
-
-    if run[0:2] == 'sse' or run[0:2] == 'sme':
-        dir=run_dir('wlbnl',run,fs='nfs')
-    elif run[0:2] == 'am':
-        dir=run_dir('am',run,fs='nfs')
-    elif run[0:5] == 'impyp':
-        dir=run_dir('impyp',run,fs='nfs')
-    else:
-        raise ValueError("Expected runs to start with me or se or impyp")
+    rc=Runconfig(run)
+    fileclass=rc['fileclass']
+    dir=run_dir(fileclass,run,fs='nfs')
     dir = path_join(dir, 'collated')
     return dir
 
@@ -613,35 +609,18 @@ def collated_path(run,
                   ftype=None, 
                   delim=None):
 
+    rc=Runconfig(run)
+    fileclass=rc['fileclass']
+
     fname=[run,objclass]
     fname='-'.join(fname)
 
     # determine the file type
     if ftype is None:
-        rc=Runconfig()
-
-
-        if run[0:2] in ['sse','am'] or run[0:5] == 'impyp':
-            ctypes = rc.se_collated_filetypes
-        elif run[0:2] == 'me':
-            ctypes = rc.me_collated_filetypes
-        else:
-            raise ValueError("Expected runs to start with me or se or impyp")
-
-        ftype = ctypes.get(objclass,'fits')
+        raise  ValueError("implement file type determination")
         
     # determine the extension
     fext = eu.io.ftype2fext(ftype)
-
-
-    # add delimiter info to the file name
-    if fext == 'rec' and delim is not None:
-        if delim == '\t':
-            fname += '-tab'
-        elif delim == ',':
-            fname += '-csv'
-        else:
-            raise ValueError,'delim should be , or tab'
 
     fname += '.'+fext
 
@@ -1883,24 +1862,34 @@ def get_mpibatch_pbs_file(run):
     f=os.path.join(d,f)
     return f
 
+def get_mpibatch_check_pbs_file(run):
+    d=get_pbs_dir(run)
+    f='%s-check-mpibatch.pbs' % run
+    f=os.path.join(d,f)
+    return f
+
+
+# no longer used
+"""
 def get_mpibatch_cmds_file(run):
     d=get_pbs_dir(run)
     f='%s-mpibatch-cmds.txt' % run
     f=os.path.join(d,f)
     return f
-
+"""
 def get_exp_mpibatch_pbs_file(run, expname):
     d=get_pbs_dir(run, subdir='byexp')
     f='%s-mpibatch.pbs' % expname
     f=os.path.join(d,f)
     return f
 
+"""
 def get_exp_mpibatch_cmds_file(run,expname):
     d=get_pbs_dir(run, subdir='byexp')
     f='%s-mpibatch-cmds.txt' % expname
     f=os.path.join(d,f)
     return f
-
+"""
 
 
 def get_me_pbs_name(tilename, band):
@@ -1930,7 +1919,7 @@ def get_se_pbs_path(serun, expname, typ='fullpipe', ccd=None):
     if ccd is not None:
         subdir='byccd'
     else:
-        subdir=None
+        subdir='byexp'
 
     pbsdir=get_pbs_dir(serun, subdir=subdir)
     pbsfile=get_se_pbs_name(expname, typ=typ, ccd=ccd)

@@ -8,6 +8,16 @@ checking the result of each exposure.
 Finally, generate a script to reduce the results of the parallelized check
 scripts
 
+types
+-----
+config:
+    write config files and scripts for every ccd.
+pbs:
+    write by-exposure pbs scripts, including check
+mpibatch:
+    A big mpi job that runs all the ccd scripts
+reduce:
+    Reduce the check files
 """
 
 import os,sys
@@ -33,6 +43,9 @@ import glob
 import deswl
 import esutil as eu
 
+goodfile=deswl.files.collated_path('{run}', 'goodlist',ftype='yaml')
+badfile=deswl.files.collated_path('{run}', 'badlist',ftype='yaml')
+
 files=glob.glob('byccd/*-check.json')
 if len(files) != {expected_num}:
     raise ValueError("expected {expected_num} files, found %s" % len(files))
@@ -52,8 +65,6 @@ for i,f in enumerate(files,1):
             pv=d['output_files']['stat']
         print >>stderr,pv,'\\n',d['error_string']
         badlist.append(d)
-goodfile=deswl.files.collated_path('{run}', 'goodlist')
-badfile=deswl.files.collated_path('{run}', 'badlist')
 eu.ostools.makedirs_fromfile(goodfile)
 
 print >>stderr,"Found %s/%s problems" % (len(badlist),nf)
@@ -89,7 +100,9 @@ def main():
     rc=deswl.files.Runconfig(run)
 
     if rc['run_type'] == 'sse':
-        cfobj = deswl.modules.shapelets.ShapeletsSEConfig(run, queue=options.queue)
+        cfobj = deswl.modules.shapelets.ShapeletsSEConfig(run, 
+                                                          queue=options.
+                                                          queue)
     elif rc['run_type'] == 'impyp':
         cfobj = deswl.modules.impyp.ImpypConfig(run, queue=options.queue)
     elif rc['run_type'] == 'am':
@@ -105,6 +118,7 @@ def main():
 
     if 'mpibatch' in types:
         cfobj.write_mpibatch()
+        cfobj.write_check_mpibatch()
 
     if 'pbs' in types:
         # every class must have the get_config_data method

@@ -58,6 +58,8 @@ def process_status(info, verbose=False):
             else:
                 missing=[]
                 for ftype,f in info['output_files'].iteritems():
+                    if ftype=='qa':
+                        continue
                     if verbose:
                         print >>stderr,'    checking:',f
                     if not fexists(f):

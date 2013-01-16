@@ -147,9 +147,12 @@ class GenericConfig(dict):
 
         self.config_data=None
 
-        self['desdb_load'] = 'module unload desdb && module load desdb/%s' % self.rc['DESDB_VERS']
-        self['deswl_load'] = 'module unload deswl && module load deswl/%s' % self.rc['DESWL_VERS']
-        self['esutil_load'] = 'module unload esutil && module load esutil/%s' % self.rc['ESUTIL_VERS']
+        self['desdb_load'] = \
+            'module unload desdb && module load desdb/%s' % self.rc['DESDB_VERS']
+        self['deswl_load'] = \
+            'module unload deswl && module load deswl/%s' % self.rc['DESWL_VERS']
+        self['esutil_load'] = \
+            'module unload esutil && module load esutil/%s' % self.rc['ESUTIL_VERS']
 
     def write_byccd(self):
         """
@@ -317,11 +320,9 @@ if [[ "Y${{PBS_O_WORKDIR}}" != "Y" ]]; then
     cd $PBS_O_WORKDIR
 fi
 
+find ./byccd -name "*decam-*-mpi.sh" | mpirun -np {np} mpibatch
 
-# mpibatch takes the cmdlist file name on stdin
-cmdlist={cmdlist_file}
-echo "$cmdlist" | mpirun -np {np} mpibatch
-
+echo "done mpibatch"
         \n"""
 
         mpibatch_text=mpibatch_text.format(job_name=job_name,
@@ -338,7 +339,60 @@ echo "$cmdlist" | mpirun -np {np} mpibatch
         with open(job_file,'w') as fobj:
             fobj.write(mpibatch_text)
         
+    def write_check_mpibatch(self):
+        """
+        Batching individual jobs using mpi
 
+        requires the program mpibatch installed
+        """
+        rc=self.rc
+        job_name='%s-check' % self['run']
+        nodes=8
+        ppn=8
+        np=nodes*ppn
+        # assuming 31,000 jobs (ccds), 7 minutes
+        # per job and 16*8=128 cores, we need ~29
+        # hours.  36 should be plenty
+        # using 128 and less than 48 hours cores means means
+        # we expect to end up in the reg_small exec queue
+        walltime='00:30:00'
+        queue=self.get('queue','regular')
+
+        job_file=deswl.files.get_mpibatch_check_pbs_file(self['run'])
+        job_file_base=os.path.basename(job_file).replace('.pbs','')
+        cmdlist_file=deswl.files.get_mpibatch_cmds_file(self['run'])
+
+        mpibatch_text="""#!/bin/bash -l
+#PBS -N {job_name}
+#PBS -j oe
+#PBS -l nodes={nodes}:ppn={ppn},walltime={walltime}
+#PBS -q {queue}
+#PBS -o {job_file_base}.out
+#PBS -A des
+
+if [[ "Y${{PBS_O_WORKDIR}}" != "Y" ]]; then
+    cd $PBS_O_WORKDIR
+fi
+
+find ./byexp -name "*decam-*-check.pbs" | mpirun -np {np} mpibatch
+
+echo "done mpibatch"
+        \n"""
+
+        mpibatch_text=mpibatch_text.format(job_name=job_name,
+                         nodes=nodes,
+                         ppn=ppn,
+                         np=np,
+                         walltime=walltime,
+                         queue=queue,
+                         job_file_base=job_file_base,
+                         cmdlist_file=cmdlist_file)
+
+        print 'Writing check mpibatch pbs file:',job_file
+        eu.ostools.makedirs_fromfile(job_file)
+        with open(job_file,'w') as fobj:
+            fobj.write(mpibatch_text)
+ 
     def get_config_data(self):
         raise RuntimeError("you must over-ride get_config_data")
 
@@ -406,8 +460,8 @@ class GenericProcessor(dict):
 
         self.setup_files()
 
-        for f,v in self.outf.iteritems():
-            eu.ostools.makedirs_fromfile(v['local_url'])
+        self.make_output_dirs()
+
         log_name=self.outf['log']['local_url']
         self._log = open(log_name,'w')
 
@@ -433,7 +487,6 @@ class GenericProcessor(dict):
         from subprocess import STDOUT
         print >>self._log,os.uname()[1]
         
-        #self.make_output_dirs()
         self.stage()
 
         command=self.get_command()
@@ -463,8 +516,12 @@ class GenericProcessor(dict):
         run through all the output files and make sure associated
         directories exist
         """
-        for k,v in self.outf.iteritems():
-            eu.ostools.makedirs_fromfile(v['local_url'])
+        try:
+            for k,v in self.outf.iteritems():
+                eu.ostools.makedirs_fromfile(v['local_url'])
+        except:
+            # probably a race condition
+            pass
     def stage(self):
         """
         Stage in hdfs files as necessary
@@ -665,9 +722,19 @@ class GenericSEPBSJob(dict):
         self['run'] = run
         self['expname'] = expname
         self['queue'] = keys.get('queue','serial')
-        self['job_file']= deswl.files.get_se_pbs_path(self['run'], self['expname'])
+        self['job_file']= \
+            deswl.files.get_se_pbs_path(self['run'], self['expname'])
+
+        self.rc=deswl.files.Runconfig(self['run'])
+        self['desdb_load'] = \
+            'module unload desdb && module load desdb/%s' % self.rc['DESDB_VERS']
+        self['deswl_load'] = \
+            'module unload deswl && module load deswl/%s' % self.rc['DESWL_VERS']
+        self['esutil_load'] = \
+            'module unload esutil && module load esutil/%s' % self.rc['ESUTIL_VERS']
 
     def write(self, check=False):
+
 
         expname=self['expname']
         queue = self['queue']
@@ -688,18 +755,23 @@ class GenericSEPBSJob(dict):
         config_file1=deswl.files.get_se_config_path(self['run'], 
                                                     self['expname'], 
                                                     ccd=1)
-        config_file1=os.path.join('byccd',os.path.basename(config_file1))
-        conf=config_file1.replace('01-config.yaml','$i-config.yaml')
+        config_dir=os.path.dirname(config_file1)
+        config_base1=os.path.basename(config_file1)
+        conf=config_base1.replace('01-config.yaml','${ccd}-config.yaml')
         if check:
-            chk=config_file1.replace('01-config.yaml','$i-check.json')
-            err=config_file1.replace('01-config.yaml','$i-check.err')
+            chk=conf.replace('${ccd}-config.yaml','${ccd}-check.json')
+            err=conf.replace('${ccd}-config.yaml','${ccd}-check.err')
 
-            cmd="deswl-check {conf} 1> {chk}"
+            cmd="""
+    deswl-check \\
+        $dir/{conf} \\
+        1> $dir/{chk} \\
+        2> $dir/{err}\n"""
             cmd=cmd.format(conf=conf, chk=chk, err=err)
         else:
             # log is now automatically created by GenericProcessor
             # and written into hdfs
-            cmd=get_run_command(config_file)
+            cmd=get_run_command(conf)
 
         # need -l for login shell because of all the crazy module stuff
         # we have to load
@@ -713,21 +785,22 @@ class GenericSEPBSJob(dict):
 #PBS -V
 #PBS -A des
 
-if [[ "Y${PBS_O_WORKDIR}" == "Y" ]]; then
-    echo "PBS_O_WORKDIR not set"
-    exit 1
+if [[ "Y${PBS_O_WORKDIR}" != "Y" ]]; then
+    cd $PBS_O_WORKDIR
 fi
-cd $PBS_O_WORKDIR
 
 %(esutil_load)s
 %(desdb_load)s
 %(deswl_load)s
 
-for i in `seq -w 1 62`; do
-    echo "ccd: $i"
+dir=%(config_dir)s
+for ccd in `seq -w 1 62`; do
+    echo "ccd: ${ccd}"
     %(cmd)s
 done
-        \n""" % {'esutil_load':self['esutil_load'],
+
+        \n""" % {'config_dir':config_dir,
+                 'esutil_load':self['esutil_load'],
                  'desdb_load':self['desdb_load'],
                  'deswl_load':self['deswl_load'],
                  'cmd':cmd,
@@ -739,4 +812,5 @@ done
         with open(job_file,'w') as fobj:
             fobj.write(text)
 
+        os.system('chmod u+x %s' % job_file)
 
