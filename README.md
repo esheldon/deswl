@@ -3,14 +3,18 @@ deswl
 
 Generic framework for DES weak lensing processing
 
-Process
--------
+modules and sub-packages
+------------------------
 
-Order of operations for SE processing.
-======================================
-
-First generate a run config.
-
-    deswl-gen-runconfig -c config run_type data_set band
-    deswl-gen-runconfig -c config -t run_type data_set band
+    wlpipe
+        The framework
+    files
+        work with inputs and outputs to wl codes
+    generic
+        Generic pluggable code runner
+    modules
+        More specific pipeline runners
+    meds
+        Wrapper to work with a Multi Epoch Data Structure
+        https://cdcvs.fnal.gov/redmine/projects/deswlwg/wiki/Multi_Epoch_Data_Structure
 
