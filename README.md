@@ -3,6 +3,8 @@ deswl
 
 Generic framework for DES weak lensing processing
 
+In the process of moving codes from the old svn package
+
 modules and sub-packages
 ------------------------
 
