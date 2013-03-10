@@ -57,6 +57,9 @@ class MEDS(object):
     # get the all the cutouts for object 35 as a single image
     im=m.get_mosaic(35)
 
+    # get a cutout for the weight map
+    wt=m.get_cutout(35,3,type='weight')
+
     # get a list of all the cutout images for object 35
     im=m.get_cutout_list(35)
 
@@ -107,7 +110,7 @@ class MEDS(object):
         self._cat=self._fits["object_data"][:]
         self._image_info=self._fits["image_info"][:]
 
-    def get_cutout(self, iobj, icutout):
+    def get_cutout(self, iobj, icutout, type='image'):
         """
         Get a single cutout for the indicated entry
 
@@ -117,6 +120,9 @@ class MEDS(object):
             Index of the object
         icutout:
             Index of the cutout for this object.
+        type: string, optional
+            Cutout type. Default is 'image'.  Allowed
+            values are 'image','weight'
 
         returns
         -------
@@ -128,9 +134,11 @@ class MEDS(object):
         start_row = self._cat['start_row'][iobj,icutout]
         row_end = start_row+box_size
 
-        return self._fits["image_cutouts"][start_row:row_end,:]
+        extname=self._get_extension_name(type)
 
-    def get_mosaic(self, iobj):
+        return self._fits[extname][start_row:row_end,:]
+
+    def get_mosaic(self, iobj, type='image'):
         """
         Get a mosaic of all cutouts associated with this coadd object
 
@@ -138,6 +146,9 @@ class MEDS(object):
         ----------
         iobj:
             Index of the object
+        type: string, optional
+            Cutout type. Default is 'image'.  Allowed
+            values are 'image','weight'
 
         returns
         -------
@@ -152,10 +163,11 @@ class MEDS(object):
         start_row = self._cat['start_row'][iobj,0]
         row_end = start_row+box_size*ncutout
 
-        mosaic=self._fits["image_cutouts"][start_row:row_end,:]
+        extname=self._get_extension_name(type)
+        mosaic=self._fits[extname][start_row:row_end,:]
         return mosaic
 
-    def get_cutout_list(self, iobj):
+    def get_cutout_list(self, iobj, type='image'):
         """
         Get an image list with all cutouts associated with this coadd object
 
@@ -166,6 +178,9 @@ class MEDS(object):
         ----------
         iobj:
             Index of the object
+        type: string, optional
+            Cutout type. Default is 'image'.  Allowed
+            values are 'image','weight'
 
         returns
         -------
@@ -221,6 +236,14 @@ class MEDS(object):
         """
         return self._image_info
     
+
+    def _get_extension_name(self, type):
+        if type=='image':
+            return "image_cutouts"
+        elif type=="weight":
+            return "weight_cutouts"
+        else:
+            raise ValueError("bad cutout type '%s'" % type)
 
     def _split_mosaic(self, mosaic, box_size, ncutout):
         imlist=[]
