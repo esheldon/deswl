@@ -5,7 +5,6 @@ See docs for the MEDS class for more info
 
 Author: Erin Sheldon, BNL
 """
-import fitsio
 
 class MEDS(object):
     """
@@ -103,6 +102,7 @@ class MEDS(object):
     fitsio https://github.com/esheldon/fitsio
     """
     def __init__(self, filename):
+        import fitsio
         self._filename=filename
         
         self._fits=fitsio.FITS(filename)
