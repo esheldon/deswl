@@ -42,7 +42,7 @@ class MEDS(object):
 
     examples
     --------
-    import meds
+    from deswl import meds
     m=meds.MEDS(filename)
 
     # number of coadd objects
