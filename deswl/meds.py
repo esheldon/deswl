@@ -53,14 +53,14 @@ class MEDS(object):
     # get cutout 3 for object 35
     im=m.get_cutout(35,3)
 
-    # get the all the cutouts for object 35 as a single image
+    # get all the cutouts for object 35 as a single image
     im=m.get_mosaic(35)
+
+    # get all the cutouts for object 35 as a list of images
+    im=m.get_cutout_list(35)
 
     # get a cutout for the weight map
     wt=m.get_cutout(35,3,type='weight')
-
-    # get a list of all the cutout images for object 35
-    im=m.get_cutout_list(35)
 
     # get the source filename for cutout 3 for object 35
     fname=m.get_source_filename(35,3)
