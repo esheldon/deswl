@@ -65,21 +65,28 @@ struct meds_cutout {
     ( *((im)->rows[(ncutout)*(im)->nrows + (row)] + (col)) )
 
 
+// open a meds structure
 struct meds *meds_open(const char *filename);
+// free the structure
 struct meds *meds_free(struct meds *self);
 
+// get the full catalog
 const struct meds_cat *meds_get_cat();
+// get an entry in the catalog
 const struct meds_obj *meds_get_obj(long iobj);
 
+// read a single cutout
 double *meds_get_cutout(long iobj, long icutout, long *nrow, long *ncol);
+// read a cutout mosaic
 double *meds_get_mosaic(long iobj, long *ncutout, long *nrow, long *ncol);
 
+// get info for the source image of the indicated cutout
 const struct meds_image_info *meds_get_source_info(long iobj, long icutout);
+// get the filename for the source image of the indicated cutout
 const char *meds_get_source_filename(long iobj, long icutout);
 
-struct meds_cat *meds_cat_new(long size, long ncutout_max);
-struct meds_cat *meds_cat_free(struct meds_cat *self);
-
+// print tools
+void meds_print(const struct meds *self, FILE* stream);
 void meds_obj_print(const struct meds_obj *obj, FILE* stream);
 void meds_image_info_print(const struct meds_image_info *self, FILE* stream);
 

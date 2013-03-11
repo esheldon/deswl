@@ -1,51 +1,19 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <fitsio.h>
 
 #include "meds.h"
+
+//
+// some static methods and variables
+//
 
 static char *MEDS_COLNAMES[]={
     "id", "ncutout", "box_size",
     "file_id", "start_row", 
     "orig_row", "orig_col","orig_start_row","orig_start_col",
     "cutout_row","cutout_col"};
-
-static void print_doubles(const double* vals, long n, const char *name, FILE* stream)
-{
-    fprintf(stream,"%-14s : ", name);
-    for (long i=0; i<n; i++) {
-        fprintf(stream," %lf", vals[i]);
-    }
-    fprintf(stream,"\n");
-}
-static void print_longs(const long *vals, long n, const char *name, FILE* stream)
-{
-    fprintf(stream,"%-14s : ", name);
-    for (long i=0; i<n; i++) {
-        fprintf(stream," %ld", vals[i]);
-    }
-    fprintf(stream,"\n");
-}
-
-void meds_obj_print(const struct meds_obj *self, FILE* stream)
-{
-    fprintf(stream,"%-14s : %ld\n", "id", self->id);
-    fprintf(stream,"%-14s : %ld\n", "ncutout", self->ncutout);
-    fprintf(stream,"%-14s : %ld\n", "box_size",   self->box_size);
-    print_longs(self->file_id, self->ncutout, "file_id", stream);
-    print_longs(self->start_row, self->ncutout, "start_row", stream);
-    print_doubles(self->orig_row, self->ncutout, "orig_row", stream);
-    print_doubles(self->orig_col, self->ncutout, "orig_col", stream);
-    print_longs(self->orig_start_row, self->ncutout, "orig_start_row", stream);
-    print_longs(self->orig_start_col, self->ncutout, "orig_start_col", stream);
-    print_doubles(self->cutout_row, self->ncutout, "cutout_row", stream);
-    print_doubles(self->cutout_col, self->ncutout, "cutout_col", stream);
-}
-
-void meds_image_info_print(const struct meds_image_info *self, FILE* stream)
-{
-    fprintf(stream,"filename: %s\n", self->filename);
-}
 
 static long *alloc_longs(long n) {
     long *ptr=malloc(n*sizeof(long));
@@ -70,118 +38,21 @@ static double *alloc_doubles(long n) {
     return ptr;
 }
 
-
-static void alloc_fields(struct meds_obj *self, long ncutout)
+static void print_doubles(const double* vals, long n, const char *name, FILE* stream)
 {
-    self->file_id        = alloc_longs(ncutout);
-    self->start_row      = alloc_longs(ncutout);
-    self->orig_row       = alloc_doubles(ncutout);
-    self->orig_col       = alloc_doubles(ncutout);
-
-    self->orig_start_row = alloc_longs(ncutout);
-    self->orig_start_col = alloc_longs(ncutout);
-
-    self->cutout_row     = alloc_doubles(ncutout);
-    self->cutout_col     = alloc_doubles(ncutout);
+    fprintf(stream,"%-14s : ", name);
+    for (long i=0; i<n; i++) {
+        fprintf(stream," %lf", vals[i]);
+    }
+    fprintf(stream,"\n");
 }
-static void free_fields(struct meds_obj *self)
+static void print_longs(const long *vals, long n, const char *name, FILE* stream)
 {
-    if (self) {
-        free(self->file_id);
-        free(self->start_row);
-        free(self->orig_row);
-        free(self->orig_col);
-
-        free(self->orig_start_row);
-        free(self->orig_start_col);
-
-        free(self->cutout_row);
-        free(self->cutout_col);
+    fprintf(stream,"%-14s : ", name);
+    for (long i=0; i<n; i++) {
+        fprintf(stream," %ld", vals[i]);
     }
-}
-
-
-struct meds_cat *meds_cat_new(long size, long ncutout_max)
-{
-    struct meds_cat *self=calloc(1, sizeof(struct meds_cat));
-    if (!self) {
-        fprintf(stderr,"could not allocate struct meds_cat\n");
-        exit(1);
-    }
-
-    self->size=size;
-    self->data=calloc(size, sizeof(struct meds_obj));
-    if (!self->data) {
-        fprintf(stderr,"could not allocate %ld meds_obj structures\n", size);
-        exit(1);
-    }
-
-    struct meds_obj *obj=self->data;
-    for (long i=0; i<size; i++) {
-        alloc_fields(obj, ncutout_max);
-        obj->ncutout=ncutout_max;
-        obj++;
-    }
-
-    return self;
-}
-
-struct meds_cat *meds_cat_free(struct meds_cat *self)
-{
-    if (self) {
-        struct meds_obj *obj=self->data;
-        for (long i=0; i<self->size; i++) {
-            free_fields(obj);
-            obj++;
-        }
-        free(self->data);
-        free(self);
-    }
-    return NULL;
-}
-
-
-struct meds_info_cat *meds_info_cat_new(long size, long namelen_max)
-{
-    struct meds_info_cat *self=calloc(1, sizeof(struct meds_info_cat));
-    if (!self) {
-        fprintf(stderr,"could not allocate struct meds_info_cat\n");
-        exit(1);
-    }
-
-    self->size=size;
-    self->data=calloc(size, sizeof(struct meds_image_info));
-    if (!self->data) {
-        fprintf(stderr,"could not allocate %ld meds_image_info structures\n", size);
-        exit(1);
-    }
-
-    struct meds_image_info *info=self->data;
-    for (long i=0; i<size; i++) {
-        info->filename = calloc(namelen_max, sizeof(char));
-        if (!info->filename) {
-            fprintf(stderr,"failed to allocate filename of size %ld\n", namelen_max);
-            exit(1);
-        }
-        info->flen=namelen_max;
-        info++;
-    }
-
-    return self;
-}
-
-struct meds_info_cat *meds_info_cat_free(struct meds_info_cat *self)
-{
-    if (self) {
-        struct meds_image_info *info=self->data;
-        for (long i=0; i<self->size; i++) {
-            free(info->filename);
-            info++;
-        }
-        free(self->data);
-        free(self);
-    }
-    return NULL;
+    fprintf(stream,"\n");
 }
 
 static fitsfile *fits_open(const char *filename)
@@ -213,45 +84,6 @@ static long get_nrows(fitsfile *fits)
     }
     return nrows;
 }
-static long get_ncutout_max(fitsfile *fits)
-{
-    int status=0;
-    int maxdim=2;
-    int naxis = {0};
-    long naxes[2];
-
-    int colnum=0;
-    if (fits_get_colnum(fits, 0, "file_id", &colnum, &status)) {
-        fits_report_error(stderr,status);
-        return 0;
-    }
-    if (fits_read_tdim(fits, colnum, maxdim, &naxis,
-                       naxes, &status)) {
-        fits_report_error(stderr,status);
-        return 0;
-    }
-    return naxes[0];
-}
-static long get_namelen_max(fitsfile *fits)
-{
-    int status=0;
-    int maxdim=2;
-    int naxis = {0};
-    long naxes[2];
-
-    int colnum=0;
-    if (fits_get_colnum(fits, 0, "filename", &colnum, &status)) {
-        fits_report_error(stderr,status);
-        return 0;
-    }
-    if (fits_read_tdim(fits, colnum, maxdim, &naxis,
-                       naxes, &status)) {
-        fits_report_error(stderr,status);
-        return 0;
-    }
-    return naxes[0];
-}
-
 
 static int get_colnum(fitsfile *fits, const char *colname)
 {
@@ -309,6 +141,119 @@ static int fits_read_longs(fitsfile *fits,
 }
 
 
+// size of a fixed-length array column (per row)
+static long get_array_col_size(fitsfile *fits, const char *colname)
+{
+    int status=0;
+    int maxdim=2;
+    int naxis = {0};
+    long naxes[2];
+
+    int colnum=0;
+    if (fits_get_colnum(fits, 0, (char*)colname, &colnum, &status)) {
+        fits_report_error(stderr,status);
+        return 0;
+    }
+    if (fits_read_tdim(fits, colnum, maxdim, &naxis,
+                       naxes, &status)) {
+        fits_report_error(stderr,status);
+        return 0;
+    }
+    return naxes[0];
+}
+
+
+
+//
+// struct meds_obj
+//
+
+static void alloc_fields(struct meds_obj *self, long ncutout)
+{
+    self->file_id        = alloc_longs(ncutout);
+    self->start_row      = alloc_longs(ncutout);
+    self->orig_row       = alloc_doubles(ncutout);
+    self->orig_col       = alloc_doubles(ncutout);
+
+    self->orig_start_row = alloc_longs(ncutout);
+    self->orig_start_col = alloc_longs(ncutout);
+
+    self->cutout_row     = alloc_doubles(ncutout);
+    self->cutout_col     = alloc_doubles(ncutout);
+}
+static void free_fields(struct meds_obj *self)
+{
+    if (self) {
+        free(self->file_id);
+        free(self->start_row);
+        free(self->orig_row);
+        free(self->orig_col);
+
+        free(self->orig_start_row);
+        free(self->orig_start_col);
+
+        free(self->cutout_row);
+        free(self->cutout_col);
+    }
+}
+
+void meds_obj_print(const struct meds_obj *self, FILE* stream)
+{
+    fprintf(stream,"%-14s : %ld\n", "id", self->id);
+    fprintf(stream,"%-14s : %ld\n", "ncutout", self->ncutout);
+    fprintf(stream,"%-14s : %ld\n", "box_size",   self->box_size);
+    print_longs(self->file_id, self->ncutout, "file_id", stream);
+    print_longs(self->start_row, self->ncutout, "start_row", stream);
+    print_doubles(self->orig_row, self->ncutout, "orig_row", stream);
+    print_doubles(self->orig_col, self->ncutout, "orig_col", stream);
+    print_longs(self->orig_start_row, self->ncutout, "orig_start_row", stream);
+    print_longs(self->orig_start_col, self->ncutout, "orig_start_col", stream);
+    print_doubles(self->cutout_row, self->ncutout, "cutout_row", stream);
+    print_doubles(self->cutout_col, self->ncutout, "cutout_col", stream);
+}
+
+//
+// struct meds_cat
+//
+
+static struct meds_cat *meds_cat_new(long size, long ncutout_max)
+{
+    struct meds_cat *self=calloc(1, sizeof(struct meds_cat));
+    if (!self) {
+        fprintf(stderr,"could not allocate struct meds_cat\n");
+        exit(1);
+    }
+
+    self->size=size;
+    self->data=calloc(size, sizeof(struct meds_obj));
+    if (!self->data) {
+        fprintf(stderr,"could not allocate %ld meds_obj structures\n", size);
+        exit(1);
+    }
+
+    struct meds_obj *obj=self->data;
+    for (long i=0; i<size; i++) {
+        alloc_fields(obj, ncutout_max);
+        obj->ncutout=ncutout_max;
+        obj++;
+    }
+
+    return self;
+}
+
+static struct meds_cat *meds_cat_free(struct meds_cat *self)
+{
+    if (self) {
+        struct meds_obj *obj=self->data;
+        for (long i=0; i<self->size; i++) {
+            free_fields(obj);
+            obj++;
+        }
+        free(self->data);
+        free(self);
+    }
+    return NULL;
+}
 
 static int load_table(struct meds_cat *self, fitsfile *fits)
 {
@@ -361,13 +306,13 @@ static struct meds_cat *read_object_table(fitsfile *fits)
     if (!nrows) {
         return NULL;
     }
-    printf("found %ld objects in main table\n", nrows);
+    //printf("found %ld objects in main table\n", nrows);
 
-    long ncutout_max=get_ncutout_max(fits);
+    long ncutout_max = get_array_col_size(fits, "file_id");
     if (!nrows) {
         return NULL;
     }
-    printf("ncutout max: %ld\n", ncutout_max);
+    //printf("ncutout max: %ld\n", ncutout_max);
 
     struct meds_cat *self=meds_cat_new(nrows, ncutout_max);
 
@@ -377,6 +322,65 @@ static struct meds_cat *read_object_table(fitsfile *fits)
     }
     return self;
 }
+
+
+//
+// struct meds_image_info
+//
+
+void meds_image_info_print(const struct meds_image_info *self, FILE* stream)
+{
+    fprintf(stream,"filename: %s\n", self->filename);
+}
+
+
+//
+// struct meds_info_cat
+//
+
+static struct meds_info_cat *meds_info_cat_new(long size, long namelen_max)
+{
+    struct meds_info_cat *self=calloc(1, sizeof(struct meds_info_cat));
+    if (!self) {
+        fprintf(stderr,"could not allocate struct meds_info_cat\n");
+        exit(1);
+    }
+
+    self->size=size;
+    self->data=calloc(size, sizeof(struct meds_image_info));
+    if (!self->data) {
+        fprintf(stderr,"could not allocate %ld meds_image_info structures\n", size);
+        exit(1);
+    }
+
+    struct meds_image_info *info=self->data;
+    for (long i=0; i<size; i++) {
+        info->filename = calloc(namelen_max, sizeof(char));
+        if (!info->filename) {
+            fprintf(stderr,"failed to allocate filename of size %ld\n", namelen_max);
+            exit(1);
+        }
+        info->flen=namelen_max;
+        info++;
+    }
+
+    return self;
+}
+
+static struct meds_info_cat *meds_info_cat_free(struct meds_info_cat *self)
+{
+    if (self) {
+        struct meds_image_info *info=self->data;
+        for (long i=0; i<self->size; i++) {
+            free(info->filename);
+            info++;
+        }
+        free(self->data);
+        free(self);
+    }
+    return NULL;
+}
+
 
 static int load_image_info(struct meds_info_cat *self, fitsfile *fits)
 {
@@ -412,10 +416,10 @@ static struct meds_info_cat *read_image_info(fitsfile *fits)
     if (!nrows) {
         return NULL;
     }
-    printf("found %ld rows in image info table\n", nrows);
+    //printf("found %ld rows in image info table\n", nrows);
 
-    long namelen_max = get_namelen_max(fits);
-    printf("namelen max: %ld\n", namelen_max);
+    long namelen_max = get_array_col_size(fits,"filename");
+    //printf("namelen max: %ld\n", namelen_max);
 
     struct meds_info_cat *self=meds_info_cat_new(nrows, namelen_max);
 
@@ -427,9 +431,13 @@ static struct meds_info_cat *read_image_info(fitsfile *fits)
     return self;
 }
 
+
+//
+// struct meds
+//
+
 struct meds *meds_open(const char *filename)
 {
-    printf("opening meds file: %s\n", filename);
     fitsfile *fits=fits_open(filename);
     if (!fits) {
         return NULL;
@@ -441,18 +449,18 @@ struct meds *meds_open(const char *filename)
         return NULL;
     }
     struct meds_info_cat *image_info=read_image_info(fits);
-    /*
     if (!image_info) {
         fits=fits_close(fits);
         return NULL;
     }
-    */
 
     struct meds *self=calloc(1, sizeof(struct meds));
     if (!self) {
         fprintf(stderr,"could not allocate struct meds\n");
         exit(1);
     }
+
+    self->filename=strdup(filename);
     self->fits=fits;
     self->cat=cat;
     self->image_info=image_info;
@@ -462,10 +470,22 @@ struct meds *meds_open(const char *filename)
 struct meds *meds_free(struct meds *self)
 {
     if (self) {
+        free(self->filename);
         self->cat=meds_cat_free(self->cat);
         self->image_info=meds_info_cat_free(self->image_info);
         self->fits=fits_close(self->fits);
         free(self);
     }
     return NULL;
+}
+
+
+void meds_print(const struct meds *self,FILE* stream)
+{
+    if (self) {
+        fprintf(stream,"MEDS structure\n");
+        fprintf(stream,"    filename:      %s\n", self->filename);
+        fprintf(stream,"    nobj:          %ld\n", self->cat->size);
+        fprintf(stream,"    source images: %ld\n", self->image_info->size);
+    }
 }
