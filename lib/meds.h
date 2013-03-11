@@ -71,9 +71,9 @@ struct meds *meds_open(const char *filename);
 struct meds *meds_free(struct meds *self);
 
 // get the full catalog
-const struct meds_cat *meds_get_cat();
+const struct meds_cat *meds_get_cat(const struct meds *self);
 // get an entry in the catalog
-const struct meds_obj *meds_get_obj(long iobj);
+const struct meds_obj *meds_get_obj(const struct meds *self, long iobj);
 
 // read a single cutout
 double *meds_get_cutout(long iobj, long icutout, long *nrow, long *ncol);
@@ -81,9 +81,20 @@ double *meds_get_cutout(long iobj, long icutout, long *nrow, long *ncol);
 double *meds_get_mosaic(long iobj, long *ncutout, long *nrow, long *ncol);
 
 // get info for the source image of the indicated cutout
-const struct meds_image_info *meds_get_source_info(long iobj, long icutout);
+const struct meds_image_info *meds_get_source_info(const struct meds *self,
+                                                   long iobj,
+                                                   long icutout);
+
 // get the filename for the source image of the indicated cutout
-const char *meds_get_source_filename(long iobj, long icutout);
+long meds_get_source_file_id(const struct meds *self,
+                             long iobj,
+                             long icutout);
+
+// get the filename for the source image of the indicated cutout
+const char *meds_get_source_filename(const struct meds *self,
+                                     long iobj,
+                                     long icutout);
+
 
 // print tools
 void meds_print(const struct meds *self, FILE* stream);

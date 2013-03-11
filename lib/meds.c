@@ -489,3 +489,93 @@ void meds_print(const struct meds *self,FILE* stream)
         fprintf(stream,"    source images: %ld\n", self->image_info->size);
     }
 }
+
+static int check_iobj(const struct meds_cat *self, long iobj)
+{
+    if (iobj < 0 || iobj >= self->size) {
+        fprintf(stderr,"iobj %ld out of range [0,%ld)\n", 
+                iobj, self->size);
+        return 0;
+    } else {
+        return 1;
+    }
+}
+const struct meds_obj *meds_get_obj(const struct meds *self, long iobj)
+{
+    const struct meds_cat *cat=self->cat;
+    if (!check_iobj(cat, iobj)) {
+        return NULL;
+    }
+    return &cat->data[iobj];
+}
+
+/*
+static int check_icutout(const struct meds_obj *self, long icutout)
+{
+    long ncutout=self->ncutout;
+    if (icutout < 0 || icutout >= ncutout) {
+        fprintf(stderr,
+                "icutout %ld out of range [0,%ld)\n",
+                icutout, ncutout);
+        return 0;
+    } else {
+        return 1;
+    }
+}
+*/
+
+static int check_iobj_icutout(const struct meds *self, 
+                              long iobj,
+                              long icutout)
+{
+    const struct meds_obj *obj=meds_get_obj(self, iobj);
+    if (!obj) {
+        return 0;
+    } else {
+        long ncutout=obj->ncutout;
+        if (icutout < 0 || icutout >= ncutout) {
+            fprintf(stderr,
+                    "icutout %ld out of range [0,%ld) for object %ld\n",
+                    icutout, ncutout, iobj);
+            return 0;
+        } else {
+            return 1;
+        }
+    }
+}
+
+
+
+long meds_get_source_file_id(const struct meds *self,
+                             long iobj,
+                             long icutout)
+{
+    if (!check_iobj_icutout(self, iobj, icutout)) {
+        return -9999;
+    }
+    const struct meds_obj *obj=meds_get_obj(self, iobj);
+    return obj->file_id[icutout];
+}
+
+const struct meds_image_info *meds_get_source_info(const struct meds *self,
+                                                   long iobj,
+                                                   long icutout)
+{
+    long file_id = meds_get_source_file_id(self, iobj, icutout);
+    if (file_id < 0) {
+        return NULL;
+    }
+    return &self->image_info->data[file_id];
+}
+
+const char *meds_get_source_filename(const struct meds *self,
+                                     long iobj,
+                                     long icutout)
+{
+    const struct meds_image_info *info=meds_get_source_info(self,iobj,icutout);
+    if (!info) {
+        return NULL;
+    }
+    return info->filename;
+}
+
