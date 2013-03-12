@@ -1,3 +1,10 @@
+/*
+
+   Two error styles are used here.  cfitsio uses a true return value to mean
+   error, my routines use false to reply an error.  The user should only see
+   the "false is error" in the public api.
+
+*/
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -6,7 +13,7 @@
 #include "meds.h"
 
 //
-// some static methods and variables
+// some generic static methods and variables
 //
 
 static char *MEDS_COLNAMES[]={
@@ -146,8 +153,8 @@ static long get_array_col_size(fitsfile *fits, const char *colname)
 {
     int status=0;
     int maxdim=2;
-    int naxis = {0};
-    long naxes[2];
+    int naxis = 0;
+    long naxes[2]={0};
 
     int colnum=0;
     if (fits_get_colnum(fits, 0, (char*)colname, &colnum, &status)) {
