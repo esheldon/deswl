@@ -18,25 +18,37 @@ options,args = parser.parse_args()
 prefix=os.path.expanduser( options.prefix )
 
 CC='gcc'
+AR='ar'
 
-LINKFLAGS=['-lcfitsio','-lm']
+LINKFLAGS=['-L.','-lcfitsio','-lm','-lmeds']
 
 CFLAGS=['-std=gnu99','-Wall','-Werror','-O2']
 
-sources=['meds','test']
-test_programs=[{'name':'test','sources':sources}]
-#install_targets = [(prog['name'],'bin') for prog in programs]
+libname='meds'
+aname='lib%s.a' % libname
+
+lib_sources=['meds']
+all_sources=lib_sources + ['test']
+test_programs=[{'name':'test','sources':all_sources}]
+
+libraries=[aname]
+install_targets = [(lib,'lib') for lib in libraries]
 
 def build():
     compile()
-    link()
+    link_library()
+    link_programs()
 
 def compile():
-    for prog in test_programs:
-        for source in prog['sources']:
-            run(CC, '-c', '-o',source+'.o', CFLAGS, source+'.c')
+    for source in all_sources:
+        run(CC, '-c', '-o',source+'.o', CFLAGS, source+'.c')
 
-def link():
+def link_library():
+    objects = [s+'.o' for s in lib_sources]
+    run(AR,'rcs',aname,objects)
+    
+
+def link_programs():
     for prog in test_programs:
         objects = [s+'.o' for s in prog['sources']]
         run(CC,'-o',prog['name'],objects,LINKFLAGS)
