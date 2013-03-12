@@ -19,6 +19,10 @@ python modules and sub-packages
         work with inputs and outputs to wl codes
     meds
         Pure python library to work with a Multi Epoch Data Structure
+        Code docs here:
+        https://github.com/esheldon/deswl/blob/master/deswl/meds.py
+
+        Description of the file format here
         https://cdcvs.fnal.gov/redmine/projects/deswlwg/wiki/Multi_Epoch_Data_Structure
 
     To install
@@ -33,7 +37,8 @@ python modules and sub-packages
 MEDS C library
 --------------
 
-This is a pure C library for working with MEDS
+This is a pure C library for working with MEDS.  Docs here
+    https://github.com/esheldon/deswl/blob/master/lib/meds.h
 
 To install
 
