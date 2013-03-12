@@ -53,8 +53,10 @@ To install
 
 You can also run a test from the /lib directory against your
 favorite cutouts file.
+
     ./test cutouts_file.fits
 
 
 To link your code against the library
+
     CC  ... -lcfitsio -lmeds ...
