@@ -1,8 +1,12 @@
 /*
 
+
    Two error styles are used here.  cfitsio uses a true return value to mean
    error, my routines use false to reply an error.  The user should only see
    the "false is error" in the public api.
+
+   Everywhere zero-offset is used except when calling the cfitsio routines,
+   where they are converted to 1-offset.
 
 */
 #include <stdio.h>
@@ -81,15 +85,15 @@ static fitsfile *fits_close(fitsfile *fits)
     return NULL;
 }
 
-static long get_nrows(fitsfile *fits)
+static long get_nrow(fitsfile *fits)
 {
     int status=0;
-    long nrows=0;
-    if (fits_get_num_rows(fits, &nrows, &status)) {
+    long nrow=0;
+    if (fits_get_num_rows(fits, &nrow, &status)) {
         fits_report_error(stderr,status);
         return 0;
     }
-    return nrows;
+    return nrow;
 }
 
 static int get_colnum(fitsfile *fits, const char *colname)
@@ -114,7 +118,8 @@ static int get_colnums(fitsfile *fits, int *colnums)
     return 1;
 }
 
-static int fits_read_doubles(fitsfile *fits, 
+// input rows are zero offset, get converted to 1 offset
+static int fits_load_col_dbl(fitsfile *fits, 
                              int colnum,
                              LONGLONG row,
                              LONGLONG nelem,
@@ -123,23 +128,23 @@ static int fits_read_doubles(fitsfile *fits,
     int status=0;
     int nullval=0;
     LONGLONG firstelem=1;
-    if (fits_read_col_dbl(fits, colnum, row, firstelem, nelem,
+    if (fits_read_col_dbl(fits, colnum, 1+row, firstelem, nelem,
                           nullval, data, NULL, &status)) {
         fits_report_error(stderr,status);
         return 0;
     }
     return 1;
 }
-static int fits_read_longs(fitsfile *fits, 
-                           int colnum,
-                           LONGLONG row,
-                           LONGLONG nelem,
-                           long *data)
+static int fits_load_col_lng(fitsfile *fits, 
+                             int colnum,
+                             LONGLONG row,
+                             LONGLONG nelem,
+                             long *data)
 {
     int status=0;
     int nullval=0;
     LONGLONG firstelem=1;
-    if (fits_read_col_lng(fits, colnum, row, firstelem, nelem,
+    if (fits_read_col_lng(fits, colnum, 1+row, firstelem, nelem,
                           nullval, data, NULL, &status)) {
         fits_report_error(stderr,status);
         return 0;
@@ -147,6 +152,25 @@ static int fits_read_longs(fitsfile *fits,
     return 1;
 }
 
+static int fits_load_sub_dbl(fitsfile *fits, 
+                             LONGLONG row,
+                             LONGLONG nelem,
+                             double *data)
+{
+    int status=0;
+    LONGLONG firstpixels[2];
+
+    // note col comes first
+    firstpixels[0] = 1;
+    firstpixels[1] = 1+row;
+
+    if (fits_read_pixll(fits, TDOUBLE, firstpixels, nelem,
+                        0, data, NULL, &status)) {
+        fits_report_error(stderr,status);
+        return 0;
+    }
+    return 1;
+}
 
 // size of a fixed-length array column (per row)
 static long get_array_col_size(fitsfile *fits, const char *colname)
@@ -270,29 +294,28 @@ static int load_table(struct meds_cat *self, fitsfile *fits)
     }
 
     struct meds_obj *obj=self->data;
-    for (long i=0; i < self->size; i++) {
-        long row = i+1;
-        if (!fits_read_longs(fits, colnums[0], row, 1, &obj->id))
+    for (long row=0; row < self->size; row++) {
+        if (!fits_load_col_lng(fits, colnums[0], row, 1, &obj->id))
             return 0;
-        if (!fits_read_longs(fits, colnums[1], row, 1, &obj->ncutout))
+        if (!fits_load_col_lng(fits, colnums[1], row, 1, &obj->ncutout))
             return 0;
-        if (!fits_read_longs(fits, colnums[2], row, 1, &obj->box_size))
+        if (!fits_load_col_lng(fits, colnums[2], row, 1, &obj->box_size))
             return 0;
-        if (!fits_read_longs(fits, colnums[3], row, obj->ncutout, obj->file_id))
+        if (!fits_load_col_lng(fits, colnums[3], row, obj->ncutout, obj->file_id))
             return 0;
-        if (!fits_read_longs(fits, colnums[4], row, obj->ncutout, obj->start_row))
+        if (!fits_load_col_lng(fits, colnums[4], row, obj->ncutout, obj->start_row))
             return 0;
-        if (!fits_read_doubles(fits, colnums[5], row, obj->ncutout, obj->orig_row))
+        if (!fits_load_col_dbl(fits, colnums[5], row, obj->ncutout, obj->orig_row))
             return 0;
-        if (!fits_read_doubles(fits, colnums[6], row, obj->ncutout, obj->orig_col))
+        if (!fits_load_col_dbl(fits, colnums[6], row, obj->ncutout, obj->orig_col))
             return 0;
-        if (!fits_read_longs(fits, colnums[7], row, obj->ncutout, obj->orig_start_row))
+        if (!fits_load_col_lng(fits, colnums[7], row, obj->ncutout, obj->orig_start_row))
             return 0;
-        if (!fits_read_longs(fits, colnums[8], row, obj->ncutout, obj->orig_start_col))
+        if (!fits_load_col_lng(fits, colnums[8], row, obj->ncutout, obj->orig_start_col))
             return 0;
-        if (!fits_read_doubles(fits, colnums[9], row, obj->ncutout, obj->cutout_row))
+        if (!fits_load_col_dbl(fits, colnums[9], row, obj->ncutout, obj->cutout_row))
             return 0;
-        if (!fits_read_doubles(fits, colnums[10], row, obj->ncutout, obj->cutout_col))
+        if (!fits_load_col_dbl(fits, colnums[10], row, obj->ncutout, obj->cutout_col))
             return 0;
 
         obj++;
@@ -309,19 +332,19 @@ static struct meds_cat *read_object_table(fitsfile *fits)
         return NULL;
     }
 
-    long nrows=get_nrows(fits);
-    if (!nrows) {
+    long nrow=get_nrow(fits);
+    if (!nrow) {
         return NULL;
     }
-    //printf("found %ld objects in main table\n", nrows);
+    //printf("found %ld objects in main table\n", nrow);
 
     long ncutout_max = get_array_col_size(fits, "file_id");
-    if (!nrows) {
+    if (!nrow) {
         return NULL;
     }
     //printf("ncutout max: %ld\n", ncutout_max);
 
-    struct meds_cat *self=meds_cat_new(nrows, ncutout_max);
+    struct meds_cat *self=meds_cat_new(nrow, ncutout_max);
 
     if (!load_table(self, fits)) {
         self=meds_cat_free(self);
@@ -419,16 +442,16 @@ static struct meds_info_cat *read_image_info(fitsfile *fits)
         return NULL;
     }
 
-    long nrows=get_nrows(fits);
-    if (!nrows) {
+    long nrow=get_nrow(fits);
+    if (!nrow) {
         return NULL;
     }
-    //printf("found %ld rows in image info table\n", nrows);
+    //printf("found %ld rows in image info table\n", nrow);
 
     long namelen_max = get_array_col_size(fits,"filename");
     //printf("namelen max: %ld\n", namelen_max);
 
-    struct meds_info_cat *self=meds_info_cat_new(nrows, namelen_max);
+    struct meds_info_cat *self=meds_info_cat_new(nrow, namelen_max);
 
 
     if (!load_image_info(self, fits)) {
@@ -507,6 +530,17 @@ static int check_iobj(const struct meds_cat *self, long iobj)
         return 1;
     }
 }
+
+long meds_get_size(const struct meds *self)
+{
+    return self->cat->size;
+}
+const char *meds_get_filename(const struct meds *self)
+{
+    return self->filename;
+}
+
+
 const struct meds_obj *meds_get_obj(const struct meds *self, long iobj)
 {
     const struct meds_cat *cat=self->cat;
@@ -514,6 +548,19 @@ const struct meds_obj *meds_get_obj(const struct meds *self, long iobj)
         return NULL;
     }
     return &cat->data[iobj];
+}
+long meds_get_ncutout(const struct meds *self, long iobj)
+{
+    const struct meds_obj *obj=meds_get_obj(self, iobj);
+    if (!obj) {
+        return 0;
+    }
+    return obj->ncutout;
+}
+
+const struct meds_cat *meds_get_cat(const struct meds *self)
+{
+    return self->cat;
 }
 
 /*
@@ -531,22 +578,22 @@ static int check_icutout(const struct meds_obj *self, long icutout)
 }
 */
 
-static int check_iobj_icutout(const struct meds *self, 
-                              long iobj,
-                              long icutout)
+static const struct meds_obj *check_iobj_icutout(const struct meds *self, 
+                                                 long iobj,
+                                                 long icutout)
 {
     const struct meds_obj *obj=meds_get_obj(self, iobj);
     if (!obj) {
-        return 0;
+        return NULL;
     } else {
         long ncutout=obj->ncutout;
         if (icutout < 0 || icutout >= ncutout) {
             fprintf(stderr,
                     "icutout %ld out of range [0,%ld) for object %ld\n",
                     icutout, ncutout, iobj);
-            return 0;
+            return NULL;
         } else {
-            return 1;
+            return obj;
         }
     }
 }
@@ -557,10 +604,10 @@ long meds_get_source_file_id(const struct meds *self,
                              long iobj,
                              long icutout)
 {
-    if (!check_iobj_icutout(self, iobj, icutout)) {
+    const struct meds_obj *obj=check_iobj_icutout(self, iobj, icutout);
+    if (!obj) {
         return -9999;
     }
-    const struct meds_obj *obj=meds_get_obj(self, iobj);
     return obj->file_id[icutout];
 }
 
@@ -584,5 +631,172 @@ const char *meds_get_source_filename(const struct meds *self,
         return NULL;
     }
     return info->filename;
+}
+
+// internal routine
+//
+// input start_row is zero offset and gets converted to 1-offset futher down
+
+static double *get_cutout_data(const struct meds *self,
+                               long start_row, long npix)
+{
+    int status=0;
+    double *pix=alloc_doubles(npix);
+
+    if (fits_movnam_hdu(self->fits, IMAGE_HDU, "image_cutouts", 0, &status)) {
+        fits_report_error(stderr,status);
+        return NULL;
+    }
+
+    if (!fits_load_sub_dbl(self->fits, start_row, npix, pix)) {
+        free(pix);
+        pix=NULL;
+    }
+    return pix;
+}
+
+
+double *meds_get_cutoutp(const struct meds *self,
+                         long iobj,
+                         long icutout,
+                         long *nrow,
+                         long *ncol)
+{
+    double *pix=NULL;
+
+    const struct meds_obj *obj=check_iobj_icutout(self, iobj, icutout);
+    if (!obj) {
+        goto _meds_get_cutoutp_bail;
+    }
+
+    long start_row=obj->start_row[icutout];
+
+    *nrow=obj->box_size;
+    *ncol=obj->box_size;
+    long npix = (*nrow)*(*ncol);
+
+    pix=get_cutout_data(self, start_row, npix);
+
+_meds_get_cutoutp_bail:
+    if (!pix) {
+        *nrow=0;
+        *ncol=0;
+    }
+    return pix;
+}
+
+double *meds_get_mosaicp(const struct meds *self,
+                         long iobj,
+                         long *ncutout,
+                         long *nrow,
+                         long *ncol)
+{
+    double *pix=NULL;
+
+    const struct meds_obj *obj=check_iobj_icutout(self, iobj, 0);
+    if (!obj) {
+        goto _meds_get_mosaicp_bail;
+    }
+
+    long start_row=obj->start_row[0];
+
+    *ncutout = obj->ncutout;
+    *nrow    = obj->box_size;
+    *ncol    = obj->box_size;
+
+    long npix = (*nrow)*(*ncol)*(*ncutout);
+
+    pix=get_cutout_data(self, start_row, npix);
+
+_meds_get_mosaicp_bail:
+    if (!pix) {
+        *ncutout=0;
+        *nrow=0;
+        *ncol=0;
+    }
+    return pix;
+}
+
+
+struct meds_cutout *meds_cutout_free(struct meds_cutout *self)
+{
+    if (self) {
+        if (self->rows) {
+            if (self->rows[0]) {
+                free(self->rows[0]);
+            }
+            self->rows[0]=NULL;
+
+            free(self->rows);
+            self->rows=NULL;
+        }
+        free(self);
+        self=NULL;
+    }
+    return self;
+}
+
+static struct meds_cutout *cutout_from_ptr(double *ptr,
+                                           long ncutout,
+                                           long nrow,   // per cutout
+                                           long ncol)   // per cutout
+{
+    struct meds_cutout *self=calloc(1, sizeof(struct meds_cutout));
+    if (!self) {
+        fprintf(stderr,"failed to allocate struct meds_cutout\n");
+        exit(1);
+    }
+
+    self->ncutout=ncutout;
+
+    self->mosaic_size = ncutout*nrow*ncol;
+    self->mosaic_nrow = ncutout*nrow;
+    self->mosaic_ncol = ncol;
+
+    self->cutout_size = nrow*ncol;
+    self->cutout_nrow=nrow;
+    self->cutout_ncol=ncol;
+
+    self->rows = calloc(self->mosaic_nrow,sizeof(double *));
+    if (!self->rows) {
+        fprintf(stderr,"could not allocate %ld image rows\n", self->mosaic_nrow);
+        exit(1);
+    }
+
+    self->rows[0] = ptr;
+    for(long i = 1; i < self->mosaic_nrow; i++) {
+        self->rows[i] = self->rows[i-1] + self->cutout_ncol;
+    }
+
+    return self;
+}
+
+// cutouts as meds_cutout structures
+struct meds_cutout *meds_get_cutout(const struct meds *self,
+                                    long iobj,
+                                    long icutout)
+{
+
+    long nrow=0, ncol=0;
+    double *pix=meds_get_cutoutp(self, iobj, icutout, &nrow, &ncol);
+    if (!pix) {
+        return NULL;
+    }
+
+    struct meds_cutout *cutout=cutout_from_ptr(pix, 1, nrow, ncol);
+    return cutout;
+}
+
+struct meds_cutout *meds_get_mosaic(const struct meds *self, long iobj)
+{
+
+    long ncutout=0, nrow=0, ncol=0;
+    double *pix=meds_get_mosaicp(self, iobj, &ncutout, &nrow, &ncol);
+    if (!pix) {
+        return NULL;
+    }
+
+    struct meds_cutout *cutout=cutout_from_ptr(pix, ncutout, nrow, ncol);
+    return cutout;
 }
 
