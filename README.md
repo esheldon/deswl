@@ -57,4 +57,4 @@ favorite cutouts file.
 
 
 To link your code against the library
-    CC  ... -lmeds
+    CC  ... -lcfitsio -lmeds ...
