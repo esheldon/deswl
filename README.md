@@ -22,7 +22,13 @@ python modules and sub-packages
         https://cdcvs.fnal.gov/redmine/projects/deswlwg/wiki/Multi_Epoch_Data_Structure
 
     To install
+        # in the usual place
+        python setup.py install
+
+        # at a different prefix
         python setup.py install --prefix=/some/path
+        
+        # make sure it is on your PYTHONPATH
 
 MEDS C library
 --------------
@@ -32,10 +38,13 @@ This is a pure C library for working with MEDS
 To install
 
     cd lib
+    # to install in the "usual" place.
+    python build.py install
+
+    # to install to a different prefix
     python build.py --prefix=/some/path install
     
-Make sure that path is in your LD_LIBRARY_PATH or
-it is in the "usual" place.
+    # Make sure that path is in your LD_LIBRARY_PATH
 
 You can also run a test from the /lib directory against your
 favorite cutouts file.
