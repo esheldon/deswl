@@ -89,7 +89,8 @@
    
    // the meds_obj structure contains additional information such as
    // where the cutouts were located in the original source images.
-   // see the struct definition for details
+   // see the struct definition for details, but note that this 
+   // structure may change in the future.
    //
    // get a meds_obj structure for an object
 
@@ -104,11 +105,13 @@
 
 #define MEDS_NCOLUMNS 11
 
+// this structure might change; e.g. we might implement 
+// square cutouts
 struct meds_obj {
     long     id;             // id column from coadd catalog
     long     ncutout;        // number of cutouts for this object, including coadd
-    long     box_size;       // cutout size is box_sizeXbox_size
-
+    long     box_size;       // cutout size is box_sizeXbox_size.  Note we might make
+                             // cutouts not square in the future so don't rely on this
     long    *file_id;        // index into the image_info structure for this cutout
     long    *start_row;      // zero-offset row in the big mosaic image of all cutouts
                              // for all objects in the MEDS file
@@ -156,6 +159,8 @@ const char *meds_get_filename(const struct meds *self);
 
 // get an entry in the catalog
 // if index does not exist, NULL is returned
+// note you shouldn't generally rely on this structure as it
+// may change
 const struct meds_obj *meds_get_obj(const struct meds *self, long iobj);
 
 // return obj->ncutout for the indicated object
@@ -163,6 +168,7 @@ const struct meds_obj *meds_get_obj(const struct meds *self, long iobj);
 long meds_get_ncutout(const struct meds *self, long iobj);
 
 // you can also work directly with the catalog
+// again, remember the meds_obj structure may change
 const struct meds_cat *meds_get_cat(const struct meds *self);
 
 // read a single cutout as a simple pointer

@@ -187,7 +187,7 @@ class MEDS(object):
         A list of images hold all cutouts.
         """
 
-        mosaic=self.get_mosaic(iobj)
+        mosaic=self.get_mosaic(iobj,type=type)
         ncutout=self._cat['ncutout'][iobj]
         box_size=self._cat['box_size'][iobj]
         return self._split_mosaic(mosaic, box_size, ncutout)
