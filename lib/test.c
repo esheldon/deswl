@@ -11,7 +11,8 @@ void test_cutout(struct meds *meds)
 
 
     int found=0;
-    for (long iobj=0; iobj<nobj; iobj++) {
+    int istart=nobj/2;
+    for (long iobj=istart; iobj<nobj; iobj++) {
         long ncutout=meds_get_ncutout(meds, iobj);
 
         if (ncutout > 1) {
@@ -20,28 +21,47 @@ void test_cutout(struct meds *meds)
 
             long icutout=1;
 
-            struct meds_cutout *cut=meds_get_cutout(meds, iobj, icutout);
-            assert(cut);
+            struct meds_cutout *cut     = meds_get_cutout(meds, iobj, icutout);
+            struct meds_cutout *wcut    = meds_get_weight_cutout(meds, iobj, icutout);
+            struct meds_cutout *mosaic  = meds_get_mosaic(meds, iobj);
+            struct meds_cutout *wmosaic = meds_get_weight_mosaic(meds, iobj);
 
-            struct meds_cutout *mosaic=meds_get_mosaic(meds, iobj);
+            assert(cut);
+            assert(wcut);
             assert(mosaic);
+            assert(wmosaic);
 
             printf("    cutout %ld nrow: %ld ncol: %ld\n", 
                     icutout, CUTOUT_NROW(cut), CUTOUT_NCOL(cut));
             printf("    mosaic %ld nrow: %ld ncol: %ld\n", 
                     icutout, MOSAIC_NROW(mosaic), MOSAIC_NCOL(mosaic));
 
-            assert(ncutout == MOSAIC_NCUTOUT(mosaic));
-            assert(MOSAIC_SIZE(mosaic) == ncutout*CUTOUT_SIZE(cut));
-            assert(MOSAIC_NROW(mosaic) == ncutout*CUTOUT_NROW(cut));
-
-            long row=CUTOUT_NROW(cut)/2, col=3+CUTOUT_NCOL(cut)/2;
+            long row=2+CUTOUT_NROW(cut)/2, col=3+CUTOUT_NCOL(cut)/2;
 
             printf("    pixel [%ld,%ld]:\n", row, col);
             printf("        from single cutout: %g\n", 
                     CUTOUT_GET(cut, row, col));
             printf("        from mosaic:        %g\n", 
                     MOSAIC_GET(mosaic, icutout, row, col));
+
+            printf("        from single weight cutout: %g\n", 
+                    CUTOUT_GET(wcut, row, col));
+            printf("        from weight mosaic:        %g\n", 
+                    MOSAIC_GET(wmosaic, icutout, row, col));
+
+
+            assert(ncutout == MOSAIC_NCUTOUT(mosaic));
+            assert(ncutout == MOSAIC_NCUTOUT(wmosaic));
+
+            assert(MOSAIC_SIZE(mosaic) == ncutout*CUTOUT_SIZE(cut));
+            assert(MOSAIC_SIZE(wmosaic) == ncutout*CUTOUT_SIZE(cut));
+            assert(MOSAIC_NROW(mosaic) == ncutout*CUTOUT_NROW(cut));
+            assert(MOSAIC_NROW(wmosaic) == ncutout*CUTOUT_NROW(cut));
+
+            assert(MOSAIC_GET(mosaic,icutout,row,col)
+                        ==CUTOUT_GET(cut, row, col));
+            assert(MOSAIC_GET(wmosaic,icutout,row,col)
+                        ==CUTOUT_GET(wcut, row, col));
 
             found=1;
             break;

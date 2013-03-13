@@ -461,6 +461,64 @@ static struct meds_info_cat *read_image_info(fitsfile *fits)
     return self;
 }
 
+//
+// struct meds_cutout
+//
+
+struct meds_cutout *meds_cutout_free(struct meds_cutout *self)
+{
+    if (self) {
+        if (self->rows) {
+            if (self->rows[0]) {
+                free(self->rows[0]);
+            }
+            self->rows[0]=NULL;
+
+            free(self->rows);
+            self->rows=NULL;
+        }
+        free(self);
+        self=NULL;
+    }
+    return self;
+}
+
+static struct meds_cutout *cutout_from_ptr(double *ptr,
+                                           long ncutout,
+                                           long nrow,   // per cutout
+                                           long ncol)   // per cutout
+{
+    struct meds_cutout *self=calloc(1, sizeof(struct meds_cutout));
+    if (!self) {
+        fprintf(stderr,"failed to allocate struct meds_cutout\n");
+        exit(1);
+    }
+
+    self->ncutout=ncutout;
+
+    self->mosaic_size = ncutout*nrow*ncol;
+    self->mosaic_nrow = ncutout*nrow;
+    self->mosaic_ncol = ncol;
+
+    self->cutout_size = nrow*ncol;
+    self->cutout_nrow=nrow;
+    self->cutout_ncol=ncol;
+
+    self->rows = calloc(self->mosaic_nrow,sizeof(double *));
+    if (!self->rows) {
+        fprintf(stderr,"could not allocate %ld image rows\n", self->mosaic_nrow);
+        exit(1);
+    }
+
+    self->rows[0] = ptr;
+    for(long i = 1; i < self->mosaic_nrow; i++) {
+        self->rows[i] = self->rows[i-1] + self->cutout_ncol;
+    }
+
+    return self;
+}
+
+
 
 //
 // struct meds
@@ -633,17 +691,18 @@ const char *meds_get_source_filename(const struct meds *self,
     return info->filename;
 }
 
-// internal routine
+// internal routine to read from the fits file
 //
-// input start_row is zero offset and gets converted to 1-offset futher down
+// input start_row is zero offset and gets converted to 1-offset further down
 
-static double *get_cutout_data(const struct meds *self,
-                               long start_row, long npix)
+static double *get_cutout_data_dbl(const struct meds *self,
+                                   const char *extname,
+                                   long start_row, long npix)
 {
     int status=0;
     double *pix=alloc_doubles(npix);
 
-    if (fits_movnam_hdu(self->fits, IMAGE_HDU, "image_cutouts", 0, &status)) {
+    if (fits_movnam_hdu(self->fits, IMAGE_HDU, (char*)extname, 0, &status)) {
         fits_report_error(stderr,status);
         return NULL;
     }
@@ -655,18 +714,20 @@ static double *get_cutout_data(const struct meds *self,
     return pix;
 }
 
-
-double *meds_get_cutoutp(const struct meds *self,
-                         long iobj,
-                         long icutout,
-                         long *nrow,
-                         long *ncol)
+// internal routine to get info for a cutout and read from
+// the specified extension
+static double *get_cutoutp_dbl(const struct meds *self,
+                               const char *extname,
+                               long iobj,
+                               long icutout,
+                               long *nrow,
+                               long *ncol)
 {
     double *pix=NULL;
 
     const struct meds_obj *obj=check_iobj_icutout(self, iobj, icutout);
     if (!obj) {
-        goto _meds_get_cutoutp_bail;
+        goto _meds_get_cutoutp_dbl_bail;
     }
 
     long start_row=obj->start_row[icutout];
@@ -675,9 +736,9 @@ double *meds_get_cutoutp(const struct meds *self,
     *ncol=obj->box_size;
     long npix = (*nrow)*(*ncol);
 
-    pix=get_cutout_data(self, start_row, npix);
+    pix=get_cutout_data_dbl(self, extname, start_row, npix);
 
-_meds_get_cutoutp_bail:
+_meds_get_cutoutp_dbl_bail:
     if (!pix) {
         *nrow=0;
         *ncol=0;
@@ -685,17 +746,20 @@ _meds_get_cutoutp_bail:
     return pix;
 }
 
-double *meds_get_mosaicp(const struct meds *self,
-                         long iobj,
-                         long *ncutout,
-                         long *nrow,
-                         long *ncol)
+// internal routine to get info for a mosaic and read from
+// the specified extension
+static double *get_mosaicp_dbl(const struct meds *self,
+                               const char *extname,
+                               long iobj,
+                               long *ncutout,
+                               long *nrow,
+                               long *ncol)
 {
     double *pix=NULL;
 
     const struct meds_obj *obj=check_iobj_icutout(self, iobj, 0);
     if (!obj) {
-        goto _meds_get_mosaicp_bail;
+        goto _meds_get_mosaicp_dbl_bail;
     }
 
     long start_row=obj->start_row[0];
@@ -706,9 +770,9 @@ double *meds_get_mosaicp(const struct meds *self,
 
     long npix = (*nrow)*(*ncol)*(*ncutout);
 
-    pix=get_cutout_data(self, start_row, npix);
+    pix=get_cutout_data_dbl(self, extname, start_row, npix);
 
-_meds_get_mosaicp_bail:
+_meds_get_mosaicp_dbl_bail:
     if (!pix) {
         *ncutout=0;
         *nrow=0;
@@ -718,58 +782,48 @@ _meds_get_mosaicp_bail:
 }
 
 
-struct meds_cutout *meds_cutout_free(struct meds_cutout *self)
-{
-    if (self) {
-        if (self->rows) {
-            if (self->rows[0]) {
-                free(self->rows[0]);
-            }
-            self->rows[0]=NULL;
 
-            free(self->rows);
-            self->rows=NULL;
-        }
-        free(self);
-        self=NULL;
-    }
-    return self;
+//
+// public image reading routines
+//
+
+// cutouts as pointers
+double *meds_get_cutoutp(const struct meds *self,
+                         long iobj,
+                         long icutout,
+                         long *nrow,
+                         long *ncol)
+{
+    return get_cutoutp_dbl(self,"image_cutouts",iobj,icutout,nrow,ncol);
 }
 
-static struct meds_cutout *cutout_from_ptr(double *ptr,
-                                           long ncutout,
-                                           long nrow,   // per cutout
-                                           long ncol)   // per cutout
+double *meds_get_mosaicp(const struct meds *self,
+                         long iobj,
+                         long *ncutout,
+                         long *nrow,
+                         long *ncol)
 {
-    struct meds_cutout *self=calloc(1, sizeof(struct meds_cutout));
-    if (!self) {
-        fprintf(stderr,"failed to allocate struct meds_cutout\n");
-        exit(1);
-    }
-
-    self->ncutout=ncutout;
-
-    self->mosaic_size = ncutout*nrow*ncol;
-    self->mosaic_nrow = ncutout*nrow;
-    self->mosaic_ncol = ncol;
-
-    self->cutout_size = nrow*ncol;
-    self->cutout_nrow=nrow;
-    self->cutout_ncol=ncol;
-
-    self->rows = calloc(self->mosaic_nrow,sizeof(double *));
-    if (!self->rows) {
-        fprintf(stderr,"could not allocate %ld image rows\n", self->mosaic_nrow);
-        exit(1);
-    }
-
-    self->rows[0] = ptr;
-    for(long i = 1; i < self->mosaic_nrow; i++) {
-        self->rows[i] = self->rows[i-1] + self->cutout_ncol;
-    }
-
-    return self;
+    return get_mosaicp_dbl(self,"image_cutouts",iobj,ncutout,nrow,ncol);
 }
+
+double *meds_get_weight_cutoutp(const struct meds *self,
+                                long iobj,
+                                long icutout,
+                                long *nrow,
+                                long *ncol)
+{
+    return get_cutoutp_dbl(self,"weight_cutouts",iobj,icutout,nrow,ncol);
+}
+
+double *meds_get_weight_mosaicp(const struct meds *self,
+                                long iobj,
+                                long *ncutout,
+                                long *nrow,
+                                long *ncol)
+{
+    return get_mosaicp_dbl(self,"weight_cutouts",iobj,ncutout,nrow,ncol);
+}
+
 
 // cutouts as meds_cutout structures
 struct meds_cutout *meds_get_cutout(const struct meds *self,
@@ -792,6 +846,34 @@ struct meds_cutout *meds_get_mosaic(const struct meds *self, long iobj)
 
     long ncutout=0, nrow=0, ncol=0;
     double *pix=meds_get_mosaicp(self, iobj, &ncutout, &nrow, &ncol);
+    if (!pix) {
+        return NULL;
+    }
+
+    struct meds_cutout *cutout=cutout_from_ptr(pix, ncutout, nrow, ncol);
+    return cutout;
+}
+
+struct meds_cutout *meds_get_weight_cutout(const struct meds *self,
+                                           long iobj,
+                                           long icutout)
+{
+
+    long nrow=0, ncol=0;
+    double *pix=meds_get_weight_cutoutp(self, iobj, icutout, &nrow, &ncol);
+    if (!pix) {
+        return NULL;
+    }
+
+    struct meds_cutout *cutout=cutout_from_ptr(pix, 1, nrow, ncol);
+    return cutout;
+}
+
+struct meds_cutout *meds_get_weight_mosaic(const struct meds *self, long iobj)
+{
+
+    long ncutout=0, nrow=0, ncol=0;
+    double *pix=meds_get_weight_mosaicp(self, iobj, &ncutout, &nrow, &ncol);
     if (!pix) {
         return NULL;
     }

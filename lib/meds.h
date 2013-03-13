@@ -18,63 +18,81 @@
    long nobj=meds_get_size(meds);
 
    long iobj=35;
-   if (meds_get_ncutout(meds, iobj) > 0) {
-
-       //
-       // get the 4th cutout for this object (at index=3)
-       //
-
-       long icutout=3;
-
-       // using the cutout structure
-       struct meds_cutout *cutout=meds_get_cutout(meds, iobj, icutout);
-
-       printf("nrow: %ld ncol: %ld\n", CUTOUT_NROW(cutout), CUTOUT_NCOL(cutout));
-       long row=5, col=8;
-       printf("pixel [%ld,%ld]: %g\n", row, col, CUTOUT_GET(cutout, row, col));
-
-       // using the pointer interface; good if you have your own image library
-       long nrow=0, ncol=0;
-       double *pix=meds_get_cutoutp(meds, iobj, icutout, &nrow, &ncol);
-
-
-       // what file did the cutout come from?
-       const char *name=meds_get_source_filename(meds, iobj, icutout);
-
-
-       //
-       // get a mosaic of all cutouts for this object
-       //
-
-       // using the cutout structure
-       struct meds_cutout *mosaic=meds_get_mosaic(meds, iobj);
-
-       printf("ncutout: %ld\n", MOSAIC_NCUTOUT(mosaic));
-       printf("per cutout, nrow: %ld ncol: %ld\n", CUTOUT_NROW(mosaic), CUTOUT_NCOL(mosaic));
-
-       // This should agree with printout for the single cutout above
-       printf("value at [%ld,%ld]\n", row, col, MOSAIC_GET(mosaic, icutout, row, col));
-
-
-       // use the pointer interface; good if you have your own image library
-       long ncutout=0, nrow=0, ncol=0;
-       double *mpix=meds_get_mosaicp(meds, iobj, &ncutout, &nrow, &ncol);
-
-
-       free(pix);pix=NULL;
-       free(mpix);mpix=NULL;
-
-       // free the cutout structures.  They are set to NULL.
-       cutout=meds_cutout_free(cutout);
-       mosaic=meds_cutout_free(mosaic);
-
+   long ncutout=meds_get_ncutout(meds, iobj);
+   if (ncutout == 0) {
+       printf("no cutouts or object %ld\n", iobj);
+       ....
    }
+
+   //
+   // get the 4th cutout for this object (at index=3)
+   //
+
+   long icutout=3;
+
+   // using a cutout structure
+   struct meds_cutout *cutout=meds_get_cutout(meds, iobj, icutout);
+
+   printf("nrow: %ld ncol: %ld\n", 
+       CUTOUT_NROW(cutout), CUTOUT_NCOL(cutout));
+
+   long row=5, col=8;
+   printf("pixel [%ld,%ld]: %g\n", 
+       row, col, CUTOUT_GET(cutout, row, col));
+
+   // get the weight image
+   struct meds_cutout *wcutout=meds_get_weight_cutout(meds, iobj, icutout);
+
+   // using the pointer interface; good if you have your own image library
+   long nrow=0, ncol=0;
+   double *pix=meds_get_cutoutp(meds, iobj, icutout, &nrow, &ncol);
+   double *wpix=meds_get_weight_cutoutp(meds, iobj, icutout, &nrow, &ncol);
+
+
+   // what file did the cutout come from?
+   // works for cutouts and weights, which come from the same file
+   const char *name=meds_get_source_filename(meds, iobj, icutout);
+
+
+   //
+   // get a mosaic of all cutouts for this object
+   //
+
+   // using the cutout structure
+   struct meds_cutout *mosaic=meds_get_mosaic(meds, iobj);
+   struct meds_cutout *wmosaic=meds_get_weight_mosaic(meds, iobj);
+
+   printf("ncutout: %ld\n", MOSAIC_NCUTOUT(mosaic));
+   printf("per cutout, nrow: %ld ncol: %ld\n", 
+       CUTOUT_NROW(mosaic), CUTOUT_NCOL(mosaic));
+
+   // This should agree with printout for the single cutout above
+   printf("value at [%ld,%ld]\n", row, col,
+       MOSAIC_GET(mosaic, icutout, row, col));
+
+
+   // use the pointer interface; good if you have your own image library
+   long ncutout=0, nrow=0, ncol=0;
+   double *mpix=meds_get_mosaicp(meds, iobj, &ncutout, &nrow, &ncol);
+
+
+   free(pix);pix=NULL;
+   free(wpix);wpix=NULL;
+   free(mpix);mpix=NULL;
+
+   // free the cutout structures.  They are set to NULL.
+   cutout  = meds_cutout_free(cutout);
+   wcutout = meds_cutout_free(wcutout);
+   mosaic  = meds_cutout_free(mosaic);
+   wmosaic = meds_cutout_free(wmosaic);
+
    
    // the meds_obj structure contains additional information such as
    // where the cutouts were located in the original source images.
    // see the struct definition for details
-   // get a meds_obj structure for an object using
-   // 
+   //
+   // get a meds_obj structure for an object
+
    const struct meds_obj *obj=meds_get_obj(meds, iobj);
    meds_obj_print(obj, stdout);
 
@@ -144,7 +162,7 @@ const struct meds_obj *meds_get_obj(const struct meds *self, long iobj);
 // if index does not exist, zero is returned
 long meds_get_ncutout(const struct meds *self, long iobj);
 
-// you can also work with the catalog
+// you can also work directly with the catalog
 const struct meds_cat *meds_get_cat(const struct meds *self);
 
 // read a single cutout as a simple pointer
@@ -167,7 +185,19 @@ double *meds_get_mosaicp(const struct meds *self,
                          long *nrow,
                          long *ncol);
 
-// optionally get the cutouts as a simple structure
+// same but for weight image cutouts
+double *meds_get_weight_cutoutp(const struct meds *self,
+                                long iobj,
+                                long icutout,
+                                long *nrow,
+                                long *ncol);
+
+double *meds_get_weight_mosaicp(const struct meds *self,
+                                long iobj,
+                                long *ncutout,
+                                long *nrow,
+                                long *ncol);
+
 
 
 // get info for the source image of the indicated cutout
@@ -193,7 +223,6 @@ const char *meds_get_source_filename(const struct meds *self,
 void meds_print(const struct meds *self, FILE* stream);
 void meds_obj_print(const struct meds_obj *obj, FILE* stream);
 void meds_image_info_print(const struct meds_image_info *self, FILE* stream);
-
 
 
 //
@@ -235,6 +264,13 @@ struct meds_cutout *meds_get_cutout(const struct meds *self,
 // read a cutout mosaic.  Use MOSAIC_GET to access pixels
 struct meds_cutout *meds_get_mosaic(const struct meds *self,
                                     long iobj);
+
+struct meds_cutout *meds_get_weight_cutout(const struct meds *self,
+                                           long iobj,
+                                           long icutout);
+struct meds_cutout *meds_get_weight_mosaic(const struct meds *self,
+                                           long iobj);
+
 
 // returns NULL, use like this
 //   cutout=meds_cutout_free(cutout);
