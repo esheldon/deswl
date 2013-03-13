@@ -28,8 +28,11 @@ libname='meds'
 aname='lib%s.a' % libname
 
 lib_sources=['meds']
-all_sources=lib_sources + ['test']
-test_programs=[{'name':'test','sources':all_sources}]
+test_sources=['test']
+test_speed_sources=['test-speed']
+all_sources=lib_sources + test_sources + test_speed_sources
+test_programs=[{'name':'test','sources':lib_sources+test_sources},
+               {'name':'test-speed','sources':lib_sources+test_speed_sources}]
 
 libraries=[aname]
 install_targets = [(lib,'lib') for lib in libraries]

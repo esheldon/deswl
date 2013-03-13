@@ -93,7 +93,7 @@ int main(int argc, char **argv)
 
     meds_print(meds, stdout);
 
-    long nobj=meds->cat->size;
+    long nobj=meds_get_size(meds);
     meds_obj_print(&meds->cat->data[0], stdout);
     meds_obj_print(&meds->cat->data[nobj-1], stdout);
 
