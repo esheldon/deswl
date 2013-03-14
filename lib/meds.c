@@ -24,7 +24,8 @@ static char *MEDS_COLNAMES[]={
     "id", "ncutout", "box_size",
     "file_id", "start_row", 
     "orig_row", "orig_col","orig_start_row","orig_start_col",
-    "cutout_row","cutout_col"};
+    "cutout_row","cutout_col",
+    "dudrow","dudcol","dvdrow","dvdcol"};
 
 static long *alloc_longs(long n) {
     long *ptr=malloc(n*sizeof(long));
@@ -33,7 +34,7 @@ static long *alloc_longs(long n) {
         exit(1);
     }
     for (long i=0; i<n; i++) {
-        ptr[i]=-9999;
+        ptr[i]=MEDS_DEFVAL;
     }
     return ptr;
 }
@@ -44,7 +45,7 @@ static double *alloc_doubles(long n) {
         exit(1);
     }
     for (long i=0; i<n; i++) {
-        ptr[i]=-9999;
+        ptr[i]=MEDS_DEFVAL;
     }
     return ptr;
 }
@@ -102,7 +103,7 @@ static int get_colnum(fitsfile *fits, const char *colname)
     int colnum=0;
     if (fits_get_colnum(fits, 0, (char*)colname, &colnum, &status)) {
         fits_report_error(stderr,status);
-        return -9999;
+        return MEDS_DEFVAL;
     }
     return colnum;
 }
@@ -193,6 +194,64 @@ static long get_array_col_size(fitsfile *fits, const char *colname)
     return naxes[0];
 }
 
+//
+// struct meds_distort
+//
+
+static struct meds_distort *alloc_distortions(long n)
+{
+    struct meds_distort *ds=malloc(n*sizeof(struct meds_distort));
+    if (!ds) {
+        fprintf(stderr,"Could not allocate %ld distortion structs\n", n);
+        exit(1);
+    }
+    for (long j=0; j<n; j++) {
+        ds[j].dudrow=MEDS_DEFVAL;
+        ds[j].dudcol=MEDS_DEFVAL;
+        ds[j].dvdrow=MEDS_DEFVAL;
+        ds[j].dvdcol=MEDS_DEFVAL;
+    }
+
+    return ds;
+}
+
+void meds_distort_print(struct meds_distort *self, FILE *stream)
+{
+    fprintf(stream,"%g %g %g %g\n",
+            self->dudrow,
+            self->dudcol,
+            self->dvdrow,
+            self->dvdcol);
+}
+static void print_distortions(const struct meds_distort *self,
+                              long n,
+                              FILE *stream)
+{
+
+    fprintf(stream,"%-14s : ", "dudrow");
+    for (long i=0; i<n; i++) {
+        fprintf(stream," %lf", self[i].dudrow);
+    }
+    fprintf(stream,"\n");
+
+    fprintf(stream,"%-14s : ", "dudcol");
+    for (long i=0; i<n; i++) {
+        fprintf(stream," %lf", self[i].dudcol);
+    }
+    fprintf(stream,"\n");
+
+    fprintf(stream,"%-14s : ", "dvdrow");
+    for (long i=0; i<n; i++) {
+        fprintf(stream," %lf", self[i].dvdrow);
+    }
+    fprintf(stream,"\n");
+
+    fprintf(stream,"%-14s : ", "dvdcol");
+    for (long i=0; i<n; i++) {
+        fprintf(stream," %lf", self[i].dvdcol);
+    }
+    fprintf(stream,"\n");
+}
 
 
 //
@@ -211,6 +270,8 @@ static void alloc_fields(struct meds_obj *self, long ncutout)
 
     self->cutout_row     = alloc_doubles(ncutout);
     self->cutout_col     = alloc_doubles(ncutout);
+
+    self->distortion     = alloc_distortions(ncutout);
 }
 static void free_fields(struct meds_obj *self)
 {
@@ -225,6 +286,8 @@ static void free_fields(struct meds_obj *self)
 
         free(self->cutout_row);
         free(self->cutout_col);
+
+        free(self->distortion);
     }
 }
 
@@ -241,6 +304,8 @@ void meds_obj_print(const struct meds_obj *self, FILE* stream)
     print_longs(self->orig_start_col, self->ncutout, "orig_start_col", stream);
     print_doubles(self->cutout_row, self->ncutout, "cutout_row", stream);
     print_doubles(self->cutout_col, self->ncutout, "cutout_col", stream);
+
+    print_distortions(self->distortion, self->ncutout, stream);
 }
 
 //
@@ -286,6 +351,7 @@ static struct meds_cat *meds_cat_free(struct meds_cat *self)
     return NULL;
 }
 
+// this is kind of a monster
 static int load_table(struct meds_cat *self, fitsfile *fits)
 {
     int colnums[MEDS_NCOLUMNS];
@@ -293,8 +359,16 @@ static int load_table(struct meds_cat *self, fitsfile *fits)
         return 0;
     }
 
+    int ndist=20;
+    double *dudrow=alloc_doubles(ndist);
+    double *dudcol=alloc_doubles(ndist);
+    double *dvdrow=alloc_doubles(ndist);
+    double *dvdcol=alloc_doubles(ndist);
+
     struct meds_obj *obj=self->data;
     for (long row=0; row < self->size; row++) {
+
+    
         if (!fits_load_col_lng(fits, colnums[0], row, 1, &obj->id))
             return 0;
         if (!fits_load_col_lng(fits, colnums[1], row, 1, &obj->ncutout))
@@ -318,9 +392,35 @@ static int load_table(struct meds_cat *self, fitsfile *fits)
         if (!fits_load_col_dbl(fits, colnums[10], row, obj->ncutout, obj->cutout_col))
             return 0;
 
+        if (obj->ncutout > ndist) {
+            ndist=obj->ncutout;
+            dudrow=realloc(dudrow,ndist*sizeof(double));
+            dudcol=realloc(dudcol,ndist*sizeof(double));
+            dvdrow=realloc(dvdrow,ndist*sizeof(double));
+            dvdcol=realloc(dvdcol,ndist*sizeof(double));
+        }
+        if (!fits_load_col_dbl(fits, colnums[11], row, obj->ncutout, dudrow))
+            return 0;
+        if (!fits_load_col_dbl(fits, colnums[12], row, obj->ncutout, dudcol))
+            return 0;
+        if (!fits_load_col_dbl(fits, colnums[13], row, obj->ncutout, dvdrow))
+            return 0;
+        if (!fits_load_col_dbl(fits, colnums[14], row, obj->ncutout, dvdcol))
+            return 0;
+
+        for (long j=0; j<obj->ncutout; j++) {
+            obj->distortion[j].dudrow=dudrow[j];
+            obj->distortion[j].dudcol=dudcol[j];
+            obj->distortion[j].dvdrow=dvdrow[j];
+            obj->distortion[j].dvdcol=dvdcol[j];
+        }
         obj++;
     }
 
+    free(dudrow);
+    free(dudcol);
+    free(dvdrow);
+    free(dvdcol);
     return 1;
 }
 
@@ -664,7 +764,7 @@ long meds_get_source_file_id(const struct meds *self,
 {
     const struct meds_obj *obj=check_iobj_icutout(self, iobj, icutout);
     if (!obj) {
-        return -9999;
+        return MEDS_DEFVAL;
     }
     return obj->file_id[icutout];
 }
@@ -690,6 +790,22 @@ const char *meds_get_source_filename(const struct meds *self,
     }
     return info->filename;
 }
+
+const struct meds_distort 
+*meds_get_distortion(const struct meds *self,
+                     long iobj,
+                     long icutout)
+{
+    const struct meds_obj *obj=check_iobj_icutout(self, iobj, icutout);
+    if (!obj) {
+        return NULL;
+    }
+
+    return obj->distortion;
+}
+
+
+
 
 // internal routine to read from the fits file
 //

@@ -20,7 +20,7 @@
    long iobj=35;
    long ncutout=meds_get_ncutout(meds, iobj);
    if (ncutout == 0) {
-       printf("no cutouts or object %ld\n", iobj);
+       printf("no cutouts for object %ld\n", iobj);
        ....
    }
 
@@ -30,7 +30,7 @@
 
    long icutout=3;
 
-   // using a cutout structure
+   // using a cutout structure.  Will return NULL if not found
    struct meds_cutout *cutout=meds_get_cutout(meds, iobj, icutout);
 
    printf("nrow: %ld ncol: %ld\n", 
@@ -76,6 +76,11 @@
    double *mpix=meds_get_mosaicp(meds, iobj, &ncutout, &nrow, &ncol);
 
 
+   // get the jacobian distortion matrix
+   // see definition of struct meds_distort
+   const struct meds_distort *dist=meds_get_distortion(meds,iobj,icutout);
+
+
    free(pix);pix=NULL;
    free(wpix);wpix=NULL;
    free(mpix);mpix=NULL;
@@ -87,11 +92,13 @@
    wmosaic = meds_cutout_free(wmosaic);
 
    
-   // the meds_obj structure contains additional information such as
-   // where the cutouts were located in the original source images.
-   // see the struct definition for details, but note that this 
+   // the meds_obj structure contains additional information such as the
+   // distortion matrix, where the cutouts were located in the original source
+   // images.  see the struct definition for details, but note that this
    // structure may change in the future.
    //
+   // TODO add getters so one does not need to use a meds_obj struct directly
+
    // get a meds_obj structure for an object
 
    const struct meds_obj *obj=meds_get_obj(meds, iobj);
@@ -103,10 +110,20 @@
 
 #include <fitsio.h>
 
-#define MEDS_NCOLUMNS 11
+#define MEDS_NCOLUMNS 15
+
+#define MEDS_DEFVAL -9999
+
+// jacobian taking (row,col) -> tangent plane ra,dec (u,v)
+struct meds_distort {
+    double dudrow;
+    double dudcol;
+    double dvdrow;
+    double dvdcol;
+};
 
 // this structure might change; e.g. we might implement 
-// square cutouts
+// not-square cutouts
 struct meds_obj {
     long     id;             // id column from coadd catalog
     long     ncutout;        // number of cutouts for this object, including coadd
@@ -121,6 +138,9 @@ struct meds_obj {
     long    *orig_start_col; // zero-offset start col in original image
     double  *cutout_row;     // zero-offset center row in cutout image
     double  *cutout_col;     // zero-offset center col in cutout image
+
+    // distortion jacobian from pixels (row,col) to tangent plane ra,dec (u,v)
+    struct meds_distort *distortion;
 };
 
 struct meds_cat {
@@ -143,6 +163,7 @@ struct meds {
     struct meds_cat *cat;
     struct meds_info_cat *image_info;
 };
+
 
 // open a meds structure
 struct meds *meds_open(const char *filename);
@@ -224,6 +245,11 @@ const char *meds_get_source_filename(const struct meds *self,
                                      long iobj,
                                      long icutout);
 
+// get a reference to the distortion for this obj and citout
+const struct meds_distort
+*meds_get_distortion(const struct meds *self,
+                     long iobj,
+                     long icutout);
 
 // print tools
 void meds_print(const struct meds *self, FILE* stream);
@@ -237,9 +263,9 @@ void meds_image_info_print(const struct meds_image_info *self, FILE* stream);
 struct meds_cutout {
     long ncutout;
 
-    long mosaic_size;        // ncutout*nrow*ncol
-    long mosaic_nrow;        // ncutout*nrow
-    long mosaic_ncol;        // ncol
+    long mosaic_size;       // ncutout*nrow*ncol
+    long mosaic_nrow;       // ncutout*nrow
+    long mosaic_ncol;       // ncol
 
     long cutout_size;       // nrow*ncol
     long cutout_nrow;       // per cutout
@@ -251,8 +277,10 @@ struct meds_cutout {
 #define CUTOUT_NROW(im) ((im)->cutout_nrow)
 #define CUTOUT_NCOL(im) ((im)->cutout_ncol)
 
-#define CUTOUT_GET(im, row, col)                               \
-    ( *((im)->rows[(row)] + (col)) )
+#define CUTOUT_GET(im, row, col)  ( *((im)->rows[(row)] + (col)) )
+
+#define CUTOUT_GET_ROW(im, row) ( (im)->rows[(row) )
+
 
 #define MOSAIC_NCUTOUT(im) ((im)->ncutout)
 #define MOSAIC_SIZE(im) ((im)->mosaic_size)
@@ -261,6 +289,9 @@ struct meds_cutout {
 
 #define MOSAIC_GET(im, cutout, row, col)                       \
     ( *((im)->rows[(cutout)*(im)->cutout_nrow + (row)] + (col)) )
+
+#define MOSAIC_GET_ROW(im, cutout, row)                       \
+    ((im)->rows[(cutout)*(im)->cutout_nrow + (row)] )
 
 // read a single cutout.  Use CUTOUT_GET or MOSAIC_GET(0, row,col) to
 // access pixels
