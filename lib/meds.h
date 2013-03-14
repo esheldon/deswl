@@ -7,8 +7,8 @@
    You can also use image structures returned by meds_get_cutout and
    meds_get_mosaic
 
-   A few examples
-   --------------
+   A few examples (for more info, see actual definitions in this header)
+   ---------------------------------------------------------------------
 
    #include <meds.h>
 
