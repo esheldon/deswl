@@ -76,7 +76,8 @@
    double *mpix=meds_get_mosaicp(meds, iobj, &ncutout, &nrow, &ncol);
 
 
-   // get the jacobian distortion matrix
+   // get the distortion matrix, jacobian of the transformation between row,col
+   // and ra,dec tangent plane.
    // see definition of struct meds_distort
    const struct meds_distort *dist=meds_get_distortion(meds,iobj,icutout);
 
@@ -92,10 +93,10 @@
    wmosaic = meds_cutout_free(wmosaic);
 
    
-   // the meds_obj structure contains additional information such as the
-   // distortion matrix, where the cutouts were located in the original source
-   // images.  see the struct definition for details, but note that this
-   // structure may change in the future.
+   // the meds_obj structure contains additional information such as where the
+   // cutouts were located in the original source images.  see the struct
+   // definition for details, but note that this structure may change in the
+   // future.
    //
    // TODO add getters so one does not need to use a meds_obj struct directly
 
