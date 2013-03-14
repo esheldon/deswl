@@ -16,9 +16,10 @@ class MEDS(object):
     One can extract cutouts using get_cutout() and get_mosaic() and
     get_cutout_list()
 
-    One can access all fields using [field_name] notation. The number of
-    entries is in the .size attribute. Access the .cat catalog for further
-    functionality with regards the recarray
+    One can access all fields from the catalog using [field_name] notation. The
+    number of entries is in the .size attribute. Note the actual fields in the
+    catalog may change over time.  You can use get_cat() to get the full
+    catalog as a recarray.
 
     The first cutout for an object is always from the coadd.
 
