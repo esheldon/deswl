@@ -31,10 +31,12 @@ class MEDS(object):
         Get a mosaic of all cutouts associated with this coadd object
     get_cutout_list(iobj)
         Get an image list with all cutouts associated with this coadd object
-    get_source_filename(iobj, icutout)
+    get_source_path(iobj, icutout)
         Get the source filename associated with the indicated cutout
+    get_sky_path(iobj, icutout)
+        Get the source sky filename associated with the indicated cutout
     get_source_info(iobj, icutout)
-        Get all info about the source image
+        Get all info about the source images
     get_cat()
         Get the catalog; extension 1
     get_image_info()
@@ -55,16 +57,22 @@ class MEDS(object):
     im=m.get_cutout(35,3)
 
     # get all the cutouts for object 35 as a single image
-    im=m.get_mosaic(35)
+    mosaic=m.get_mosaic(35)
 
     # get all the cutouts for object 35 as a list of images
     im=m.get_cutout_list(35)
 
     # get a cutout for the weight map
     wt=m.get_cutout(35,3,type='weight')
+    # get a cutout for the sky map
+    sky=m.get_cutout(35,3,type='sky')
+
+    # sky-subtract a mosaic
+    skymosaic=m.get_mosaic(35,type='sky')
+    imsub = mosaic - skymosaic
 
     # get the source filename for cutout 3 for object 35
-    fname=m.get_source_filename(35,3)
+    fname=m.get_source_path(35,3)
 
     # you can access any of the columns in the
     # catalog (stored as a recarray) directly
@@ -74,7 +82,7 @@ class MEDS(object):
     col = m['col_cutout'][35]
 
     # source filename
-    fname = m.get_source_filenam(35,3)
+    fname = m.get_source_path(35,3)
 
     # or you can just get the catalog to work with
     cat=m.get_cat()
@@ -197,6 +205,8 @@ class MEDS(object):
         """
         Get the full source file information for the indicated cutout.
 
+        Includes SE image and sky image
+
         parameters
         ----------
         iobj: 
@@ -206,7 +216,7 @@ class MEDS(object):
         ifile=self._cat['file_id'][iobj,icutout]
         return self._image_info[ifile]
 
-    def get_source_filename(self, iobj, icutout):
+    def get_source_path(self, iobj, icutout):
         """
         Get the source filename associated with the indicated cutout
 
@@ -223,7 +233,27 @@ class MEDS(object):
         """
 
         info=self.get_source_info(iobj, icutout)
-        return info['filename']
+        return info['image_path']
+
+    def get_sky_path(self, iobj, icutout):
+        """
+        Get the source filename associated with the indicated cutout
+
+        parameters
+        ----------
+        iobj:
+            Index of the object
+        icutout:
+            Index of the cutout for this object.
+
+        returns
+        -------
+        The filename
+        """
+
+        info=self.get_source_info(iobj, icutout)
+        return info['sky_path']
+
 
     def get_cat(self):
         """
@@ -243,6 +273,8 @@ class MEDS(object):
             return "image_cutouts"
         elif type=="weight":
             return "weight_cutouts"
+        elif type=="sky":
+            return "sky_cutouts"
         else:
             raise ValueError("bad cutout type '%s'" % type)
 

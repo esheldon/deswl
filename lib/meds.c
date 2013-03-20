@@ -460,7 +460,8 @@ static struct meds_cat *read_object_table(fitsfile *fits)
 
 void meds_image_info_print(const struct meds_image_info *self, FILE* stream)
 {
-    fprintf(stream,"filename: %s\n", self->filename);
+    fprintf(stream,"image_path: %s\n", self->image_path);
+    fprintf(stream,"sky_path:   %s\n", self->sky_path);
 }
 
 
@@ -485,12 +486,13 @@ static struct meds_info_cat *meds_info_cat_new(long size, long namelen_max)
 
     struct meds_image_info *info=self->data;
     for (long i=0; i<size; i++) {
-        info->filename = calloc(namelen_max, sizeof(char));
-        if (!info->filename) {
+        info->image_path = calloc(namelen_max, sizeof(char));
+        info->sky_path = calloc(namelen_max, sizeof(char));
+        if (!info->image_path || !info->sky_path) {
             fprintf(stderr,"failed to allocate filename of size %ld\n", namelen_max);
             exit(1);
         }
-        info->flen=namelen_max;
+        info->size=namelen_max;
         info++;
     }
 
@@ -502,7 +504,8 @@ static struct meds_info_cat *meds_info_cat_free(struct meds_info_cat *self)
     if (self) {
         struct meds_image_info *info=self->data;
         for (long i=0; i<self->size; i++) {
-            free(info->filename);
+            free(info->image_path);
+            free(info->sky_path);
             info++;
         }
         free(self->data);
@@ -522,8 +525,16 @@ static int load_image_info(struct meds_info_cat *self, fitsfile *fits)
     struct meds_image_info *info=self->data;
     for (long i=0; i<self->size; i++) {
         long row = i+1;
+
+        colnum=1;
         if (fits_read_col_str(fits, colnum, row, firstelem, 1,
-                              nulstr, &info->filename, NULL, &status)) {
+                              nulstr, &info->image_path, NULL, &status)) {
+            fits_report_error(stderr,status);
+            return 0;
+        }
+        colnum=2;
+        if (fits_read_col_str(fits, colnum, row, firstelem, 1,
+                              nulstr, &info->sky_path, NULL, &status)) {
             fits_report_error(stderr,status);
             return 0;
         }
@@ -534,6 +545,19 @@ static int load_image_info(struct meds_info_cat *self, fitsfile *fits)
     return 1;
 }
 
+static long get_namelen_max(fitsfile *fits)
+{
+    long src_name_len = get_array_col_size(fits,"image_path");
+    long sky_name_len = get_array_col_size(fits,"sky_path");
+    long namelen_max;
+    if (sky_name_len > src_name_len) {
+        namelen_max=sky_name_len;
+    } else {
+        namelen_max=src_name_len;
+    }
+
+    return namelen_max;
+}
 static struct meds_info_cat *read_image_info(fitsfile *fits)
 {
     int status=0;
@@ -546,11 +570,8 @@ static struct meds_info_cat *read_image_info(fitsfile *fits)
     if (!nrow) {
         return NULL;
     }
-    //printf("found %ld rows in image info table\n", nrow);
 
-    long namelen_max = get_array_col_size(fits,"filename");
-    //printf("namelen max: %ld\n", namelen_max);
-
+    long namelen_max=get_namelen_max(fits);
     struct meds_info_cat *self=meds_info_cat_new(nrow, namelen_max);
 
 
@@ -648,7 +669,7 @@ struct meds *meds_open(const char *filename)
         exit(1);
     }
 
-    self->filename=strdup(filename);
+    self->meds_path=strdup(filename);
     self->fits=fits;
     self->cat=cat;
     self->image_info=image_info;
@@ -658,7 +679,7 @@ struct meds *meds_open(const char *filename)
 struct meds *meds_free(struct meds *self)
 {
     if (self) {
-        free(self->filename);
+        free(self->meds_path);
         self->cat=meds_cat_free(self->cat);
         self->image_info=meds_info_cat_free(self->image_info);
         self->fits=fits_close(self->fits);
@@ -672,7 +693,7 @@ void meds_print(const struct meds *self,FILE* stream)
 {
     if (self) {
         fprintf(stream,"MEDS structure\n");
-        fprintf(stream,"    filename:      %s\n", self->filename);
+        fprintf(stream,"    meds path:     %s\n", self->meds_path);
         fprintf(stream,"    nobj:          %ld\n", self->cat->size);
         fprintf(stream,"    source images: %ld\n", self->image_info->size);
     }
@@ -693,9 +714,9 @@ long meds_get_size(const struct meds *self)
 {
     return self->cat->size;
 }
-const char *meds_get_filename(const struct meds *self)
+const char *meds_get_path(const struct meds *self)
 {
-    return self->filename;
+    return self->meds_path;
 }
 
 
@@ -780,15 +801,15 @@ const struct meds_image_info *meds_get_source_info(const struct meds *self,
     return &self->image_info->data[file_id];
 }
 
-const char *meds_get_source_filename(const struct meds *self,
-                                     long iobj,
-                                     long icutout)
+const char *meds_get_source_path(const struct meds *self,
+                                 long iobj,
+                                 long icutout)
 {
     const struct meds_image_info *info=meds_get_source_info(self,iobj,icutout);
     if (!info) {
         return NULL;
     }
-    return info->filename;
+    return info->image_path;
 }
 
 const struct meds_distort 
@@ -941,6 +962,25 @@ double *meds_get_weight_mosaicp(const struct meds *self,
 }
 
 
+double *meds_get_sky_cutoutp(const struct meds *self,
+                             long iobj,
+                             long icutout,
+                             long *nrow,
+                             long *ncol)
+{
+    return get_cutoutp_dbl(self,"sky_cutouts",iobj,icutout,nrow,ncol);
+}
+
+double *meds_get_sky_mosaicp(const struct meds *self,
+                             long iobj,
+                             long *ncutout,
+                             long *nrow,
+                             long *ncol)
+{
+    return get_mosaicp_dbl(self,"sky_cutouts",iobj,ncutout,nrow,ncol);
+}
+
+
 // cutouts as meds_cutout structures
 struct meds_cutout *meds_get_cutout(const struct meds *self,
                                     long iobj,
@@ -990,6 +1030,34 @@ struct meds_cutout *meds_get_weight_mosaic(const struct meds *self, long iobj)
 
     long ncutout=0, nrow=0, ncol=0;
     double *pix=meds_get_weight_mosaicp(self, iobj, &ncutout, &nrow, &ncol);
+    if (!pix) {
+        return NULL;
+    }
+
+    struct meds_cutout *cutout=cutout_from_ptr(pix, ncutout, nrow, ncol);
+    return cutout;
+}
+
+struct meds_cutout *meds_get_sky_cutout(const struct meds *self,
+                                        long iobj,
+                                        long icutout)
+{
+
+    long nrow=0, ncol=0;
+    double *pix=meds_get_sky_cutoutp(self, iobj, icutout, &nrow, &ncol);
+    if (!pix) {
+        return NULL;
+    }
+
+    struct meds_cutout *cutout=cutout_from_ptr(pix, 1, nrow, ncol);
+    return cutout;
+}
+
+struct meds_cutout *meds_get_sky_mosaic(const struct meds *self, long iobj)
+{
+
+    long ncutout=0, nrow=0, ncol=0;
+    double *pix=meds_get_sky_mosaicp(self, iobj, &ncutout, &nrow, &ncol);
     if (!pix) {
         return NULL;
     }

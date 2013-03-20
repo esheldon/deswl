@@ -23,8 +23,10 @@ void test_cutout(struct meds *meds)
 
             struct meds_cutout *cut     = meds_get_cutout(meds, iobj, icutout);
             struct meds_cutout *wcut    = meds_get_weight_cutout(meds, iobj, icutout);
+            struct meds_cutout *skycut  = meds_get_sky_cutout(meds, iobj, icutout);
             struct meds_cutout *mosaic  = meds_get_mosaic(meds, iobj);
             struct meds_cutout *wmosaic = meds_get_weight_mosaic(meds, iobj);
+            struct meds_cutout *skymosaic = meds_get_sky_mosaic(meds, iobj);
 
             assert(cut);
             assert(wcut);
@@ -49,6 +51,11 @@ void test_cutout(struct meds *meds)
             printf("        from weight mosaic:        %g\n", 
                     MOSAIC_GET(wmosaic, icutout, row, col));
 
+            printf("        from single sky cutout: %g\n", 
+                    CUTOUT_GET(skycut, row, col));
+            printf("        from sky mosaic:        %g\n", 
+                    MOSAIC_GET(skymosaic, icutout, row, col));
+
 
             assert(ncutout == MOSAIC_NCUTOUT(mosaic));
             assert(ncutout == MOSAIC_NCUTOUT(wmosaic));
@@ -62,6 +69,15 @@ void test_cutout(struct meds *meds)
                         ==CUTOUT_GET(cut, row, col));
             assert(MOSAIC_GET(wmosaic,icutout,row,col)
                         ==CUTOUT_GET(wcut, row, col));
+
+            cut=meds_cutout_free(cut);
+            wcut=meds_cutout_free(wcut);
+            skycut=meds_cutout_free(skycut);
+            mosaic=meds_cutout_free(mosaic);
+            wmosaic=meds_cutout_free(wmosaic);
+            skymosaic=meds_cutout_free(skymosaic);
+
+            assert(NULL==cut);
 
             found=1;
             break;

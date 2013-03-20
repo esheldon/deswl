@@ -43,6 +43,9 @@
    // get the weight image
    struct meds_cutout *wcutout=meds_get_weight_cutout(meds, iobj, icutout);
 
+   // get the sky image
+   struct meds_cutout *skycutout=meds_get_sky_cutout(meds, iobj, icutout);
+
    // using the pointer interface; good if you have your own image library
    long nrow=0, ncol=0;
    double *pix=meds_get_cutoutp(meds, iobj, icutout, &nrow, &ncol);
@@ -51,7 +54,9 @@
 
    // what file did the cutout come from?
    // works for cutouts and weights, which come from the same file
-   const char *name=meds_get_source_filename(meds, iobj, icutout);
+   const char *name=meds_get_source_path(meds, iobj, icutout);
+   // sky image path
+   const char *skyname=meds_get_sky_path(meds, iobj, icutout);
 
 
    //
@@ -61,6 +66,7 @@
    // using the cutout structure
    struct meds_cutout *mosaic=meds_get_mosaic(meds, iobj);
    struct meds_cutout *wmosaic=meds_get_weight_mosaic(meds, iobj);
+   struct meds_cutout *skymosaic=meds_get_sky_mosaic(meds, iobj);
 
    printf("ncutout: %ld\n", MOSAIC_NCUTOUT(mosaic));
    printf("per cutout, nrow: %ld ncol: %ld\n", 
@@ -89,8 +95,10 @@
    // free the cutout structures.  They are set to NULL.
    cutout  = meds_cutout_free(cutout);
    wcutout = meds_cutout_free(wcutout);
+   skycutout = meds_cutout_free(skycutout);
    mosaic  = meds_cutout_free(mosaic);
    wmosaic = meds_cutout_free(wmosaic);
+   skymosaic = meds_cutout_free(skymosaic);
 
    
    // the meds_obj structure contains additional information such as where the
@@ -150,8 +158,9 @@ struct meds_cat {
 };
 
 struct meds_image_info {
-    long flen;
-    char* filename;
+    long size;
+    char* image_path;
+    char* sky_path;
 };
 struct meds_info_cat {
     long size;
@@ -159,7 +168,7 @@ struct meds_info_cat {
 };
 
 struct meds {
-    char *filename;
+    char *meds_path;
     fitsfile *fits;
     struct meds_cat *cat;
     struct meds_info_cat *image_info;
@@ -177,7 +186,7 @@ struct meds *meds_free(struct meds *self);
 long meds_get_size(const struct meds *self);
 
 // the meds cutout filename
-const char *meds_get_filename(const struct meds *self);
+const char *meds_get_path(const struct meds *self);
 
 // get an entry in the catalog
 // if index does not exist, NULL is returned
@@ -226,7 +235,18 @@ double *meds_get_weight_mosaicp(const struct meds *self,
                                 long *nrow,
                                 long *ncol);
 
+// same but for sky image cutouts
+double *meds_get_sky_cutoutp(const struct meds *self,
+                             long iobj,
+                             long icutout,
+                             long *nrow,
+                             long *ncol);
 
+double *meds_get_sky_mosaicp(const struct meds *self,
+                             long iobj,
+                             long *ncutout,
+                             long *nrow,
+                             long *ncol);
 
 // get info for the source image of the indicated cutout
 const struct meds_image_info *meds_get_source_info(const struct meds *self,
@@ -234,17 +254,15 @@ const struct meds_image_info *meds_get_source_info(const struct meds *self,
                                                    long icutout);
 
 // get the file_id for the source image of the indicated cutout.  This
-// id points into the image_info structure.  e.g.
-//    long id=meds_get_source_file_id(meds, iobj, icutout);
-//    const struct meds_image_info *info = 
+// is used to get source file information
 long meds_get_source_file_id(const struct meds *self,
                              long iobj,
                              long icutout);
 
 // get the filename for the source image of the indicated cutout
-const char *meds_get_source_filename(const struct meds *self,
-                                     long iobj,
-                                     long icutout);
+const char *meds_get_source_path(const struct meds *self,
+                                 long iobj,
+                                 long icutout);
 
 // get a reference to the distortion for this obj and citout
 const struct meds_distort
@@ -299,6 +317,7 @@ struct meds_cutout {
 struct meds_cutout *meds_get_cutout(const struct meds *self,
                                     long iobj,
                                     long icutout);
+
 // read a cutout mosaic.  Use MOSAIC_GET to access pixels
 struct meds_cutout *meds_get_mosaic(const struct meds *self,
                                     long iobj);
@@ -308,6 +327,12 @@ struct meds_cutout *meds_get_weight_cutout(const struct meds *self,
                                            long icutout);
 struct meds_cutout *meds_get_weight_mosaic(const struct meds *self,
                                            long iobj);
+
+struct meds_cutout *meds_get_sky_cutout(const struct meds *self,
+                                        long iobj,
+                                        long icutout);
+struct meds_cutout *meds_get_sky_mosaic(const struct meds *self,
+                                        long iobj);
 
 
 // returns NULL, use like this
