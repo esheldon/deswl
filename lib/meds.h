@@ -1,5 +1,6 @@
 /*
    Basic library to work with a Multi Epoch Data Structure
+    https://cdcvs.fnal.gov/redmine/projects/deswlwg/wiki/Multi_Epoch_Data_Structure
 
    If you have your own image library, you can use the meds_get_cutoutp and
    meds_get_mosaicp to get raw pointers that can be wrapped by your library.
@@ -40,6 +41,13 @@
    printf("pixel [%ld,%ld]: %g\n", 
        row, col, CUTOUT_GET(cutout, row, col));
 
+   // get the center pixel in the cutout
+   double rowcen=0,colcen=0;
+   meds_get_cutout_cen(meds, iobj, icutout, &rowcen, &colcen);
+   printf("center pixel [%lf,%lf]: %g\n", 
+       rowcen, colcen, CUTOUT_GET(cutout, (int)rowcen, (int)colcen));
+
+
    // get the weight image
    struct meds_cutout *wcutout=meds_get_weight_cutout(meds, iobj, icutout);
 
@@ -72,9 +80,12 @@
    printf("per cutout, nrow: %ld ncol: %ld\n", 
        CUTOUT_NROW(mosaic), CUTOUT_NCOL(mosaic));
 
+
    // This should agree with printout for the single cutout above
    printf("value at [%ld,%ld]\n", row, col,
        MOSAIC_GET(mosaic, icutout, row, col));
+   printf("value at center [%lf,%lf]\n", rowcen, colcen,
+       MOSAIC_GET(mosaic, icutout, (int)rowcen, (int)colcen));
 
 
    // use the pointer interface; good if you have your own image library
@@ -197,6 +208,14 @@ const struct meds_obj *meds_get_obj(const struct meds *self, long iobj);
 // return obj->ncutout for the indicated object
 // if index does not exist, zero is returned
 long meds_get_ncutout(const struct meds *self, long iobj);
+
+// get object location in the cutout
+// returns false if the object or cutout does not exist
+int meds_get_cutout_cen(const struct meds *self,
+                        long iobj,
+                        long icutout,
+                        double *row,
+                        double *col);
 
 // you can also work directly with the catalog
 // again, remember the meds_obj structure may change

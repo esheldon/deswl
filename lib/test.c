@@ -11,7 +11,7 @@ void test_cutout(struct meds *meds)
 
 
     int found=0;
-    int istart=nobj/2;
+    int istart=nobj/4;
     for (long iobj=istart; iobj<nobj; iobj++) {
         long ncutout=meds_get_ncutout(meds, iobj);
 
@@ -46,6 +46,7 @@ void test_cutout(struct meds *meds)
             printf("        from mosaic:        %g\n", 
                     MOSAIC_GET(mosaic, icutout, row, col));
 
+
             printf("        from single weight cutout: %g\n", 
                     CUTOUT_GET(wcut, row, col));
             printf("        from weight mosaic:        %g\n", 
@@ -55,6 +56,24 @@ void test_cutout(struct meds *meds)
                     CUTOUT_GET(skycut, row, col));
             printf("        from sky mosaic:        %g\n", 
                     MOSAIC_GET(skymosaic, icutout, row, col));
+
+            double drow=0,dcol=0;
+            meds_get_cutout_cen(meds, iobj, icutout, &drow, &dcol);
+            long irow=(int)drow;
+            long icol=(int)dcol;
+
+            printf("    cen pixel [%lf,%lf]:\n", drow, dcol);
+            printf("        from single cutout: %g\n", 
+                    CUTOUT_GET(cut, irow, icol));
+            printf("        from mosaic:        %g\n", 
+                    MOSAIC_GET(mosaic, icutout, irow, icol));
+            printf("        sky:                %g\n", 
+                    MOSAIC_GET(skymosaic, icutout, irow, icol));
+            printf("        sky subtracted:     %g\n", 
+                    MOSAIC_GET(mosaic, icutout, irow, icol)
+                    -
+                    MOSAIC_GET(skymosaic, icutout, irow, icol));
+
 
 
             assert(ncutout == MOSAIC_NCUTOUT(mosaic));

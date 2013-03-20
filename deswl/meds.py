@@ -104,6 +104,12 @@ class MEDS(object):
      orig_start_col     i4[NMAX] zero-offset start corner in original image
      cutout_row         f8[NMAX] zero-offset position in cutout imag
      cutout_col         f8[NMAX] zero-offset position in cutout image
+     dudrow             f8[NMAX] jacobian of transformation 
+                                 row,col->ra,dec tangent plane (u,v)
+     dudcol             f8[NMAX]
+     dvdrow             f8[NMAX]
+     dvdcol             f8[NMAX]
+
 
     requirements
     ------------

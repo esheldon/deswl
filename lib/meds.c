@@ -777,7 +777,22 @@ static const struct meds_obj *check_iobj_icutout(const struct meds *self,
     }
 }
 
-
+int meds_get_cutout_cen(const struct meds *self,
+                        long iobj,
+                        long icutout,
+                        double *row,
+                        double *col)
+{
+    const struct meds_obj *obj=check_iobj_icutout(self, iobj, icutout);
+    if (!obj) {
+        (*row)=MEDS_DEFVAL;
+        (*col)=MEDS_DEFVAL;
+        return 0;
+    }
+    (*row) = obj->cutout_row[icutout];
+    (*col) = obj->cutout_col[icutout];
+    return 1;
+}
 
 long meds_get_source_file_id(const struct meds *self,
                              long iobj,
