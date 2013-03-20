@@ -977,25 +977,6 @@ double *meds_get_weight_mosaicp(const struct meds *self,
 }
 
 
-double *meds_get_sky_cutoutp(const struct meds *self,
-                             long iobj,
-                             long icutout,
-                             long *nrow,
-                             long *ncol)
-{
-    return get_cutoutp_dbl(self,"sky_cutouts",iobj,icutout,nrow,ncol);
-}
-
-double *meds_get_sky_mosaicp(const struct meds *self,
-                             long iobj,
-                             long *ncutout,
-                             long *nrow,
-                             long *ncol)
-{
-    return get_mosaicp_dbl(self,"sky_cutouts",iobj,ncutout,nrow,ncol);
-}
-
-
 // cutouts as meds_cutout structures
 struct meds_cutout *meds_get_cutout(const struct meds *self,
                                     long iobj,
@@ -1045,34 +1026,6 @@ struct meds_cutout *meds_get_weight_mosaic(const struct meds *self, long iobj)
 
     long ncutout=0, nrow=0, ncol=0;
     double *pix=meds_get_weight_mosaicp(self, iobj, &ncutout, &nrow, &ncol);
-    if (!pix) {
-        return NULL;
-    }
-
-    struct meds_cutout *cutout=cutout_from_ptr(pix, ncutout, nrow, ncol);
-    return cutout;
-}
-
-struct meds_cutout *meds_get_sky_cutout(const struct meds *self,
-                                        long iobj,
-                                        long icutout)
-{
-
-    long nrow=0, ncol=0;
-    double *pix=meds_get_sky_cutoutp(self, iobj, icutout, &nrow, &ncol);
-    if (!pix) {
-        return NULL;
-    }
-
-    struct meds_cutout *cutout=cutout_from_ptr(pix, 1, nrow, ncol);
-    return cutout;
-}
-
-struct meds_cutout *meds_get_sky_mosaic(const struct meds *self, long iobj)
-{
-
-    long ncutout=0, nrow=0, ncol=0;
-    double *pix=meds_get_sky_mosaicp(self, iobj, &ncutout, &nrow, &ncol);
     if (!pix) {
         return NULL;
     }

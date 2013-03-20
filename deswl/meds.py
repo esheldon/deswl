@@ -64,12 +64,6 @@ class MEDS(object):
 
     # get a cutout for the weight map
     wt=m.get_cutout(35,3,type='weight')
-    # get a cutout for the sky map
-    sky=m.get_cutout(35,3,type='sky')
-
-    # sky-subtract a mosaic
-    skymosaic=m.get_mosaic(35,type='sky')
-    imsub = mosaic - skymosaic
 
     # get the source filename for cutout 3 for object 35
     fname=m.get_source_path(35,3)
@@ -279,8 +273,6 @@ class MEDS(object):
             return "image_cutouts"
         elif type=="weight":
             return "weight_cutouts"
-        elif type=="sky":
-            return "sky_cutouts"
         else:
             raise ValueError("bad cutout type '%s'" % type)
 

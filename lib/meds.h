@@ -51,9 +51,6 @@
    // get the weight image
    struct meds_cutout *wcutout=meds_get_weight_cutout(meds, iobj, icutout);
 
-   // get the sky image
-   struct meds_cutout *skycutout=meds_get_sky_cutout(meds, iobj, icutout);
-
    // using the pointer interface; good if you have your own image library
    long nrow=0, ncol=0;
    double *pix=meds_get_cutoutp(meds, iobj, icutout, &nrow, &ncol);
@@ -74,7 +71,6 @@
    // using the cutout structure
    struct meds_cutout *mosaic=meds_get_mosaic(meds, iobj);
    struct meds_cutout *wmosaic=meds_get_weight_mosaic(meds, iobj);
-   struct meds_cutout *skymosaic=meds_get_sky_mosaic(meds, iobj);
 
    printf("ncutout: %ld\n", MOSAIC_NCUTOUT(mosaic));
    printf("per cutout, nrow: %ld ncol: %ld\n", 
@@ -106,10 +102,8 @@
    // free the cutout structures.  They are set to NULL.
    cutout  = meds_cutout_free(cutout);
    wcutout = meds_cutout_free(wcutout);
-   skycutout = meds_cutout_free(skycutout);
    mosaic  = meds_cutout_free(mosaic);
    wmosaic = meds_cutout_free(wmosaic);
-   skymosaic = meds_cutout_free(skymosaic);
 
    
    // the meds_obj structure contains additional information such as where the
@@ -254,19 +248,6 @@ double *meds_get_weight_mosaicp(const struct meds *self,
                                 long *nrow,
                                 long *ncol);
 
-// same but for sky image cutouts
-double *meds_get_sky_cutoutp(const struct meds *self,
-                             long iobj,
-                             long icutout,
-                             long *nrow,
-                             long *ncol);
-
-double *meds_get_sky_mosaicp(const struct meds *self,
-                             long iobj,
-                             long *ncutout,
-                             long *nrow,
-                             long *ncol);
-
 // get info for the source image of the indicated cutout
 const struct meds_image_info *meds_get_source_info(const struct meds *self,
                                                    long iobj,
@@ -346,13 +327,6 @@ struct meds_cutout *meds_get_weight_cutout(const struct meds *self,
                                            long icutout);
 struct meds_cutout *meds_get_weight_mosaic(const struct meds *self,
                                            long iobj);
-
-struct meds_cutout *meds_get_sky_cutout(const struct meds *self,
-                                        long iobj,
-                                        long icutout);
-struct meds_cutout *meds_get_sky_mosaic(const struct meds *self,
-                                        long iobj);
-
 
 // returns NULL, use like this
 //   cutout=meds_cutout_free(cutout);
