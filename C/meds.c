@@ -21,11 +21,12 @@
 //
 
 static char *MEDS_COLNAMES[]={
-    "id", "ncutout", "box_size",
+    "ncutout", "box_size",
     "file_id", "start_row", 
     "orig_row", "orig_col","orig_start_row","orig_start_col",
     "cutout_row","cutout_col",
     "dudrow","dudcol","dvdrow","dvdcol"};
+static int MEDS_NCOLUMNS = sizeof(MEDS_COLNAMES)/sizeof(char*);
 
 static long *alloc_longs(long n) {
     long *ptr=malloc(n*sizeof(long));
@@ -161,11 +162,10 @@ static int fits_load_sub_dbl(fitsfile *fits,
                              double *data)
 {
     int status=0;
-    LONGLONG firstpixels[2];
+    LONGLONG firstpixels[1];
 
     // note col comes first
-    firstpixels[0] = 1;
-    firstpixels[1] = 1+row;
+    firstpixels[0] = 1+row;
 
     if (fits_read_pixll(fits, TDOUBLE, firstpixels, nelem,
                         0, data, NULL, &status)) {
@@ -295,7 +295,6 @@ static void free_fields(struct meds_obj *self)
 
 void meds_obj_print(const struct meds_obj *self, FILE* stream)
 {
-    fprintf(stream,"%-14s : %ld\n", "id", self->id);
     fprintf(stream,"%-14s : %ld\n", "ncutout", self->ncutout);
     fprintf(stream,"%-14s : %ld\n", "box_size",   self->box_size);
     print_longs(self->file_id, self->ncutout, "file_id", stream);
@@ -371,27 +370,25 @@ static int load_table(struct meds_cat *self, fitsfile *fits)
     for (long row=0; row < self->size; row++) {
 
     
-        if (!fits_load_col_lng(fits, colnums[0], row, 1, &obj->id))
+        if (!fits_load_col_lng(fits, colnums[0], row, 1, &obj->ncutout))
             return 0;
-        if (!fits_load_col_lng(fits, colnums[1], row, 1, &obj->ncutout))
+        if (!fits_load_col_lng(fits, colnums[1], row, 1, &obj->box_size))
             return 0;
-        if (!fits_load_col_lng(fits, colnums[2], row, 1, &obj->box_size))
+        if (!fits_load_col_lng(fits, colnums[2], row, obj->ncutout, obj->file_id))
             return 0;
-        if (!fits_load_col_lng(fits, colnums[3], row, obj->ncutout, obj->file_id))
+        if (!fits_load_col_lng(fits, colnums[3], row, obj->ncutout, obj->start_row))
             return 0;
-        if (!fits_load_col_lng(fits, colnums[4], row, obj->ncutout, obj->start_row))
+        if (!fits_load_col_dbl(fits, colnums[4], row, obj->ncutout, obj->orig_row))
             return 0;
-        if (!fits_load_col_dbl(fits, colnums[5], row, obj->ncutout, obj->orig_row))
+        if (!fits_load_col_dbl(fits, colnums[5], row, obj->ncutout, obj->orig_col))
             return 0;
-        if (!fits_load_col_dbl(fits, colnums[6], row, obj->ncutout, obj->orig_col))
+        if (!fits_load_col_lng(fits, colnums[6], row, obj->ncutout, obj->orig_start_row))
             return 0;
-        if (!fits_load_col_lng(fits, colnums[7], row, obj->ncutout, obj->orig_start_row))
+        if (!fits_load_col_lng(fits, colnums[7], row, obj->ncutout, obj->orig_start_col))
             return 0;
-        if (!fits_load_col_lng(fits, colnums[8], row, obj->ncutout, obj->orig_start_col))
+        if (!fits_load_col_dbl(fits, colnums[8], row, obj->ncutout, obj->cutout_row))
             return 0;
-        if (!fits_load_col_dbl(fits, colnums[9], row, obj->ncutout, obj->cutout_row))
-            return 0;
-        if (!fits_load_col_dbl(fits, colnums[10], row, obj->ncutout, obj->cutout_col))
+        if (!fits_load_col_dbl(fits, colnums[9], row, obj->ncutout, obj->cutout_col))
             return 0;
 
         if (obj->ncutout > ndist) {
@@ -401,13 +398,13 @@ static int load_table(struct meds_cat *self, fitsfile *fits)
             dvdrow=realloc(dvdrow,ndist*sizeof(double));
             dvdcol=realloc(dvdcol,ndist*sizeof(double));
         }
-        if (!fits_load_col_dbl(fits, colnums[11], row, obj->ncutout, dudrow))
+        if (!fits_load_col_dbl(fits, colnums[10], row, obj->ncutout, dudrow))
             return 0;
-        if (!fits_load_col_dbl(fits, colnums[12], row, obj->ncutout, dudcol))
+        if (!fits_load_col_dbl(fits, colnums[11], row, obj->ncutout, dudcol))
             return 0;
-        if (!fits_load_col_dbl(fits, colnums[13], row, obj->ncutout, dvdrow))
+        if (!fits_load_col_dbl(fits, colnums[12], row, obj->ncutout, dvdrow))
             return 0;
-        if (!fits_load_col_dbl(fits, colnums[14], row, obj->ncutout, dvdcol))
+        if (!fits_load_col_dbl(fits, colnums[13], row, obj->ncutout, dvdcol))
             return 0;
 
         for (long j=0; j<obj->ncutout; j++) {

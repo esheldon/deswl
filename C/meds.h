@@ -124,7 +124,7 @@
 
 #include <fitsio.h>
 
-#define MEDS_NCOLUMNS 15
+//#define MEDS_NCOLUMNS 14
 
 #define MEDS_DEFVAL -9999
 
@@ -139,15 +139,14 @@ struct meds_distort {
 // this structure might change; e.g. we might implement 
 // not-square cutouts
 struct meds_obj {
-    long     id;             // id column from coadd catalog
-    long     ncutout;        // number of cutouts for this object, including coadd
-    long     box_size;       // cutout size is box_sizeXbox_size.  Note we might make
-                             // cutouts not square in the future so don't rely on this
-    long    *file_id;        // index into the image_info structure for this cutout
-    long    *start_row;      // zero-offset row in the big mosaic image of all cutouts
-                             // for all objects in the MEDS file
-    double  *orig_row;       // zero-offset center row in original image
-    double  *orig_col;       // zero-offset center col in original image
+    long ncutout;    // number of cutouts for this object, including coadd
+    long box_size;   // cutout size is box_sizeXbox_size.  Note we might make
+                     // cutouts not square in the future so don't rely on this
+    long *file_id;   // index into the image_info structure for this cutout
+    long *start_row; // zero-offset row in the big mosaic image of all cutouts
+                        // for all objects in the MEDS file
+    double  *orig_row;  // zero-offset center row in original image
+    double  *orig_col;  // zero-offset center col in original image
     long    *orig_start_row; // zero-offset start row in original image
     long    *orig_start_col; // zero-offset start col in original image
     double  *cutout_row;     // zero-offset center row in cutout image
