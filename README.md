@@ -34,15 +34,16 @@ python modules and sub-packages
         
         # make sure it is on your PYTHONPATH
 
+
 MEDS C library
 --------------
 
 This is a pure C library for working with MEDS.  Docs here
-    https://github.com/esheldon/deswl/blob/master/lib/meds.h
+    https://github.com/esheldon/deswl/blob/master/C/meds.h
 
 To install
 
-    cd lib
+    cd C
     # to install in the "usual" place.
     python build.py install
 
@@ -51,7 +52,7 @@ To install
     
     # Make sure that path is in your LD_LIBRARY_PATH
 
-You can also run a test from the /lib directory against your
+You can also run a test from the /C directory against your
 favorite cutouts file.
 
     ./test cutouts_file.fits
@@ -60,3 +61,21 @@ favorite cutouts file.
 To link your code against the library
 
     CC  ... -lcfitsio -lmeds ...
+
+Making MEDS input catalogs
+--------------------------
+
+Running build.py as described above also creates a simple
+code to make meds input catalogs from a fits. file.
+
+    cd C
+    python build install
+    # or under a prefix
+    python build.py --prefix=/some/path install
+
+This installs the executable
+    make-meds-input
+under prefix/bin
+
+See the docs:
+    https://github.com/esheldon/deswl/blob/master/C/make-meds-input.c
