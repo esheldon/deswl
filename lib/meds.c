@@ -50,7 +50,8 @@ static double *alloc_doubles(long n) {
     return ptr;
 }
 
-static void print_doubles(const double* vals, long n, const char *name, FILE* stream)
+static void print_doubles(const double* vals, long n, const char *name,
+                          FILE* stream)
 {
     fprintf(stream,"%-14s : ", name);
     for (long i=0; i<n; i++) {
@@ -58,7 +59,8 @@ static void print_doubles(const double* vals, long n, const char *name, FILE* st
     }
     fprintf(stream,"\n");
 }
-static void print_longs(const long *vals, long n, const char *name, FILE* stream)
+static void print_longs(const long *vals, long n, const char *name,
+                        FILE* stream)
 {
     fprintf(stream,"%-14s : ", name);
     for (long i=0; i<n; i++) {

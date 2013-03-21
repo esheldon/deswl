@@ -20,7 +20,8 @@ prefix=os.path.expanduser( options.prefix )
 CC='gcc'
 AR='ar'
 
-LINKFLAGS=['-L.','-lcfitsio','-lm','-lmeds']
+MEDS_LINKFLAGS=['-L.','-lcfitsio','-lm','-lmeds']
+MAKE_LINKFLAGS=['-lcfitsio','-lm']
 
 CFLAGS=['-std=gnu99','-Wall','-Werror','-O2']
 
@@ -30,12 +31,25 @@ aname='lib%s.a' % libname
 lib_sources=['meds']
 test_sources=['test']
 test_speed_sources=['test-speed']
-all_sources=lib_sources + test_sources + test_speed_sources
-test_programs=[{'name':'test','sources':lib_sources+test_sources},
-               {'name':'test-speed','sources':lib_sources+test_speed_sources}]
+
+make_input_sources=['make-meds-input']
+
+all_sources=(lib_sources + test_sources + test_speed_sources
+             + make_input_sources)
+
+test_programs=[{'name':'test',
+                'sources':lib_sources+test_sources,
+                'linkflags':MEDS_LINKFLAGS},
+               {'name':'test-speed',
+                'sources':lib_sources+test_speed_sources,
+                'linkflags':MEDS_LINKFLAGS}]
+programs=[{'name':'make-meds-input',
+           'sources':make_input_sources,
+           'linkflags':MAKE_LINKFLAGS}]
 
 libraries=[aname]
 install_targets = [(lib,'lib') for lib in libraries]
+install_targets += [(prog['name'],'bin') for prog in programs]
 
 def build():
     compile()
@@ -52,9 +66,10 @@ def link_library():
     
 
 def link_programs():
-    for prog in test_programs:
+    for prog in test_programs+programs:
         objects = [s+'.o' for s in prog['sources']]
-        run(CC,'-o',prog['name'],objects,LINKFLAGS)
+        linkflags=prog['linkflags']
+        run(CC,'-o',prog['name'],objects,linkflags)
 
 def install():
     import shutil
