@@ -245,6 +245,7 @@ void cat_write(struct cat *self, FILE *stream)
     }
 }
 
+// this is the actual input to make-cutouts
 void cat_write_meds(struct cat *self)
 {
     struct obj *obj=self->data;
@@ -270,9 +271,8 @@ int fft_round_size(int size)
         }
     }
     if (!found) {
-        fprintf(stderr,"Size %d is out of bounds [0,%d]\n",
-                size,SIZES[NSIZES-1]);
-        exit(1);
+        fprintf(stderr,"Size %d is out of bounds [0,%d], setting to %d\n",
+                size,newsize,newsize);
     }
     return newsize;
 }
