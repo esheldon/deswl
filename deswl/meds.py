@@ -141,11 +141,13 @@ class MEDS(object):
 
         box_size=self._cat['box_size'][iobj]
         start_row = self._cat['start_row'][iobj,icutout]
-        row_end = start_row+box_size
+        row_end = start_row + box_size*box_size
 
         extname=self._get_extension_name(type)
 
-        return self._fits[extname][start_row:row_end,:]
+        imflat = self._fits[extname][start_row:row_end]
+        im = imflat.reshape(box_size,box_size)
+        return im
 
     def get_mosaic(self, iobj, type='image'):
         """
@@ -170,10 +172,13 @@ class MEDS(object):
         box_size=self._cat['box_size'][iobj]
 
         start_row = self._cat['start_row'][iobj,0]
-        row_end = start_row+box_size*ncutout
+        row_end = start_row + box_size*box_size*ncutout
 
         extname=self._get_extension_name(type)
-        mosaic=self._fits[extname][start_row:row_end,:]
+
+        mflat=self._fits[extname][start_row:row_end]
+        mosaic=mflat.reshape(ncutout*box_size, box_size)
+
         return mosaic
 
     def get_cutout_list(self, iobj, type='image'):
