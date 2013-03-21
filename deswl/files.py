@@ -14,6 +14,23 @@ from desdb.files import expand_desvars
 # for separating file elements
 file_el_sep = '-'
 
+def get_meds_config_dir():
+    if 'DESWL_DIR' not in os.environ:
+        raise ValueError("DESWL_DIR environment var not set")
+
+    d=os.environ['DESWL_DIR']
+    d=os.path.join(d, 'share','config','meds')
+    return d
+
+def get_meds_config_url(config_id):
+    d=get_meds_config_dir()
+    fname=os.path.join(d, '%s.yaml' % config_id)
+    return fname
+
+def read_meds_config(config_id):
+    fname=get_meds_config_url(config_id)
+    print 'reading meds config:',fname
+    return eu.io.read(fname)
 
 def get_proc_environ(extra=None):
     e={}

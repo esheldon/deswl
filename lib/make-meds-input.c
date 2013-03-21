@@ -277,10 +277,13 @@ int fft_round_size(int size)
     return newsize;
 }
 
+// convert 
 int get_sigma_size(double flux_radius)
 {
     double sigma=flux_radius*2./FWHM_FAC;
     double drad = ceil( sigma*SIGMA_FAC );
+
+    // box size is twice the radius
     int box_size = 2*( (int)drad );
 
     return box_size;
