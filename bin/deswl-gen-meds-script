@@ -53,11 +53,10 @@ make-cutouts                         \\
     cat_file="$meds_input"           \\
     coadd_srclist="$coadd_srclist"   \\
     cutout_file="$cutout_file"       \\
-    medsconf=$medsconf               \\ 
-    coadd_file="$coadd_file"         \\
+    medsconf="$medsconf"             \\
     coaddcat_file="$coaddcat_file"   \\
-    min_boxsize=$min_boxsize         \\
-    max_boxsize=$max_boxsize
+    min_boxsize="$min_boxsize"       \\
+    max_boxsize="$max_boxsize"
 
 if [[ $? != "0" ]]; then
     echo "failed to make meds file"
