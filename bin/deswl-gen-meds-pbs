@@ -1,0 +1,89 @@
+#!/usr/bin/env python
+"""
+    %prog [options] medsconf coadd_run band
+
+Generate a pbs script.  It will call the meds script and write
+the stderr and stdout to a log file and exit status to a .status file
+"""
+
+import os,sys
+from sys import stderr
+import deswl
+import desdb
+
+from optparse import OptionParser
+parser = OptionParser(__doc__)
+
+parser.add_option("-q","--queue",default='serial', 
+                  help="queue for processing %default")
+
+# 2 hours should be far more than enough
+_template="""#!/bin/bash -l
+#PBS -q %(queue)s
+#PBS -l nodes=1:ppn=1
+#PBS -l walltime=02:00:00
+#PBS -N %(job_name)s
+#PBS -j oe
+#PBS -o %(pbs_log)s
+#PBS -V
+#PBS -A des
+
+if [[ "Y${PBS_O_WORKDIR}" != "Y" ]]; then
+    cd $PBS_O_WORKDIR
+fi
+
+cmd="%(cmd)s"
+meds_log="%(meds_log)s"
+
+# we expect only stderr
+$cmd 2> "$meds_log"
+"""
+def main():
+    options, args = parser.parse_args(sys.argv[1:])
+    if len(args) < 3:
+        parser.print_help()
+        sys.exit(45)
+
+    medsconf=args[0]
+    coadd_run=args[1]
+    band=args[2]
+
+    df=desdb.files.DESFiles()
+    cf=desdb.files.Coadd(run=coadd_run, band=band)
+    cf.load()
+
+    script_file=df.url(medsconf=medsconf,
+                       type='meds_script',
+                       run=coadd_run,
+                       tilename=cf['tilename'],
+                       band=band)
+
+    pbs_file=df.url(medsconf=medsconf,
+                    type='meds_pbs',
+                    run=coadd_run,
+                    tilename=cf['tilename'],
+                    band=band)
+    meds_log=df.url(medsconf=medsconf,
+                    type='meds_log',
+                    run=coadd_run,
+                    tilename=cf['tilename'],
+                    band=band)
+
+    pbs_log=os.path.basename(pbs_file).replace('.pbs','.pbslog')
+    job_name='%s-%s' % (cf['tilename'],band)
+    
+    cmd="bash %s" % script_file
+
+    text=_template % {'queue':options.queue,
+                      'job_name':job_name,
+                      'pbs_log':pbs_log,
+                      'cmd':cmd,
+                      'meds_log':meds_log}
+
+    d=os.path.dirname(pbs_file)
+    if not os.path.exists(d):
+        os.makedirs(d)
+    print 'writing pbs script:',pbs_file
+    with open(pbs_file,'w') as fobj:
+        fobj.write(text)
+main()

@@ -20,7 +20,20 @@ parser.add_option('--whose',default='wlpipe',
 parser.add_option('--vers',default='work',
                   help="Code version, default %default")
 
-_template="""
+_template="""#!/bin/bash
+# we write stdout from make-meds-input to the meds_input file; log messages
+# go to stderr
+#
+# make-cutouts only writes to stderr
+#
+# the exit status from those programs (the last to run) is written to the
+# meds_status file and becomes the exit status of this program.
+#
+# there should be no stdout from this script, only stderr
+#
+# in production this script is called by a pbs submit script and the
+# stderr is written to a log file (meds_log)
+
 module unload shapelets-{whose} && module load shapelets-{whose}/{vers}
 module unload deswl-{whose} && module load deswl-{whose}/{vers}
 
@@ -30,6 +43,7 @@ coadd_srclist="{meds_srclist}"
 cutout_file="{meds_file}"
 meds_input="{meds_input}"
 medsconf={medsconf}
+meds_status="{meds_status}"
 
 min_boxsize={min_boxsize}
 max_boxsize={max_boxsize}
@@ -40,28 +54,35 @@ mkdir -p "$d"
 echo "creating meds input $meds_input"
 make-meds-input "$coaddcat_file" $min_boxsize $max_boxsize > "$meds_input"
 
-if [[ $? != "0" ]]; then
-    echo "failed to make meds input file"
-    exit 1
+exit_status=$?
+if [[ $? == "0" ]]; then
+
+    # entries after cutout_file on are just extra medatdata to be written into
+    # the metadata table; they are not used by the code
+
+    cmd="
+    make-cutouts
+        coadd_file=$coadd_file
+        cat_file=$meds_input
+        coadd_srclist=$coadd_srclist
+        cutout_file=$cutout_file
+        medsconf=$medsconf
+        coaddcat_file=$coaddcat_file
+        min_boxsize=$min_boxsize
+        max_boxsize=$max_boxsize
+    "
+
+    $cmd
+
+    exit_status=$?
 fi
 
-# entries from medsconf on are just to
-# be written into the metadata table; they
-# are not used by the code
-make-cutouts                         \\
-    coadd_file="$coadd_file"         \\
-    cat_file="$meds_input"           \\
-    coadd_srclist="$coadd_srclist"   \\
-    cutout_file="$cutout_file"       \\
-    medsconf="$medsconf"             \\
-    coaddcat_file="$coaddcat_file"   \\
-    min_boxsize="$min_boxsize"       \\
-    max_boxsize="$max_boxsize"
+mess="writing status $exit_status to meds_status:
+    $meds_status"
+echo $mess 1>&2
 
-if [[ $? != "0" ]]; then
-    echo "failed to make meds file"
-    exit 2
-fi
+echo "exit_status: $exit_status" > "$meds_status"
+exit $exit_status
 """
 
 def make_dirs(script_file, meds_file):
@@ -88,8 +109,7 @@ def main():
     conf=deswl.files.read_meds_config(medsconf)
 
     df=desdb.files.DESFiles()
-    cf=desdb.files.Coadd(run=coadd_run,
-                         band=band)
+    cf=desdb.files.Coadd(run=coadd_run, band=band)
     cf.load()
 
     coadd_image=df.url(type='coadd_image',
@@ -118,6 +138,13 @@ def main():
                      tilename=cf['tilename'],
                      band=band)
 
+    meds_status=df.url(medsconf=medsconf,
+                       type='meds_status',
+                       run=coadd_run,
+                       tilename=cf['tilename'],
+                       band=band)
+
+
     text=_template.format(medsconf=medsconf,
                           vers=options.vers,
                           whose=options.whose,
@@ -127,7 +154,8 @@ def main():
                           meds_srclist=meds_srclist,
                           min_boxsize=conf['min_boxsize'],
                           max_boxsize=conf['max_boxsize'],
-                          meds_file=meds_file)
+                          meds_file=meds_file,
+                          meds_status=meds_status)
 
     script_file=df.url(medsconf=medsconf,
                        type='meds_script',

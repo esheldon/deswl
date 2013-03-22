@@ -5,6 +5,7 @@ from distutils.core import setup
 scripts= ['deswl-gen-runconfig',
           'deswl-gen-pbs',
           'deswl-gen-meds-script',
+          'deswl-gen-meds-pbs',
           'deswl-gen-meds-srclist',
           'deswl-run',
           'deswl-check']

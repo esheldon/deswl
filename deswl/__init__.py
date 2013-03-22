@@ -31,13 +31,6 @@ def get_python_version(numerical=False):
         pyvers='v%s.%s.%s' % sys.version_info[0:3]
     return pyvers
 
-
-try:
-    import cwl
-except:
-    #stderr.write('Could not import cwl\n')
-    pass
-
 from . import wlpipe
 from . import files
 from . import generic

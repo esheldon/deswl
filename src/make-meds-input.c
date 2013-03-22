@@ -304,7 +304,6 @@ int get_box_size(struct obj *self, int minsize, int maxsize)
 
     int box_size=rowsize > colsize ? rowsize : colsize;
 
-    //printf("%d %d\n", box_size, sigma_size);
     box_size = sigma_size > box_size ? sigma_size: box_size;
 
     box_size = box_size < minsize ? minsize : box_size;
@@ -325,8 +324,8 @@ void set_box_sizes(struct cat *self, int minsize, int maxsize)
 int main(int argc, char **argv)
 {
     if (argc < 4) {
-        printf("usage: make-meds-input fitsfile minsize maxsize\n");
-        printf("  results go to stdout\n");
+        printf(stderr,"usage: make-meds-input fitsfile minsize maxsize\n");
+        printf(stderr,"  results go to stdout\n");
         exit(1);
     }
 
