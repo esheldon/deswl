@@ -41,6 +41,8 @@ class MEDS(object):
         Get the catalog; extension 1
     get_image_info()
         Get the entire image info structure
+    get_meta()
+        Get all the metadata
 
     examples
     --------
@@ -118,6 +120,7 @@ class MEDS(object):
 
         self._cat=self._fits["object_data"][:]
         self._image_info=self._fits["image_info"][:]
+        self._meta=self._fits["metadata"][:]
 
     def get_cutout(self, iobj, icutout, type='image'):
         """
@@ -272,6 +275,11 @@ class MEDS(object):
         """
         return self._image_info
     
+    def get_meta(self):
+        """
+        Get all the metadata
+        """
+        return self._meta
 
     def _get_extension_name(self, type):
         if type=='image':
@@ -304,7 +312,7 @@ class MEDS(object):
             if icutout >= ncutout:
                 raise ValueError("requested cutout index %s for "
                                  "object %s should be in bounds "
-                                 "[0,%s)" % (iobj,ncutout))
+                                 "[0,%s)" % (icutout,iobj,ncutout))
 
     def __repr__(self):
         return repr(self._fits[1])

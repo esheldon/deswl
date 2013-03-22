@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-    %prog [options] meds_config coadd_run band
+    %prog [options] medsconf coadd_run band
 
 Generate shell script to run make-meds-input and make-cutouts.
 
@@ -48,7 +48,8 @@ make-cutouts                         \\
     coadd_file="$coadd_file"         \\
     cat_file="$meds_input"           \\
     coadd_srclist="$coadd_srclist"   \\
-    cutout_file="$cutout_file"
+    cutout_file="$cutout_file"       \\
+    medsconf={medsconf}
 
 if [[ $? != "0" ]]; then
     echo "failed to make meds file"
@@ -73,11 +74,11 @@ def main():
         parser.print_help()
         sys.exit(45)
 
-    meds_config_id=args[0]
+    medsconf=args[0]
     coadd_run=args[1]
     band=args[2]
 
-    conf=deswl.files.read_meds_config(meds_config_id)
+    conf=deswl.files.read_meds_config(medsconf)
 
     df=desdb.files.DESFiles()
     cf=desdb.files.Coadd(run=coadd_run,
@@ -93,21 +94,25 @@ def main():
                      tilename=cf['tilename'],
                      band=band)
 
-    meds_srclist=df.url(type='meds_srclist',
+    meds_srclist=df.url(medsconf=medsconf,
+                        type='meds_srclist',
                         run=coadd_run,
                         tilename=cf['tilename'],
                         band=band)
-    meds_input=df.url(type='meds_input',
+    meds_input=df.url(medsconf=medsconf,
+                      type='meds_input',
                       run=coadd_run,
                       tilename=cf['tilename'],
                       band=band)
 
-    meds_file=df.url(type='meds',
-                      run=coadd_run,
-                      tilename=cf['tilename'],
-                      band=band)
+    meds_file=df.url(medsconf=medsconf,
+                     type='meds',
+                     run=coadd_run,
+                     tilename=cf['tilename'],
+                     band=band)
 
-    text=_template.format(vers=options.vers,
+    text=_template.format(medsconf=medsconf,
+                          vers=options.vers,
                           whose=options.whose,
                           coadd_image=coadd_image,
                           coadd_cat=coadd_cat,
@@ -117,7 +122,8 @@ def main():
                           max_boxsize=conf['max_boxsize'],
                           meds_file=meds_file)
 
-    script_file=df.url(type='meds_script',
+    script_file=df.url(medsconf=medsconf,
+                       type='meds_script',
                        run=coadd_run,
                        tilename=cf['tilename'],
                        band=band)

@@ -24,7 +24,7 @@ def get_meds_config_dir():
 
 def get_meds_config_url(config_id):
     d=get_meds_config_dir()
-    fname=os.path.join(d, '%s.yaml' % config_id)
+    fname=os.path.join(d, 'meds%s.yaml' % config_id)
     return fname
 
 def read_meds_config(config_id):

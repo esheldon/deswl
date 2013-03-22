@@ -1,6 +1,6 @@
 /*
    Read a fits Source Extractor fits file and write out an ascii
-   input file for the make-cutouts program.
+   file for input to the make-cutouts program.
 
    Input minsize and maxsize will be rounded up to nearest 2^N or
    3*2^N
@@ -40,6 +40,7 @@ struct obj {
     int colmax;
 
     double flux_radius;
+    double ellipticity;
 
     // output
     int box_size;
@@ -55,6 +56,7 @@ struct colnums {
     int colmin;
     int colmax;
     int flux_radius;
+    int ellipticity;
 };
 
 struct cat {
@@ -102,7 +104,6 @@ int get_colnum(fitsfile *fits, const char *colname)
 
 void get_colnums(fitsfile *fits, struct colnums *colnums)
 {
-
     colnums->ra=get_colnum(fits, "ALPHAMODEL_J2000");
     colnums->dec=get_colnum(fits, "DELTAMODEL_J2000");
     colnums->row=get_colnum(fits, "Y_IMAGE");
@@ -114,6 +115,7 @@ void get_colnums(fitsfile *fits, struct colnums *colnums)
     colnums->colmax=get_colnum(fits, "XMAX_IMAGE");
 
     colnums->flux_radius=get_colnum(fits, "FLUX_RADIUS");
+    colnums->ellipticity=get_colnum(fits, "ELLIPTICITY");
 }
 
 
@@ -204,6 +206,7 @@ void load_rows(fitsfile *fits, struct cat *cat)
         obj->colmax=fits_load_col_int(fits, colnums.colmax, row);
 
         obj->flux_radius=fits_load_col_dbl(fits, colnums.flux_radius, row);
+        obj->ellipticity=fits_load_col_dbl(fits, colnums.ellipticity, row);
 
         obj++;
     }
@@ -228,10 +231,10 @@ struct cat *read_cat(const char *fname)
 void obj_write(struct obj *self, FILE *stream)
 {
     fprintf(stream,
-      "%.16g %.16g %.16g %.16g %d %d %d %d %.16g %d\n",
+      "%.16g %.16g %.16g %.16g %d %d %d %d %.16g %.16g %d\n",
       self->ra, self->dec, self->row, self->col,
       self->rowmin, self->rowmax, self->colmin, self->colmax,
-      self->flux_radius, self->box_size);
+      self->flux_radius, self->ellipticity, self->box_size);
 }
 
 
@@ -278,10 +281,14 @@ int fft_round_size(int size)
 }
 
 // convert 
-int get_sigma_size(double flux_radius)
+int get_sigma_size(double flux_radius, double ellipticity)
 {
     double sigma=flux_radius*2./FWHM_FAC;
-    double drad = ceil( sigma*SIGMA_FAC );
+    double drad = sigma*SIGMA_FAC;
+
+    drad *= (1. + ellipticity);
+
+    drad = ceil(drad);
 
     // box size is twice the radius
     int box_size = 2*( (int)drad );
@@ -293,7 +300,7 @@ int get_box_size(struct obj *self, int minsize, int maxsize)
     int rowsize=self->rowmax-self->rowmin+1;
     int colsize=self->colmax-self->colmin+1;
 
-    int sigma_size=get_sigma_size(self->flux_radius);
+    int sigma_size=get_sigma_size(self->flux_radius, self->ellipticity);
 
     int box_size=rowsize > colsize ? rowsize : colsize;
 

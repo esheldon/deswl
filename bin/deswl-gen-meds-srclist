@@ -1,6 +1,6 @@
 #!/usr/bin/python
 """
-    %prog [options] coadd_run band
+    %prog [options] medsconf coadd_run band
 
 This is the list of red image files and background image files
 """
@@ -15,12 +15,13 @@ parser=OptionParser(__doc__)
 def main():
     options,args = parser.parse_args(sys.argv[1:])
 
-    if len(args) < 2:
+    if len(args) < 3:
         parser.print_help()
         sys.exit(1)
 
-    coadd_run=args[0]
-    band=args[1]
+    medsconf=args[0]
+    coadd_run=args[1]
+    band=args[2]
 
     cf=desdb.files.Coadd(run=coadd_run,
                          band=band)
@@ -28,7 +29,8 @@ def main():
     cf.load(srclist=True)
 
     df=desdb.files.DESFiles()
-    srclist=df.url(type='meds_srclist',
+    srclist=df.url(medsconf=medsconf,
+                   type='meds_srclist',
                    run=coadd_run,
                    tilename=cf['tilename'],
                    band=band)
