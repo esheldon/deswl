@@ -222,7 +222,6 @@ class GenericConfig(dict):
         cmdlist_file=deswl.files.get_exp_mpibatch_cmds_file(run, expname)
 
         self['job_file']= deswl.files.get_se_pbs_path(run, expname)
-        job_file_base=os.path.basename(job_file).replace('.pbs','')
         job_name='%s-%s' % (run,expname.replace('decam-',''))
 
         nodes=2
@@ -235,7 +234,7 @@ class GenericConfig(dict):
 #PBS -j oe
 #PBS -l nodes={nodes}:ppn={ppn},walltime={walltime}
 #PBS -q regular
-#PBS -o {job_file_base}.out
+#PBS -o {job_file}.pbslog
 #PBS -A des
 
 if [[ "Y${{PBS_O_WORKDIR}}" != "Y" ]]; then
@@ -250,7 +249,7 @@ echo "$cmdlist" | mpirun -np {np} mpibatch
                      nodes=nodes,
                      ppn=ppn,
                      walltime=walltime,
-                     job_file_base=job_file_base,
+                     job_file=job_file,
                      cmdlist_file=cmdlist_file,
                      np=np)
 
@@ -305,7 +304,6 @@ echo "$cmdlist" | mpirun -np {np} mpibatch
         queue=self.get('queue','regular')
 
         job_file=deswl.files.get_mpibatch_pbs_file(self['run'])
-        job_file_base=os.path.basename(job_file).replace('.pbs','')
         cmdlist_file=deswl.files.get_mpibatch_cmds_file(self['run'])
 
         mpibatch_text="""#!/bin/bash -l
@@ -313,7 +311,7 @@ echo "$cmdlist" | mpirun -np {np} mpibatch
 #PBS -j oe
 #PBS -l nodes={nodes}:ppn={ppn},walltime={walltime}
 #PBS -q {queue}
-#PBS -o {job_file_base}.out
+#PBS -o {job_file}.pbslog
 #PBS -A des
 
 if [[ "Y${{PBS_O_WORKDIR}}" != "Y" ]]; then
@@ -331,7 +329,7 @@ echo "done mpibatch"
                          np=np,
                          walltime=walltime,
                          queue=queue,
-                         job_file_base=job_file_base,
+                         job_file=job_file,
                          cmdlist_file=cmdlist_file)
 
         print 'Writing mpibatch pbs file:',job_file
@@ -359,7 +357,6 @@ echo "done mpibatch"
         queue=self.get('queue','regular')
 
         job_file=deswl.files.get_mpibatch_check_pbs_file(self['run'])
-        job_file_base=os.path.basename(job_file).replace('.pbs','')
         cmdlist_file=deswl.files.get_mpibatch_cmds_file(self['run'])
 
         mpibatch_text="""#!/bin/bash -l
@@ -367,7 +364,7 @@ echo "done mpibatch"
 #PBS -j oe
 #PBS -l nodes={nodes}:ppn={ppn},walltime={walltime}
 #PBS -q {queue}
-#PBS -o {job_file_base}.out
+#PBS -o {job_file}.pbslog
 #PBS -A des
 
 if [[ "Y${{PBS_O_WORKDIR}}" != "Y" ]]; then
@@ -385,7 +382,7 @@ echo "done mpibatch"
                          np=np,
                          walltime=walltime,
                          queue=queue,
-                         job_file_base=job_file_base,
+                         job_file=job_file,
                          cmdlist_file=cmdlist_file)
 
         print 'Writing check mpibatch pbs file:',job_file
@@ -781,7 +778,7 @@ class GenericSEPBSJob(dict):
 #PBS -l walltime=02:00:00
 #PBS -N %(job_name)s
 #PBS -j oe
-#PBS -o %(job_file_base)s.out
+#PBS -o %(job_file)s.pbslog
 #PBS -V
 #PBS -A des
 
@@ -805,6 +802,7 @@ done
                  'deswl_load':self['deswl_load'],
                  'cmd':cmd,
                  'queue':queue,
+                 'job_file':job_file,
                  'job_name':job_name,'job_file_base':job_file_base}
 
 

@@ -17,14 +17,15 @@ parser = OptionParser(__doc__)
 parser.add_option("-q","--queue",default='serial', 
                   help="queue for processing %default")
 
-# 2 hours should be far more than enough
+# 8 hours should be more than enough, but hard to say.  Jobs
+# run very slowly in the serial queue due to memory pressure
 _template="""#!/bin/bash -l
 #PBS -q %(queue)s
 #PBS -l nodes=1:ppn=1
-#PBS -l walltime=02:00:00
+#PBS -l walltime=08:00:00
 #PBS -N %(job_name)s
 #PBS -j oe
-#PBS -o %(pbs_log)s
+#PBS -o %(job_file)s.pbslog
 #PBS -V
 #PBS -A des
 
@@ -69,14 +70,13 @@ def main():
                     tilename=cf['tilename'],
                     band=band)
 
-    pbs_log=os.path.basename(pbs_file).replace('.pbs','.pbslog')
     job_name='%s-%s' % (cf['tilename'],band)
     
     cmd="bash %s" % script_file
 
     text=_template % {'queue':options.queue,
                       'job_name':job_name,
-                      'pbs_log':pbs_log,
+                      'job_file':pbs_file,
                       'cmd':cmd,
                       'meds_log':meds_log}
 

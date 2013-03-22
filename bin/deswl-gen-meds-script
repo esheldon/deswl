@@ -51,13 +51,13 @@ max_boxsize={max_boxsize}
 d=$(dirname "$cutout_file")
 mkdir -p "$d"
 
-echo "creating meds input $meds_input"
+echo "creating meds input $meds_input" 1>&2
 make-meds-input "$coaddcat_file" $min_boxsize $max_boxsize > "$meds_input"
 
 exit_status=$?
 if [[ $? == "0" ]]; then
 
-    # entries after cutout_file on are just extra medatdata to be written into
+    # keywords after cutout_file= are just extra medatdata to be written into
     # the metadata table; they are not used by the code
 
     cmd="
