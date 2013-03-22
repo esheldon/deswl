@@ -29,6 +29,7 @@ coaddcat_file="{coadd_cat}"
 coadd_srclist="{meds_srclist}"
 cutout_file="{meds_file}"
 meds_input="{meds_input}"
+medsconf={medsconf}
 
 min_boxsize={min_boxsize}
 max_boxsize={max_boxsize}
@@ -44,12 +45,19 @@ if [[ $? != "0" ]]; then
     exit 1
 fi
 
+# entries from medsconf on are just to
+# be written into the metadata table; they
+# are not used by the code
 make-cutouts                         \\
     coadd_file="$coadd_file"         \\
     cat_file="$meds_input"           \\
     coadd_srclist="$coadd_srclist"   \\
     cutout_file="$cutout_file"       \\
-    medsconf={medsconf}
+    medsconf=$medsconf               \\ 
+    coadd_file="$coadd_file"         \\
+    coaddcat_file="$coaddcat_file"   \\
+    min_boxsize=$min_boxsize         \\
+    max_boxsize=$max_boxsize
 
 if [[ $? != "0" ]]; then
     echo "failed to make meds file"
