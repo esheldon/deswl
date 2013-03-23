@@ -1,0 +1,72 @@
+#!/usr/bin/env python
+"""
+    %prog medsconf band coadd_runlist
+"""
+
+import os, sys
+from sys import stdout, stderr
+import deswl
+import desdb
+import yaml
+
+from optparse import OptionParser
+parser = OptionParser(__doc__)
+
+def main():
+    options, args = parser.parse_args(sys.argv[1:])
+    if len(args) < 3:
+        parser.print_help()
+        sys.exit(45)
+
+    medsconf=args[0]
+    band=args[1]
+    coadd_runs=args[2:]
+
+    df=desdb.files.DESFiles()
+
+    res=[]
+    for coadd_run in coadd_runs:
+        print >>stderr,coadd_run
+        cf=desdb.files.Coadd(run=coadd_run, band=band)
+        cf.load()
+
+        info={'exit_status':255,
+              'flags':0, # overall flags, sum of others
+              'status':{}}
+
+        ftypes={'meds':2**8,
+                'meds_input':2**9,
+                'meds_srclist':2**10,
+                'meds_status':2**11}
+
+        for i,type in enumerate(ftypes):
+            url=df.url(medsconf=medsconf,
+                       type=type,
+                       run=coadd_run,
+                       tilename=cf['tilename'],
+                       band=band)
+
+            finfo={'type':type, 'url':url, 'flags':0,'status_string':''}
+
+            if not os.path.exists(url):
+                flag=ftypes[type]
+                finfo['flags'] = flag
+                info['flags'] += flag
+
+                status_string = '%s missing: %s' % (ftype,url)
+                finfo['status_string'].append(status_string)
+                print >>stderr,status_string
+
+            info['status'][type] = finfo
+
+        sstat=info['status']['meds_status']
+        statfile_ok=sstat['flags']==0
+        if statfile_ok:
+            with open(sstat['url']) as fobj:
+                mstat=yaml.load(fobj)
+            info['exit_status'] = mstat['exit_status']
+
+        res.append(info)
+     
+    yaml.dump(res, stream=stdout)
+main()
