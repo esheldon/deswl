@@ -11,7 +11,8 @@ import deswl
 from optparse import OptionParser
 parser = OptionParser(__doc__)
 parser.add_option("-c","--config",default=None, 
-                  help="Location of config file. Default %default")
+   help=("Location of the pipeline's config file, e.g. "
+         "for shapelets wl-sv001.config. Default %default"))
 parser.add_option("-t","--test",action='store_true',
                   help="This is a test run not a production run.")
 parser.add_option("-d","--dryrun",action='store_true',

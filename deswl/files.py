@@ -144,14 +144,14 @@ class Runconfig(dict):
                  "of: (%s)" % (run_type, ', '.join(self.run_types))
             raise ValueError(mess)
 
-        if run_type == 'me':
+        if run_type == 'sme':
             if test:
-                starti=3
+                starti=1
             else:
                 starti=1
-        elif run_type == 'se':
+        elif run_type == 'sse':
             if test:
-                starti=13
+                starti=1
             else:
                 starti=1
         else:
@@ -197,7 +197,7 @@ class Runconfig(dict):
         parameters
         ----------
         run_type: string
-            e.g. 'se' or 'me' 'impyp' 'am'
+            e.g. 'sse' 'sme' 'impyp' 'am'
         dataset: string
             e.g. 'dr012'
         band: string
@@ -359,7 +359,7 @@ def ftype2fext(ftype_input):
 
 def run_dir(fileclass, run, **keys):
     rootdir=desdb.files.get_des_rootdir(**keys)
-    dir=path_join(rootdir, fileclass, run)
+    dir=path_join(rootdir, 'wlpipe', fileclass, run)
     return dir
  
 
@@ -371,6 +371,7 @@ def exposure_dir(fileclass, run, filetype, expname, **keys):
     ftdir=filetype_dir(fileclass, run, filetype, **keys)
     return os.path.join(ftdir, expname)
 
+# use DESFiles from desdb instead
 def red_image_path(run, expname, ccd, **keys):
     fz=keys.get('fz',True)
     check=keys.get('check',False)
@@ -394,6 +395,7 @@ def red_image_path(run, expname, ccd, **keys):
         
     return path
 
+# use DESFiles from desdb instead
 def red_cat_path(run, expname, ccd, **keys):
     check=keys.get('check',False)
 

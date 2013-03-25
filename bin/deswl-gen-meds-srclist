@@ -31,7 +31,7 @@ def main():
     df=desdb.files.DESFiles()
     srclist=df.url(medsconf=medsconf,
                    type='meds_srclist',
-                   run=coadd_run,
+                   coadd_run=coadd_run,
                    tilename=cf['tilename'],
                    band=band)
 
