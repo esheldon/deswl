@@ -146,13 +146,19 @@ class GenericConfig(dict):
         self.rc = deswl.files.Runconfig(self['run'])
 
         self.config_data=None
+        self._make_module_loads()
 
-        self['desdb_load'] = \
-            'module unload desdb && module load desdb/%s' % self.rc['DESDB_VERS']
-        self['deswl_load'] = \
-            'module unload deswl && module load deswl/%s' % self.rc['DESWL_VERS']
-        self['esutil_load'] = \
-            'module unload esutil && module load esutil/%s' % self.rc['ESUTIL_VERS']
+    def _make_module_loads(self):
+        for module in ['desdb','deswl','esutil']:
+            load_key='%s_load' % module
+            mup=p.upper()
+            vers=self.rc['%s_VERS'] % mup
+
+            lcmd='module unload {module} && module load {module}/{vers}'
+            lcmd=lcmd.format(module=m,vers=vers)
+
+            self[load_key] = lcmd
+
 
     def write_byccd(self):
         """
@@ -171,14 +177,15 @@ class GenericConfig(dict):
             ne=62*len(all_fd)
             for expname,fdlist in all_fd.iteritems():
                 # commands for by-exposure processing
-                cmdlist_file=deswl.files.get_exp_mpibatch_cmds_file(self['run'], expname)
+                cmdlist_file=\
+                    deswl.files.get_exp_mpibatch_cmds_file(self['run'], expname)
                 eu.ostools.makedirs_fromfile(cmdlist_file)
                 with open(cmdlist_file,'w') as ecmds:
                     ecmds.write('&listcmd\n')
                     ecmds.write('cmd=\n')
 
                     # mpi pbs script to submit all those ecmds
-                    self.write_expname_mpi(self['run'],expname)
+                    self.write_exp_mpi(self['run'],expname)
 
                     # now by ccd
                     for iccd,fd in enumerate(fdlist):
@@ -217,7 +224,7 @@ class GenericConfig(dict):
 
             cmds.write('/\n')
 
-    def write_expname_mpi(self, run, expname):
+    def write_exp_mpi(self, run, expname):
         job_file=deswl.files.get_exp_mpibatch_pbs_file(run, expname)
         cmdlist_file=deswl.files.get_exp_mpibatch_cmds_file(run, expname)
 
@@ -243,7 +250,7 @@ fi
 
 # mpibatch takes the cmdlist file name on stdin
 cmdlist={cmdlist_file}
-echo "$cmdlist" | mpirun -np {np} mpibatch
+mpirun -np {np} minions < ${cmdlist}
 
         \n""".format(job_name=job_name,
                      nodes=nodes,
@@ -723,12 +730,18 @@ class GenericSEPBSJob(dict):
             deswl.files.get_se_pbs_path(self['run'], self['expname'])
 
         self.rc=deswl.files.Runconfig(self['run'])
+
+        ver=self.rc['DESDB_VERS']
         self['desdb_load'] = \
-            'module unload desdb && module load desdb/%s' % self.rc['DESDB_VERS']
+            'module unload desdb && module load desdb/%s' % ver
+
+        ver=self.rc['DESWL_VERS']
         self['deswl_load'] = \
-            'module unload deswl && module load deswl/%s' % self.rc['DESWL_VERS']
+            'module unload deswl && module load deswl/%s' % ver
+
+        ver=self.rc['ESUTIL_VERS']
         self['esutil_load'] = \
-            'module unload esutil && module load esutil/%s' % self.rc['ESUTIL_VERS']
+            'module unload esutil && module load esutil/%s' % ver
 
     def write(self, check=False):
 

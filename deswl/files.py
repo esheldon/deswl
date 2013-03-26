@@ -133,9 +133,10 @@ class Runconfig(dict):
         return path_join(rdir, run+'-config.json')
     
 
-    def generate_new_runconfig_name(self, run_type, band, test=False, old=False):
+    def generate_new_runconfig_name(self, run_type, band, test=False,
+                                    old=False):
         """
-        generates a new name like se013i, checking against names in
+        generates a new name like sse013i, checking against names in
         the runconfig directory
         """
 
@@ -157,14 +158,20 @@ class Runconfig(dict):
         else:
             starti=1
 
-        run_name=self._run_name_from_type_number(run_type, band, starti, test=test)
+        run_name=self._run_name_from_type_number(run_type, 
+                                                 band,
+                                                 starti,
+                                                 test=test)
 
         fullpath=self.getpath(run=run_name, checkout=True)
 
         i=starti
         while os.path.exists(fullpath):
             i+=1
-            run_name=self._run_name_from_type_number(run_type, band, i, test=test)
+            run_name=self._run_name_from_type_number(run_type,
+                                                     band,
+                                                     i,
+                                                     test=test)
             fullpath=self.getpath(run=run_name, checkout=True)
 
         return run_name
@@ -202,10 +209,10 @@ class Runconfig(dict):
             e.g. 'dr012'
         band: string
             'g','r','i','z','Y'
-        config: string path, optional
-            The location of a config file for this run/code.
-
-            E.g.  'wldc6b-v2.config'
+        config: optional
+            The name of a config file for this run/code.
+                E.g.  'wldc6b-v2.config'
+            It must be located at $DESWL_DIR/{fileclass}/{config}
 
         run_name: string, optional
             If not sent, will be generated.
@@ -232,7 +239,9 @@ class Runconfig(dict):
 
 
         if run_name is None:
-            run_name=self.generate_new_runconfig_name(run_type, band, test=test)
+            run_name=self.generate_new_runconfig_name(run_type,
+                                                      band,
+                                                      test=test)
 
         fileclass = self.run_types[run_type]['fileclass']
 
@@ -283,7 +292,8 @@ class Runconfig(dict):
         if run_type in ['sme','sse']:
             # need DIR since we don't set PATH
             keys += ['TMV_VERS',
-                     'SHAPELETS_VERS','SHAPELETS_DIR']
+                     'SHAPELETS_VERS',
+                     'SHAPELETS_DIR']
 
         if run_type=='am':
             keys += ['ADMOM_VERS','ESPY_VERS','ESPY_DIR']

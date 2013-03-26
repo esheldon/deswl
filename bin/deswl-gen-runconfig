@@ -2,7 +2,13 @@
 """
     %prog [options] run_type dataset band
 
-Generate a new runconfig
+Generate a new runconfig.  You should set up all the versions of code you will use before running this.
+
+Also, names are checked against a checked out version of deswl, so make
+sure DESWL_CHECKOUT points to your git checkout.
+
+That is so the file will be written into the correct place and will see the
+used file names
 """
 
 import sys

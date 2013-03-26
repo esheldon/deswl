@@ -39,12 +39,14 @@ class ShapeletsSEConfig(generic.GenericConfig):
             return self.config_data
 
         desdata=desdb.files.get_des_rootdir()
-        expdict = desdb.files.get_red_info_byexp(self.rc['dataset'],
-                                                 self.rc['band'],
-                                                 desdata=desdata)
+        flists = desdb.files.get_red_info_by_release(self.rc['dataset'],
+                                                     self.rc['band'],
+                                                     desdata=desdata)
         
         odict={}
-        for expname,flist in expdict.iteritems():
+        for flist in flists:
+            expname=flist['expname']
+
             odict[expname] = []
             # one for each CCD
             for fd in flist:
