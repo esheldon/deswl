@@ -171,6 +171,7 @@ class GenericConfig(dict):
         all_fd = self.get_config_data()
         i=1
         ne=len(all_fd)
+        modnum=ne/10
         for fd in all_fd:
             config_file=deswl.files.get_se_config_path(fd['run'],
                                                        fd['expname'],
@@ -185,7 +186,7 @@ class GenericConfig(dict):
 
             fd['output_files']['log']=log_file
 
-            if i==1 or (i % 1000) == 0:
+            if i==1 or (i % modnum) == 0:
                 print >>stderr,"Writing config (%d/%d) %s" % (i,ne,config_file)
 
 
@@ -198,7 +199,7 @@ class GenericConfig(dict):
 
             if 'script' in fd:
                 script_file=fd['script']
-                if i==1 or (i % 1000) == 0:
+                if i==1 or (i % modnum) == 0:
                     print >>stderr,"    %s" % script_file
                 with open(script_file,'w') as fobj:
                     script_data=self.get_script(fd)
@@ -308,7 +309,7 @@ if [[ "Y${{PBS_O_WORKDIR}}" != "Y" ]]; then
     cd $PBS_O_WORKDIR
 fi
 
-find ./byexp -name "*-minion.sh" | mpirun -np {np} minions
+find ./byexp -name "*-minion.pbs" | mpirun -np {np} minions
 
 echo "done minions"
         \n"""
@@ -337,11 +338,6 @@ echo "done minions"
         nodes=8
         ppn=8
         np=nodes*ppn
-        # assuming 31,000 jobs (ccds), 7 minutes
-        # per job and 16*8=128 cores, we need ~29
-        # hours.  36 should be plenty
-        # using 128 and less than 48 hours cores means means
-        # we expect to end up in the reg_small exec queue
         walltime='00:30:00'
         queue=self.get('queue','regular')
 
@@ -696,20 +692,22 @@ job_name: %(job_name)s\n""" % {'esutil_load':esutil_load,
 
 class GenericSEPBSJob(dict):
     """
-    not using this at nersc currently
-    Generic job files to process all ccds in an exposure.
+    only using check scripts at nersc currently
 
     You should also create the config files for each exposure/ccd using. config
     files go to deswl.files.se_config_path(run,expname,ccd=ccd)
 
     Send check=True to generate the check file instead of the processing file
     """
-    def __init__(self, run, expname, **keys):
+    def __init__(self, run, expname, ccd, **keys):
         self['run'] = run
         self['expname'] = expname
+        self['ccd'] = ccd
         self['queue'] = keys.get('queue','serial')
+
         self['job_file']= \
-            deswl.files.get_se_pbs_path(self['run'], self['expname'])
+            deswl.files.get_se_pbs_path(run, expname, ccd)
+        self['check_file'] = self['job_file'].replace('.pbs','-check.pbs')
 
         self.rc=deswl.files.Runconfig(self['run'])
 
@@ -727,38 +725,36 @@ class GenericSEPBSJob(dict):
 
     def write(self, check=False):
 
-
+        run=self['run']
         expname=self['expname']
+        ccd=self['ccd']
+
         queue = self['queue']
 
-        job_name='se-'+expname.replace('decam-','')
+        job_name=expname.replace('decam-','')
+        job_name=expname.replace('DECam-','')
+        job_name='se-'+job_name
+
         if check:
-            job_file=self['job_file'].replace('.pbs','-check.pbs')
+            job_file=self['check_file']
             job_name += '-chk'
         else:
             job_file=self['job_file']
 
-        job_file_base=os.path.basename(job_file).replace('.pbs','')
-
-
         rc=deswl.files.Runconfig(self['run'])
 
         # naming scheme for this generic type figured out from run
-        config_file1=deswl.files.get_se_config_path(self['run'], 
-                                                    self['expname'], 
-                                                    ccd=1)
-        config_dir=os.path.dirname(config_file1)
-        config_base1=os.path.basename(config_file1)
-        conf=config_base1.replace('01-config.yaml','${ccd}-config.yaml')
+        conf=deswl.files.get_se_config_path(run, expname, ccd=ccd)
         if check:
-            chk=conf.replace('${ccd}-config.yaml','${ccd}-check.json')
-            err=conf.replace('${ccd}-config.yaml','${ccd}-check.err')
+            chk=conf.replace('.yaml','-check.json')
+            err=conf.replace('.yaml','-check.err')
 
             cmd="""
-    deswl-check \\
-        $dir/{conf} \\
-        1> $dir/{chk} \\
-        2> $dir/{err}\n"""
+conf="{conf}"
+chk="{chk}"
+err="{err}"
+deswl-check "$conf" 1> "$chk" 2> "$err"
+"""
             cmd=cmd.format(conf=conf, chk=chk, err=err)
         else:
             # log is now automatically created by GenericProcessor
@@ -785,20 +781,14 @@ fi
 %(desdb_load)s
 %(deswl_load)s
 
-dir=%(config_dir)s
-for ccd in `seq -w 1 62`; do
-    echo "ccd: ${ccd}"
-    %(cmd)s
-done
-
-        \n""" % {'config_dir':config_dir,
-                 'esutil_load':self['esutil_load'],
+%(cmd)s
+        \n""" % {'esutil_load':self['esutil_load'],
                  'desdb_load':self['desdb_load'],
                  'deswl_load':self['deswl_load'],
                  'cmd':cmd,
                  'queue':queue,
                  'job_file':job_file,
-                 'job_name':job_name,'job_file_base':job_file_base}
+                 'job_name':job_name}
 
 
         eu.ostools.makedirs_fromfile(job_file)
