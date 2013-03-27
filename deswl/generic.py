@@ -151,11 +151,11 @@ class GenericConfig(dict):
     def _make_module_loads(self):
         for module in ['desdb','deswl','esutil']:
             load_key='%s_load' % module
-            mup=p.upper()
-            vers=self.rc['%s_VERS'] % mup
+            mup=module.upper()
+            vers=self.rc['%s_VERS'% mup]
 
             lcmd='module unload {module} && module load {module}/{vers}'
-            lcmd=lcmd.format(module=m,vers=vers)
+            lcmd=lcmd.format(module=module,vers=vers)
 
             self[load_key] = lcmd
 
@@ -163,115 +163,83 @@ class GenericConfig(dict):
     def write_byccd(self):
         """
         Write all config files for expname/ccd
+
+        also make the output directory
         """
 
-        mpibatch_cmds=deswl.files.get_mpibatch_cmds_file(self['run'])
-        print 'writing mpibatch commands to',mpibatch_cmds
-        eu.ostools.makedirs_fromfile(mpibatch_cmds)
-        with open(mpibatch_cmds,'w') as cmds:
-            cmds.write('&listcmd\n')
-            cmds.write('cmd=\n')
 
-            all_fd = self.get_config_data()
-            i=1
-            ne=62*len(all_fd)
-            for expname,fdlist in all_fd.iteritems():
-                # commands for by-exposure processing
-                cmdlist_file=\
-                    deswl.files.get_exp_mpibatch_cmds_file(self['run'], expname)
-                eu.ostools.makedirs_fromfile(cmdlist_file)
-                with open(cmdlist_file,'w') as ecmds:
-                    ecmds.write('&listcmd\n')
-                    ecmds.write('cmd=\n')
+        all_fd = self.get_config_data()
+        i=1
+        ne=len(all_fd)
+        for fd in all_fd:
+            config_file=deswl.files.get_se_config_path(fd['run'],
+                                                       fd['expname'],
+                                                       fd['ccd'])
+            log_file=deswl.files.get_se_log_path(fd['run'],
+                                                 fd['expname'],
+                                                 fd['ccd'])
 
-                    # mpi pbs script to submit all those ecmds
-                    self.write_exp_mpi(self['run'],expname)
+            eu.ostools.makedirs_fromfile(config_file)
+            key=list(fd['output_files'].keys())[0]
+            eu.ostools.makedirs_fromfile(fd['output_files'][key])
 
-                    # now by ccd
-                    for iccd,fd in enumerate(fdlist):
-                        config_file=deswl.files.get_se_config_path(fd['run'],
-                                                                   fd['expname'],
-                                                                   ccd=fd['ccd'])
-                        log_file=deswl.files.get_se_log_path(fd['run'],
-                                                             fd['expname'],
-                                                             ccd=fd['ccd'])
-                        fd['output_files']['log']=log_file
+            fd['output_files']['log']=log_file
 
-                        if i==1 or (i % 1000) == 0:
-                            print >>stderr,"Writing config (%d/%d) %s" % (i,ne,config_file)
-                        eu.ostools.makedirs_fromfile(config_file)
-                        eu.io.write(config_file, fd)
+            if i==1 or (i % 1000) == 0:
+                print >>stderr,"Writing config (%d/%d) %s" % (i,ne,config_file)
 
-                        mpiscript_file=deswl.files.get_se_mpiscript_path(fd['run'],
-                                                                         fd['expname'],
-                                                                         ccd=fd['ccd'])
-                        cmds.write("'%s',\n" % mpiscript_file)
-                        ecmds.write("'%s',\n" % mpiscript_file)
 
-                        if 'script' in fd:
-                            script_file=fd['script']
-                            if i==1 or (i % 1000) == 0:
-                                print >>stderr,"    %s" % script_file
-                            with open(script_file,'w') as fobj:
-                                script_data=self.get_script(fd)
-                                fobj.write(script_data)
+            eu.io.write(config_file, fd)
 
-                        self.write_mpi_script(fd)
+            minion_file=\
+                deswl.files.get_se_minion_path(fd['run'],
+                                               fd['expname'],
+                                               fd['ccd'])
 
-                        i += 1
+            if 'script' in fd:
+                script_file=fd['script']
+                if i==1 or (i % 1000) == 0:
+                    print >>stderr,"    %s" % script_file
+                with open(script_file,'w') as fobj:
+                    script_data=self.get_script(fd)
+                    fobj.write(script_data)
 
-                    ecmds.write('/\n')
+            self.write_mpi_script(fd)
 
-            cmds.write('/\n')
+            i += 1
 
-    def write_exp_mpi(self, run, expname):
-        job_file=deswl.files.get_exp_mpibatch_pbs_file(run, expname)
-        cmdlist_file=deswl.files.get_exp_mpibatch_cmds_file(run, expname)
-
-        self['job_file']= deswl.files.get_se_pbs_path(run, expname)
-        job_name='%s-%s' % (run,expname.replace('decam-',''))
-
-        nodes=2
-        ppn=8
-        np=nodes*ppn
-        walltime="1:00:00"
-
-        text="""#!/bin/bash -l
-#PBS -N {job_name}
-#PBS -j oe
-#PBS -l nodes={nodes}:ppn={ppn},walltime={walltime}
-#PBS -q regular
-#PBS -o {job_file}.pbslog
-#PBS -A des
-
-if [[ "Y${{PBS_O_WORKDIR}}" != "Y" ]]; then
-    cd $PBS_O_WORKDIR
-fi
-
-# mpibatch takes the cmdlist file name on stdin
-cmdlist={cmdlist_file}
-mpirun -np {np} minions < ${cmdlist}
-
-        \n""".format(job_name=job_name,
-                     nodes=nodes,
-                     ppn=ppn,
-                     walltime=walltime,
-                     job_file=job_file,
-                     cmdlist_file=cmdlist_file,
-                     np=np)
-
-        eu.ostools.makedirs_fromfile(job_file)
-        with open(job_file,'w') as fobj:
-            fobj.write(text)
 
 
     def write_mpi_script(self, fd):
-
+        """
+        Can also be sent to pbs for quick checks
+        """
         config_file=deswl.files.get_se_config_path(fd['run'],
                                                    fd['expname'],
-                                                   ccd=fd['ccd'])
+                                                   fd['ccd'])
+
+        minion_file=deswl.files.get_se_minion_path(self['run'],
+                                                      fd['expname'],
+                                                      fd['ccd'])
+ 
+        job_name='%s_%02d' % (fd['expname'],fd['ccd'])
+        job_name=job_name.replace('decam-','')
+        job_name=job_name.replace('DECam_','')
+
         cmd=get_run_command(config_file)
         text="""#!/bin/bash -l
+#PBS -q serial
+#PBS -l nodes=1:ppn=1
+#PBS -l walltime=30:00
+#PBS -N {job_name}
+#PBS -j oe
+#PBS -o {job_file}.pbslog
+#PBS -V
+#PBS -A des
+
+# this is usually called as a minion, but with the header
+# above can be submitted directly to pbs for checks
+
 {esutil_load}
 {desdb_load}
 {deswl_load}
@@ -280,25 +248,39 @@ mpirun -np {np} minions < ${cmdlist}
         \n""".format(esutil_load=self['esutil_load'],
                      desdb_load=self['desdb_load'],
                      deswl_load=self['deswl_load'],
+                     job_file=minion_file,
+                     job_name=job_name,
                      cmd=cmd)
 
-        mpiscript_file=deswl.files.get_se_mpiscript_path(self['run'],
-                                                         fd['expname'],
-                                                         ccd=fd['ccd'])
-        
-        eu.ostools.makedirs_fromfile(mpiscript_file)
-        with open(mpiscript_file,'w') as fobj:
+       
+        eu.ostools.makedirs_fromfile(minion_file)
+        with open(minion_file,'w') as fobj:
             fobj.write(text)
-        os.system('chmod u+x %s' % mpiscript_file)
+        os.system('chmod u+x %s' % minion_file)
 
-    def write_mpibatch(self):
+    def calc_walltime(self, np):
+        import math
+        ndef=31000.
+        wdef=36.
+        npdef=128.
+
+        print 'counting minion jobs'
+        cd=self.get_config_data()
+
+        walltime_hours=wdef*len(cd)/ndef*np/npdef
+        walltime_hours=int(math.ceil(walltime_hours))
+
+        walltime='%d:00:00' % walltime_hours
+        return walltime
+
+    def write_minions(self):
         """
         Batching individual jobs using mpi
 
-        requires the program mpibatch installed
+        requires the program minions installed
         """
         rc=self.rc
-        job_name='%s-batch' % self['run']
+        job_name='%s-minions' % self['run']
         nodes=16
         ppn=8
         np=nodes*ppn
@@ -307,13 +289,14 @@ mpirun -np {np} minions < ${cmdlist}
         # hours.  36 should be plenty
         # using 128 and less than 48 hours cores means means
         # we expect to end up in the reg_small exec queue
-        walltime='36:00:00'
+        #walltime='36:00:00'
+        walltime=self.calc_walltime(np)
+
         queue=self.get('queue','regular')
 
-        job_file=deswl.files.get_mpibatch_pbs_file(self['run'])
-        cmdlist_file=deswl.files.get_mpibatch_cmds_file(self['run'])
+        job_file=deswl.files.get_minions_pbs_file(self['run'])
 
-        mpibatch_text="""#!/bin/bash -l
+        minions_text="""#!/bin/bash -l
 #PBS -N {job_name}
 #PBS -j oe
 #PBS -l nodes={nodes}:ppn={ppn},walltime={walltime}
@@ -325,30 +308,29 @@ if [[ "Y${{PBS_O_WORKDIR}}" != "Y" ]]; then
     cd $PBS_O_WORKDIR
 fi
 
-find ./byccd -name "*decam-*-mpi.sh" | mpirun -np {np} mpibatch
+find ./byexp -name "*-minion.sh" | mpirun -np {np} minions
 
-echo "done mpibatch"
+echo "done minions"
         \n"""
 
-        mpibatch_text=mpibatch_text.format(job_name=job_name,
+        minions_text=minions_text.format(job_name=job_name,
                          nodes=nodes,
                          ppn=ppn,
                          np=np,
                          walltime=walltime,
                          queue=queue,
-                         job_file=job_file,
-                         cmdlist_file=cmdlist_file)
+                         job_file=job_file)
 
-        print 'Writing mpibatch pbs file:',job_file
+        print 'Writing minions pbs file:',job_file
         eu.ostools.makedirs_fromfile(job_file)
         with open(job_file,'w') as fobj:
-            fobj.write(mpibatch_text)
+            fobj.write(minions_text)
         
-    def write_check_mpibatch(self):
+    def write_check_minions(self):
         """
         Batching individual jobs using mpi
 
-        requires the program mpibatch installed
+        requires the program minions installed
         """
         rc=self.rc
         job_name='%s-check' % self['run']
@@ -363,10 +345,9 @@ echo "done mpibatch"
         walltime='00:30:00'
         queue=self.get('queue','regular')
 
-        job_file=deswl.files.get_mpibatch_check_pbs_file(self['run'])
-        cmdlist_file=deswl.files.get_mpibatch_cmds_file(self['run'])
+        job_file=deswl.files.get_minions_check_pbs_file(self['run'])
 
-        mpibatch_text="""#!/bin/bash -l
+        minions_text="""#!/bin/bash -l
 #PBS -N {job_name}
 #PBS -j oe
 #PBS -l nodes={nodes}:ppn={ppn},walltime={walltime}
@@ -378,24 +359,23 @@ if [[ "Y${{PBS_O_WORKDIR}}" != "Y" ]]; then
     cd $PBS_O_WORKDIR
 fi
 
-find ./byexp -name "*decam-*-check.pbs" | mpirun -np {np} mpibatch
+find ./byexp -name "*-check.pbs" | mpirun -np {np} minions
 
-echo "done mpibatch"
+echo "done minions"
         \n"""
 
-        mpibatch_text=mpibatch_text.format(job_name=job_name,
+        minions_text=minions_text.format(job_name=job_name,
                          nodes=nodes,
                          ppn=ppn,
                          np=np,
                          walltime=walltime,
                          queue=queue,
-                         job_file=job_file,
-                         cmdlist_file=cmdlist_file)
+                         job_file=job_file)
 
-        print 'Writing check mpibatch pbs file:',job_file
+        print 'Writing check minions pbs file:',job_file
         eu.ostools.makedirs_fromfile(job_file)
         with open(job_file,'w') as fobj:
-            fobj.write(mpibatch_text)
+            fobj.write(minions_text)
  
     def get_config_data(self):
         raise RuntimeError("you must over-ride get_config_data")
@@ -410,8 +390,8 @@ class GenericProcessor(dict):
         required keys in config
             - 'run' The run id, just for identification
             - 'input_files', which is itself a dictionary.  The files will be
-            checked to see if any files are in hdfs and if so these will be staged
-            out.
+            checked to see if any files are in hdfs and if so these will be 
+            staged out.
 
             - 'output_files', a dictionary.  HDFS files will be first written
             locally and then pushed in.
@@ -671,6 +651,7 @@ class GenericSEWQJob(dict):
         config_file1=deswl.files.get_se_config_path(self['run'], 
                                                     self['expname'], 
                                                     ccd=1)
+        raise ValueError("fix paths")
         config_file1=os.path.join('byccd',os.path.basename(config_file1))
         conf=config_file1.replace('01-config.yaml','$i-config.yaml')
         if check:
@@ -715,6 +696,7 @@ job_name: %(job_name)s\n""" % {'esutil_load':esutil_load,
 
 class GenericSEPBSJob(dict):
     """
+    not using this at nersc currently
     Generic job files to process all ccds in an exposure.
 
     You should also create the config files for each exposure/ccd using. config

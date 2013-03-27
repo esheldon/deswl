@@ -12,9 +12,7 @@ types
 -----
 config:
     write config files and scripts for every ccd.
-pbs:
-    write by-exposure pbs scripts, including check
-mpibatch:
+minions:
     A big mpi job that runs all the ccd scripts
 reduce:
     Reduce the check files
@@ -30,12 +28,12 @@ from optparse import OptionParser
 parser = OptionParser(__doc__)
 parser.add_option("-q","--queue",default='serial', 
                   help="queue for processing %default")
-parser.add_option("-t","--types",default='config,pbs,mpibatch,reduce', 
+parser.add_option("-t","--types",default='config,minions,reduce', 
                   help="types to write, default %default")
 
 
 def write_reducer(run,expected_num):
-    text="""# run through the ./byccd/*-check.json files to find problems
+    text="""# run through the ./byexp/*/*-check.json files to find problems
 # write out the "goodlist" and "badlist" in the collated dir for this run
 # $DESDATA/fileclass/run/collated/
 from sys import stderr
@@ -46,7 +44,7 @@ import esutil as eu
 goodfile=deswl.files.collated_path('{run}', 'goodlist',ftype='yaml')
 badfile=deswl.files.collated_path('{run}', 'badlist',ftype='yaml')
 
-files=glob.glob('byccd/*-check.json')
+files=glob.glob('byexp/*/*-check.json')
 if len(files) != {expected_num}:
     raise ValueError("expected {expected_num} files, found %s" % len(files))
 goodlist=[]
@@ -116,33 +114,15 @@ def main():
         print >>stderr,"writing all config and script filescmds"
         cfobj.write()
 
-    if 'mpibatch' in types:
-        cfobj.write_mpibatch()
-        cfobj.write_check_mpibatch()
-
-    if 'pbs' in types:
-        # every class must have the get_config_data method
-        expnames = list(cfobj.get_config_data().keys())
-        expnames.sort()
-
-        # number of exposures
-        nexp=len(expnames)
-
-        print >>stderr,'writing scripts for',nexp,'exposures'
-        for i,expname in enumerate(expnames):
-            job=deswl.generic.GenericSEPBSJob(run,expname, queue=options.queue)
-            if ((i+1) % modnum) == 0:
-                print >>stderr,'%d/%d %s' % (i+1,nexp,job['job_file'])
-
-            job.write()
-            job.write(check=True)
+    if 'minions' in types:
+        cfobj.write_minions()
+        cfobj.write_check_minions()
 
     if 'reduce' in types:
         print >>stderr,"writing reducer"
         expected_num = 0
         cdata=cfobj.get_config_data()
-        for expname in cdata:
-            expected_num += len(cdata[expname])
+        expected_num=len(cdata)
         write_reducer(run,expected_num)
 main()
 

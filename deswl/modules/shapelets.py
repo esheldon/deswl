@@ -42,7 +42,33 @@ class ShapeletsSEConfig(generic.GenericConfig):
         flists = desdb.files.get_red_info_by_release(self.rc['dataset'],
                                                      self.rc['band'],
                                                      desdata=desdata)
-        
+
+        for fd in flists:
+            expname=fd['expname']
+            ccd=fd['ccd']
+
+            fd['run'] = self['run']
+            fd['cat_url']=fd['image_url'].replace('.fits.fz','_cat.fits')
+            fd['input_files'] = {'image':fd['image_url'],
+                                    'cat':fd['cat_url']}
+            fd['output_files']=\
+                generic.generate_filenames(_output_patterns,
+                                           'shapelets',
+                                           self['run'],
+                                           expname,
+                                           ccd=ccd)
+
+
+            fd['command'] = self.get_command(fd)
+            fd['timeout'] = 15*60 # fifteen minute timeout
+
+            script_file=self.get_script_file(fd)
+            fd['script'] = script_file
+
+        self.config_data = flists
+        return flists
+
+        """
         odict={}
         for flist in flists:
             expname=flist['expname']
@@ -72,14 +98,14 @@ class ShapeletsSEConfig(generic.GenericConfig):
                 script_file=self.get_script_file(fd)
                 fdict['script'] = script_file
                 odict[expname].append(fdict)
-
         self.config_data = odict 
         return odict
+        """
 
     def get_script_file(self, fdict):
         script_file=deswl.files.get_se_script_path(self['run'],
                                                    fdict['expname'],
-                                                   ccd=fdict['ccd'])
+                                                   fdict['ccd'])
         return script_file
 
     def get_command(self, fdict):

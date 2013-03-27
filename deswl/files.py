@@ -1877,49 +1877,36 @@ def _make_load_command(modname, vers):
 
 
 
-def get_pbs_dir(run, subdir=None):
+def get_wlpipe_dir():
     rootdir=desdb.files.get_des_rootdir()
-    outdir=path_join(rootdir,'pbs',run)
-    if subdir is not None:
-        outdir=path_join(outdir, subdir)
-    outdir=os.path.expanduser(outdir)
-    return outdir
+    return path_join(rootdir,'wlpipe')
 
-def get_mpibatch_pbs_file(run):
-    d=get_pbs_dir(run)
-    f='%s-mpibatch.pbs' % run
+def get_pbs_dir():
+    dir=get_wlpipe_dir()
+    return path_join(dir,'pbs')
+
+def get_pbs_run_dir(run):
+    dir=get_pbs_dir()
+    return path_join(dir, run)
+
+def get_pbs_exp_dir(run, expname):
+    dir=get_pbs_run_dir(run)
+
+    dir=os.path.join(dir, 'byexp', expname)
+    return dir
+
+
+def get_minions_pbs_file(run):
+    d=get_pbs_run_dir(run)
+    f='%s-minions.pbs' % run
     f=os.path.join(d,f)
     return f
 
-def get_mpibatch_check_pbs_file(run):
-    d=get_pbs_dir(run)
-    f='%s-check-mpibatch.pbs' % run
+def get_minions_check_pbs_file(run):
+    d=get_pbs_run_dir(run)
+    f='%s-check-minions.pbs' % run
     f=os.path.join(d,f)
     return f
-
-
-# no longer used
-"""
-def get_mpibatch_cmds_file(run):
-    d=get_pbs_dir(run)
-    f='%s-mpibatch-cmds.txt' % run
-    f=os.path.join(d,f)
-    return f
-"""
-def get_exp_mpibatch_pbs_file(run, expname):
-    d=get_pbs_dir(run, subdir='byexp')
-    f='%s-mpibatch.pbs' % expname
-    f=os.path.join(d,f)
-    return f
-
-"""
-def get_exp_mpibatch_cmds_file(run,expname):
-    d=get_pbs_dir(run, subdir='byexp')
-    f='%s-mpibatch-cmds.txt' % expname
-    f=os.path.join(d,f)
-    return f
-"""
-
 
 def get_me_pbs_name(tilename, band):
     pbsfile=[tilename,band]
@@ -1927,57 +1914,63 @@ def get_me_pbs_name(tilename, band):
     return pbsfile
     
 def get_me_pbs_path(merun, tilename, band):
-    pbsdir=get_pbs_dir(merun)
+    pbsdir=get_pbs_run_dir(merun)
     pbsfile=get_me_pbs_name(tilename,band)
     pbsfile=path_join(pbsdir, pbsfile)
     return pbsfile
 
 
-def get_se_pbs_name(expname, typ='fullpipe', ccd=None):
+def get_se_pbs_name(expname, ccd, typ='fullpipe'):
     pbsfile=[expname]
 
     if typ != 'fullpipe':
         pbsfile.append(typ)
 
-    if ccd is not None:
-        pbsfile.append('%02i' % int(ccd))
+    pbsfile.append('%02i' % int(ccd))
     pbsfile='-'.join(pbsfile)+'.pbs'
     return pbsfile
     
-def get_se_pbs_path(serun, expname, typ='fullpipe', ccd=None):
-    if ccd is not None:
-        subdir='byccd'
-    else:
-        subdir='byexp'
+def get_se_pbs_path(run, expname, ccd, typ='fullpipe'):
+    subdir='byexp'
 
-    pbsdir=get_pbs_dir(serun, subdir=subdir)
-    pbsfile=get_se_pbs_name(expname, typ=typ, ccd=ccd)
+    pbsdir=get_pbs_exp_dir(run, expname)
+    pbsfile=get_se_pbs_name(expname, ccd, typ=typ)
     pbsfile=path_join(pbsdir, pbsfile)
     return pbsfile
 
+def get_se_config_name(expname, ccd, typ='fullpipe'):
+    fname=[expname]
 
-def get_se_config_path(run, expname, typ='fullpipe', ccd=None):
-    f=get_se_pbs_path(run, expname, typ=typ, ccd=ccd)
-    f=f[0:f.rfind('.')]+'-config.yaml'
-    return f
+    if typ != 'fullpipe':
+        fname.append(typ)
 
-def get_se_log_path(run, expname, typ='fullpipe', ccd=None):
-    f=get_se_pbs_path(run, expname, typ=typ, ccd=ccd)
+    fname.append('%02i' % int(ccd))
+    fname='-'.join(fname)+'.yaml'
+    return fname
+    
+def get_se_config_path(run, expname, ccd, typ='fullpipe'):
+    pbsdir=get_pbs_exp_dir(run, expname)
+    fname=get_se_config_name(expname, ccd, typ=typ)
+    fname=path_join(pbsdir, fname)
+    return fname
+
+def get_se_log_path(run, expname, ccd, typ='fullpipe'):
+    f=get_se_config_path(run, expname, typ=typ, ccd=ccd)
     f=f[0:f.rfind('.')]+'.log'
     return f
 
 
-def get_se_script_path(run, expname, typ='fullpipe', ccd=None):
-    f=get_se_pbs_path(run, expname, typ=typ, ccd=ccd)
+def get_se_script_path(run, expname, ccd, typ='fullpipe'):
+    f=get_se_config_path(run, expname, ccd, typ=typ)
     f=f[0:f.rfind('.')]+'.sh'
     return f
 
-def get_se_mpiscript_path(run, expname, typ='fullpipe', ccd=None):
+def get_se_minion_path(run, expname, ccd, typ='fullpipe'):
     """
     For calling deswl-run from mpi workers. Sets up environment.
     """
-    f=get_se_pbs_path(run, expname, typ=typ, ccd=ccd)
-    f=f[0:f.rfind('.')]+'-mpi.sh'
+    f=get_se_pbs_path(run, expname, ccd, typ=typ)
+    f=f[0:f.rfind('.')]+'-minion.sh'
     return f
 
 
