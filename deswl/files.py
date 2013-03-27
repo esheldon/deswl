@@ -1970,7 +1970,7 @@ def get_se_minion_path(run, expname, ccd, typ='fullpipe'):
     For calling deswl-run from mpi workers. Sets up environment.
     """
     f=get_se_pbs_path(run, expname, ccd, typ=typ)
-    f=f[0:f.rfind('.')]+'-minion.sh'
+    f=f[0:f.rfind('.')]+'-minion.pbs'
     return f
 
 
