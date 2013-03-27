@@ -14,6 +14,9 @@ config:
     write config files and scripts for every ccd.
 minions:
     A big mpi job that runs all the ccd scripts
+check:
+    Write out by-exposure checker pbs scripts.  These can be submitted
+    one-by-one or you can use the minions checker
 reduce:
     Reduce the check files
 """
@@ -28,7 +31,7 @@ from optparse import OptionParser
 parser = OptionParser(__doc__)
 parser.add_option("-q","--queue",default='serial', 
                   help="queue for processing %default")
-parser.add_option("-t","--types",default='config,minions,reduce', 
+parser.add_option("-t","--types",default='config,minions,check,reduce', 
                   help="types to write, default %default")
 
 
@@ -73,7 +76,7 @@ print >>stderr,"Writing badlist:",badfile
 eu.io.write(badfile,badlist,clobber=True)\n""".format(run=run,
                                          expected_num=expected_num)
 
-    d=deswl.files.get_pbs_dir(run)
+    d=deswl.files.get_pbs_run_dir(run)
     f=os.path.join(d,'check-reduce.py')
     print >>stderr,"writing check reduce script:",f
 
@@ -82,6 +85,30 @@ eu.io.write(badfile,badlist,clobber=True)\n""".format(run=run,
         fobj.write(text)
 
 
+
+def write_me_checkers(cfobj,queue):
+    raise RuntimeError("implement me checkers")
+
+def write_se_checkers(cfobj, queue):
+    # every class must have the get_config_data method
+    print >>stderr,"getting ccd data"
+    flists=cfobj.get_config_data()
+
+    # number of exposures
+    ntot=len(flists)
+    modnum=ntot/10
+
+    run=flists[0]['run']
+
+    print >>stderr,'writing scripts for',ntot,'ccds'
+    for i,fd in enumerate(flists):
+        expname=fd['expname']
+        ccd=fd['ccd']
+        job=deswl.generic.GenericSEPBSJob(run, expname, ccd, queue=queue)
+        if ((i+1) % modnum) == 0:
+            print >>stderr,'%d/%d %s' % (i+1,ntot,job['check_file'])
+
+        job.write(check=True)
 
 
 def main():
@@ -97,14 +124,16 @@ def main():
 
     rc=deswl.files.Runconfig(run)
 
+    queue=options.queue
+
+    is_se=True
     if rc['run_type'] == 'sse':
         cfobj = deswl.modules.shapelets.ShapeletsSEConfig(run, 
-                                                          queue=options.
-                                                          queue)
+                                                          queue=queue)
     elif rc['run_type'] == 'impyp':
-        cfobj = deswl.modules.impyp.ImpypConfig(run, queue=options.queue)
+        cfobj = deswl.modules.impyp.ImpypConfig(run, queue=queue)
     elif rc['run_type'] == 'am':
-        cfobj = deswl.modules.am.AMConfig(run, queue=options.queue)
+        cfobj = deswl.modules.am.AMConfig(run, queue=queue)
     else:
         raise ValueError("unsupported run type: '%s'" % rc['run_type'])
 
@@ -113,6 +142,15 @@ def main():
         # write all the config files by ccd
         print >>stderr,"writing all config and script filescmds"
         cfobj.write()
+
+    if 'check' in types:
+        print >>stderr,"writing the check scripts"
+
+        if is_se:
+            write_se_checkers(cfobj,queue)
+        else:
+            write_me_checkers(cfobj,queue)
+
 
     if 'minions' in types:
         cfobj.write_minions()
