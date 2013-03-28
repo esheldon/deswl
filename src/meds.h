@@ -51,6 +51,11 @@
    // get the weight image
    struct meds_cutout *wcutout=meds_get_weight_cutout(meds, iobj, icutout);
 
+   // get the seg map: note type is meds_icutout
+   struct meds_icutout *scutout=meds_get_seg_cutout(meds, iobj, icutout);
+   printf("center pixel seg [%lf,%lf]: %g\n", 
+       rowcen, colcen, CUTOUT_GET(scutout, (int)rowcen, (int)colcen));
+
    // using the pointer interface; good if you have your own image library
    long nrow=0, ncol=0;
    double *pix=meds_get_cutoutp(meds, iobj, icutout, &nrow, &ncol);
@@ -102,6 +107,7 @@
    // free the cutout structures.  They are set to NULL.
    cutout  = meds_cutout_free(cutout);
    wcutout = meds_cutout_free(wcutout);
+   scutout = meds_icutout_free(scutout);
    mosaic  = meds_cutout_free(mosaic);
    wmosaic = meds_cutout_free(wmosaic);
 
