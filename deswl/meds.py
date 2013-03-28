@@ -67,6 +67,9 @@ class MEDS(object):
     # get a cutout for the weight map
     wt=m.get_cutout(35,3,type='weight')
 
+    # get a cutout for the segmentation map
+    seg=m.get_cutout(35,3,type='seg')
+
     # get the source filename for cutout 3 for object 35
     fname=m.get_source_path(35,3)
 
@@ -286,6 +289,8 @@ class MEDS(object):
             return "image_cutouts"
         elif type=="weight":
             return "weight_cutouts"
+        elif type=="seg":
+            return "seg_cutouts"
         else:
             raise ValueError("bad cutout type '%s'" % type)
 
