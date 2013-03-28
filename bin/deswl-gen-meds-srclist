@@ -23,7 +23,7 @@ def main():
     coadd_run=args[1]
     band=args[2]
 
-    cf=desdb.files.Coadd(run=coadd_run,
+    cf=desdb.files.Coadd(coadd_run=coadd_run,
                          band=band)
 
     cf.load(srclist=True)
@@ -42,6 +42,8 @@ def main():
     print 'writing:',srclist
     with open(srclist,'w') as fobj:
         for r in cf.srclist:
-            fobj.write('%s %s\n' % (r['red_image'],r['red_bkg']))
+            line='%s %s %s\n'
+            line = line % (r['red_image'],r['red_bkg'],r['red_seg'])
+            fobj.write(line)
                          
 main()

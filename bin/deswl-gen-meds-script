@@ -15,8 +15,6 @@ import desdb
 from optparse import OptionParser
 parser = OptionParser(__doc__)
 
-parser.add_option('--whose',default='wlpipe',
-                  help="Code owner, default %default")
 parser.add_option('--vers',default='work',
                   help="Code version, default %default")
 
@@ -34,8 +32,8 @@ _template="""#!/bin/bash
 # in production this script is called by a pbs submit script and the
 # stderr is written to a log file (meds_log)
 
-module unload shapelets-{whose} && module load shapelets-{whose}/{vers}
-module unload deswl-{whose} && module load deswl-{whose}/{vers}
+module unload shapelets && module load shapelets/{vers}
+module unload deswl && module load deswl/{vers}
 
 coadd_file="{coadd_image}"
 coaddcat_file="{coadd_cat}"
@@ -109,21 +107,21 @@ def main():
     conf=deswl.files.read_meds_config(medsconf)
 
     df=desdb.files.DESFiles()
-    cf=desdb.files.Coadd(run=coadd_run, band=band)
+    cf=desdb.files.Coadd(coadd_run=coadd_run, band=band)
     cf.load()
 
     coadd_image=df.url(type='coadd_image',
-                       run=coadd_run,
+                       coadd_run=coadd_run,
                        tilename=cf['tilename'],
                        band=band)
     coadd_cat=df.url(type='coadd_cat',
-                     run=coadd_run,
+                     coadd_run=coadd_run,
                      tilename=cf['tilename'],
                      band=band)
 
     meds_srclist=df.url(medsconf=medsconf,
                         type='meds_srclist',
-                        coaded_run=coadd_run,
+                        coadd_run=coadd_run,
                         tilename=cf['tilename'],
                         band=band)
     meds_input=df.url(medsconf=medsconf,
@@ -147,7 +145,6 @@ def main():
 
     text=_template.format(medsconf=medsconf,
                           vers=options.vers,
-                          whose=options.whose,
                           coadd_image=coadd_image,
                           coadd_cat=coadd_cat,
                           meds_input=meds_input,
@@ -159,7 +156,7 @@ def main():
 
     script_file=df.url(medsconf=medsconf,
                        type='meds_script',
-                       coass_run=coadd_run,
+                       coadd_run=coadd_run,
                        tilename=cf['tilename'],
                        band=band)
 

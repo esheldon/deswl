@@ -15,7 +15,7 @@ from optparse import OptionParser
 parser = OptionParser(__doc__)
 
 parser.add_option("-q","--queue",default='serial', 
-                  help="queue for processing %default")
+                  help="queue for processing, default: %default")
 
 # 8 hours should be more than enough, but hard to say.  Jobs
 # run very slowly in the serial queue due to memory pressure
@@ -50,7 +50,7 @@ def main():
     band=args[2]
 
     df=desdb.files.DESFiles()
-    cf=desdb.files.Coadd(run=coadd_run, band=band)
+    cf=desdb.files.Coadd(coadd_run=coadd_run, band=band)
     cf.load()
 
     script_file=df.url(medsconf=medsconf,

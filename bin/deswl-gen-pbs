@@ -44,8 +44,8 @@ import glob
 import deswl
 import esutil as eu
 
-goodfile=deswl.files.collated_path('{run}', 'goodlist',ftype='yaml')
-badfile=deswl.files.collated_path('{run}', 'badlist',ftype='yaml')
+goodfile=deswl.files.collated_path('{run}', 'goodlist',ftype='json')
+badfile=deswl.files.collated_path('{run}', 'badlist',ftype='json')
 
 files=glob.glob('byexp/*/*-check.json')
 if len(files) != {expected_num}:
