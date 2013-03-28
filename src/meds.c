@@ -50,6 +50,18 @@ static double *alloc_doubles(long n) {
     }
     return ptr;
 }
+static int *alloc_ints(long n) {
+    int *ptr=malloc(n*sizeof(int));
+    if (!ptr) {
+        fprintf(stderr,"could not %ld ints\n", n);
+        exit(1);
+    }
+    for (long i=0; i<n; i++) {
+        ptr[i]=MEDS_DEFVAL;
+    }
+    return ptr;
+}
+
 
 static void print_doubles(const double* vals, long n, const char *name,
                           FILE* stream)
@@ -174,6 +186,25 @@ static int fits_load_sub_dbl(fitsfile *fits,
     }
     return 1;
 }
+static int fits_load_sub_int(fitsfile *fits, 
+                             LONGLONG row,
+                             LONGLONG nelem,
+                             int *data)
+{
+    int status=0;
+    LONGLONG firstpixels[1];
+
+    // note col comes first
+    firstpixels[0] = 1+row;
+
+    if (fits_read_pixll(fits, TINT, firstpixels, nelem,
+                        0, data, NULL, &status)) {
+        fits_report_error(stderr,status);
+        return 0;
+    }
+    return 1;
+}
+
 
 // size of a fixed-length array column (per row)
 static long get_array_col_size(fitsfile *fits, const char *colname)
@@ -461,6 +492,7 @@ void meds_image_info_print(const struct meds_image_info *self, FILE* stream)
 {
     fprintf(stream,"image_path: %s\n", self->image_path);
     fprintf(stream,"sky_path:   %s\n", self->sky_path);
+    fprintf(stream,"seg_path:   %s\n", self->seg_path);
 }
 
 
@@ -487,6 +519,8 @@ static struct meds_info_cat *meds_info_cat_new(long size, long namelen_max)
     for (long i=0; i<size; i++) {
         info->image_path = calloc(namelen_max, sizeof(char));
         info->sky_path = calloc(namelen_max, sizeof(char));
+        info->seg_path = calloc(namelen_max, sizeof(char));
+
         if (!info->image_path || !info->sky_path) {
             fprintf(stderr,"failed to allocate filename of size %ld\n", namelen_max);
             exit(1);
@@ -505,6 +539,7 @@ static struct meds_info_cat *meds_info_cat_free(struct meds_info_cat *self)
         for (long i=0; i<self->size; i++) {
             free(info->image_path);
             free(info->sky_path);
+            free(info->seg_path);
             info++;
         }
         free(self->data);
@@ -537,6 +572,13 @@ static int load_image_info(struct meds_info_cat *self, fitsfile *fits)
             fits_report_error(stderr,status);
             return 0;
         }
+        colnum=3;
+        if (fits_read_col_str(fits, colnum, row, firstelem, 1,
+                              nulstr, &info->seg_path, NULL, &status)) {
+            fits_report_error(stderr,status);
+            return 0;
+        }
+
 
         info++;
     }
@@ -548,11 +590,14 @@ static long get_namelen_max(fitsfile *fits)
 {
     long src_name_len = get_array_col_size(fits,"image_path");
     long sky_name_len = get_array_col_size(fits,"sky_path");
-    long namelen_max;
+    long seg_name_len = get_array_col_size(fits,"seg_path");
+    long namelen_max=src_name_len;
+
     if (sky_name_len > src_name_len) {
         namelen_max=sky_name_len;
-    } else {
-        namelen_max=src_name_len;
+    }
+    if (seg_name_len > src_name_len) {
+        namelen_max=seg_name_len;
     }
 
     return namelen_max;
@@ -602,6 +647,24 @@ struct meds_cutout *meds_cutout_free(struct meds_cutout *self)
     }
     return self;
 }
+struct meds_icutout *meds_icutout_free(struct meds_icutout *self)
+{
+    if (self) {
+        if (self->rows) {
+            if (self->rows[0]) {
+                free(self->rows[0]);
+            }
+            self->rows[0]=NULL;
+
+            free(self->rows);
+            self->rows=NULL;
+        }
+        free(self);
+        self=NULL;
+    }
+    return self;
+}
+
 
 static struct meds_cutout *cutout_from_ptr(double *ptr,
                                            long ncutout,
@@ -637,6 +700,41 @@ static struct meds_cutout *cutout_from_ptr(double *ptr,
 
     return self;
 }
+static struct meds_icutout *icutout_from_ptr(int *ptr,
+                                             long ncutout,
+                                             long nrow,   // per cutout
+                                             long ncol)   // per cutout
+{
+    struct meds_icutout *self=calloc(1, sizeof(struct meds_icutout));
+    if (!self) {
+        fprintf(stderr,"failed to allocate struct meds_icutout\n");
+        exit(1);
+    }
+
+    self->ncutout=ncutout;
+
+    self->mosaic_size = ncutout*nrow*ncol;
+    self->mosaic_nrow = ncutout*nrow;
+    self->mosaic_ncol = ncol;
+
+    self->cutout_size = nrow*ncol;
+    self->cutout_nrow=nrow;
+    self->cutout_ncol=ncol;
+
+    self->rows = calloc(self->mosaic_nrow,sizeof(int *));
+    if (!self->rows) {
+        fprintf(stderr,"could not allocate %ld image rows\n", self->mosaic_nrow);
+        exit(1);
+    }
+
+    self->rows[0] = ptr;
+    for(long i = 1; i < self->mosaic_nrow; i++) {
+        self->rows[i] = self->rows[i-1] + self->cutout_ncol;
+    }
+
+    return self;
+}
+
 
 
 
@@ -864,6 +962,25 @@ static double *get_cutout_data_dbl(const struct meds *self,
     }
     return pix;
 }
+static int *get_cutout_data_int(const struct meds *self,
+                                   const char *extname,
+                                   long start_row, long npix)
+{
+    int status=0;
+    int *pix=alloc_ints(npix);
+
+    if (fits_movnam_hdu(self->fits, IMAGE_HDU, (char*)extname, 0, &status)) {
+        fits_report_error(stderr,status);
+        return NULL;
+    }
+
+    if (!fits_load_sub_int(self->fits, start_row, npix, pix)) {
+        free(pix);
+        pix=NULL;
+    }
+    return pix;
+}
+
 
 // internal routine to get info for a cutout and read from
 // the specified extension
@@ -896,6 +1013,36 @@ _meds_get_cutoutp_dbl_bail:
     }
     return pix;
 }
+static int *get_cutoutp_int(const struct meds *self,
+                            const char *extname,
+                            long iobj,
+                            long icutout,
+                            long *nrow,
+                            long *ncol)
+{
+    int *pix=NULL;
+
+    const struct meds_obj *obj=check_iobj_icutout(self, iobj, icutout);
+    if (!obj) {
+        goto _meds_get_cutoutp_int_bail;
+    }
+
+    long start_row=obj->start_row[icutout];
+
+    *nrow=obj->box_size;
+    *ncol=obj->box_size;
+    long npix = (*nrow)*(*ncol);
+
+    pix=get_cutout_data_int(self, extname, start_row, npix);
+
+_meds_get_cutoutp_int_bail:
+    if (!pix) {
+        *nrow=0;
+        *ncol=0;
+    }
+    return pix;
+}
+
 
 // internal routine to get info for a mosaic and read from
 // the specified extension
@@ -931,6 +1078,39 @@ _meds_get_mosaicp_dbl_bail:
     }
     return pix;
 }
+static int *get_mosaicp_int(const struct meds *self,
+                            const char *extname,
+                            long iobj,
+                            long *ncutout,
+                            long *nrow,
+                            long *ncol)
+{
+    int *pix=NULL;
+
+    const struct meds_obj *obj=check_iobj_icutout(self, iobj, 0);
+    if (!obj) {
+        goto _meds_get_mosaicp_int_bail;
+    }
+
+    long start_row=obj->start_row[0];
+
+    *ncutout = obj->ncutout;
+    *nrow    = obj->box_size;
+    *ncol    = obj->box_size;
+
+    long npix = (*nrow)*(*ncol)*(*ncutout);
+
+    pix=get_cutout_data_int(self, extname, start_row, npix);
+
+_meds_get_mosaicp_int_bail:
+    if (!pix) {
+        *ncutout=0;
+        *nrow=0;
+        *ncol=0;
+    }
+    return pix;
+}
+
 
 
 
@@ -974,6 +1154,25 @@ double *meds_get_weight_mosaicp(const struct meds *self,
 {
     return get_mosaicp_dbl(self,"weight_cutouts",iobj,ncutout,nrow,ncol);
 }
+
+int *meds_get_seg_cutoutp(const struct meds *self,
+                          long iobj,
+                          long icutout,
+                          long *nrow,
+                          long *ncol)
+{
+    return get_cutoutp_int(self,"seg_cutouts",iobj,icutout,nrow,ncol);
+}
+
+int *meds_get_seg_mosaicp(const struct meds *self,
+                          long iobj,
+                          long *ncutout,
+                          long *nrow,
+                          long *ncol)
+{
+    return get_mosaicp_int(self,"seg_cutouts",iobj,ncutout,nrow,ncol);
+}
+
 
 
 // cutouts as meds_cutout structures
@@ -1030,6 +1229,34 @@ struct meds_cutout *meds_get_weight_mosaic(const struct meds *self, long iobj)
     }
 
     struct meds_cutout *cutout=cutout_from_ptr(pix, ncutout, nrow, ncol);
+    return cutout;
+}
+
+struct meds_icutout *meds_get_seg_cutout(const struct meds *self,
+                                        long iobj,
+                                        long icutout)
+{
+
+    long nrow=0, ncol=0;
+    int *pix=meds_get_seg_cutoutp(self, iobj, icutout, &nrow, &ncol);
+    if (!pix) {
+        return NULL;
+    }
+
+    struct meds_icutout *cutout=icutout_from_ptr(pix, 1, nrow, ncol);
+    return cutout;
+}
+
+struct meds_icutout *meds_get_seg_mosaic(const struct meds *self, long iobj)
+{
+
+    long ncutout=0, nrow=0, ncol=0;
+    int *pix=meds_get_seg_mosaicp(self, iobj, &ncutout, &nrow, &ncol);
+    if (!pix) {
+        return NULL;
+    }
+
+    struct meds_icutout *cutout=icutout_from_ptr(pix, ncutout, nrow, ncol);
     return cutout;
 }
 

@@ -165,6 +165,7 @@ struct meds_image_info {
     long size;
     char* image_path;
     char* sky_path;
+    char* seg_path;
 };
 struct meds_info_cat {
     long size;
@@ -247,6 +248,20 @@ double *meds_get_weight_mosaicp(const struct meds *self,
                                 long *nrow,
                                 long *ncol);
 
+// same but for seg image cutouts
+int *meds_get_seg_cutoutp(const struct meds *self,
+                          long iobj,
+                          long icutout,
+                          long *nrow,
+                          long *ncol);
+
+int *meds_get_seg_mosaicp(const struct meds *self,
+                          long iobj,
+                          long *ncutout,
+                          long *nrow,
+                          long *ncol);
+
+
 // get info for the source image of the indicated cutout
 const struct meds_image_info *meds_get_source_info(const struct meds *self,
                                                    long iobj,
@@ -290,6 +305,19 @@ struct meds_cutout {
     long cutout_ncol;       // per cutout
     double **rows;
 };
+struct meds_icutout {
+    long ncutout;
+
+    long mosaic_size;       // ncutout*nrow*ncol
+    long mosaic_nrow;       // ncutout*nrow
+    long mosaic_ncol;       // ncol
+
+    long cutout_size;       // nrow*ncol
+    long cutout_nrow;       // per cutout
+    long cutout_ncol;       // per cutout
+    int **rows;
+};
+
 
 #define CUTOUT_SIZE(im) ((im)->cutout_size)
 #define CUTOUT_NROW(im) ((im)->cutout_nrow)
@@ -327,8 +355,16 @@ struct meds_cutout *meds_get_weight_cutout(const struct meds *self,
 struct meds_cutout *meds_get_weight_mosaic(const struct meds *self,
                                            long iobj);
 
+struct meds_icutout *meds_get_seg_cutout(const struct meds *self,
+                                         long iobj,
+                                         long icutout);
+struct meds_icutout *meds_get_seg_mosaic(const struct meds *self,
+                                         long iobj);
+
+
 // returns NULL, use like this
 //   cutout=meds_cutout_free(cutout);
 struct meds_cutout *meds_cutout_free(struct meds_cutout *self);
+struct meds_icutout *meds_icutout_free(struct meds_icutout *self);
 
 #endif

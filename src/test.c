@@ -23,13 +23,18 @@ void test_cutout(struct meds *meds)
 
             struct meds_cutout *cut     = meds_get_cutout(meds, iobj, icutout);
             struct meds_cutout *wcut    = meds_get_weight_cutout(meds, iobj, icutout);
+            struct meds_icutout *scut   = meds_get_seg_cutout(meds, iobj, icutout);
+
             struct meds_cutout *mosaic  = meds_get_mosaic(meds, iobj);
             struct meds_cutout *wmosaic = meds_get_weight_mosaic(meds, iobj);
+            struct meds_icutout *smosaic = meds_get_seg_mosaic(meds, iobj);
 
             assert(cut);
             assert(wcut);
+            assert(scut);
             assert(mosaic);
             assert(wmosaic);
+            assert(smosaic);
 
             printf("    cutout %ld nrow: %ld ncol: %ld\n", 
                     icutout, CUTOUT_NROW(cut), CUTOUT_NCOL(cut));
@@ -50,6 +55,7 @@ void test_cutout(struct meds *meds)
             printf("        from weight mosaic:        %g\n", 
                     MOSAIC_GET(wmosaic, icutout, row, col));
 
+
             double drow=0,dcol=0;
             meds_get_cutout_cen(meds, iobj, icutout, &drow, &dcol);
             long irow=(int)drow;
@@ -60,6 +66,12 @@ void test_cutout(struct meds *meds)
                     CUTOUT_GET(cut, irow, icol));
             printf("        from mosaic:        %g\n", 
                     MOSAIC_GET(mosaic, icutout, irow, icol));
+
+            printf("    cen seg pixel [%lf,%lf]:\n", drow, dcol);
+            printf("        from single cutout: %d\n", 
+                    CUTOUT_GET(scut, irow, icol));
+            printf("        from mosaic:        %d\n", 
+                    MOSAIC_GET(smosaic, icutout, irow, icol));
 
 
             assert(ncutout == MOSAIC_NCUTOUT(mosaic));
@@ -79,6 +91,9 @@ void test_cutout(struct meds *meds)
             wcut=meds_cutout_free(wcut);
             mosaic=meds_cutout_free(mosaic);
             wmosaic=meds_cutout_free(wmosaic);
+
+            scut=meds_icutout_free(scut);
+            smosaic=meds_icutout_free(smosaic);
 
             assert(NULL==cut);
 

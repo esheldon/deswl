@@ -324,8 +324,8 @@ void set_box_sizes(struct cat *self, int minsize, int maxsize)
 int main(int argc, char **argv)
 {
     if (argc < 4) {
-        printf(stderr,"usage: make-meds-input fitsfile minsize maxsize\n");
-        printf(stderr,"  results go to stdout\n");
+        fprintf(stderr,"usage: make-meds-input fitsfile minsize maxsize\n");
+        fprintf(stderr,"  results go to stdout\n");
         exit(1);
     }
 
