@@ -10,6 +10,7 @@ int main(int argc, char **argv)
         printf("usage: test meds_file type\n");
         printf("   type=1 just run through cutouts\n");
         printf("   type=2 run through cutouts and weights\n");
+        printf("   type=3 run through cutouts, weights, and seg maps\n");
         exit(1);
     }
 
@@ -26,8 +27,10 @@ int main(int argc, char **argv)
 
     struct meds_cutout *mosaic=NULL;
     struct meds_cutout *wmosaic=NULL;
+    struct meds_icutout *smosaic=NULL;
 
     long nobj=meds_get_size(meds);
+    printf("running through %ld objects\n", nobj);
     for (long iobj=0; iobj<nobj; iobj++) {
         if (meds_get_ncutout(meds, iobj) > 0) {
 
@@ -35,10 +38,16 @@ int main(int argc, char **argv)
             if (type==2) {
                 wmosaic=meds_get_weight_mosaic(meds, iobj);
             }
+            if (type==3) {
+                smosaic=meds_get_seg_mosaic(meds, iobj);
+            }
 
             mosaic=meds_cutout_free(mosaic);
             if (type==2) {
                 wmosaic=meds_cutout_free(wmosaic);
+            }
+            if (type==3) {
+                smosaic=meds_icutout_free(smosaic);
             }
         }
     }
