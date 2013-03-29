@@ -9,7 +9,7 @@ _patterns={'am':'%(run)s-%(expname)s-%(ccd)02d-am.fits',
            'stat':'%(run)s-%(expname)s-%(ccd)02d-stat.yaml',
            'log':'%(run)s-%(expname)s-%(ccd)02d.log'}
 
-class AMConfig(generic.GenericConfig):
+class AMConfig(generic.GenericScripts):
     """
     to create and write the "config" files, which hold the command
     to run, input/output file lists, and other metadata.

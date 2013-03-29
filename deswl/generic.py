@@ -45,122 +45,10 @@ from sys import stderr
 import esutil as eu
 import deswl
 
-def get_run_command(config_file):
-    return 'deswl-run %s' % config_file
 
-def gendir(fileclass, run, expname, **keys):
+class GenericScripts(dict):
     """
-    Generate a directory url.
-
-    The format is $DESDATA/{fileclass}/{run}/{expname}
-    $DESDATA may be in hdfs
-
-    parameters
-    ----------
-    fileclass: string
-        The fileclass, e.g. 'am' etc.
-    run: string
-        The run identifier
-    expname:
-        The DES exposure name
-    """
-
-    rundir=deswl.files.run_dir(fileclass, run, **keys)
-    dir=os.path.join(rundir, expname)
-    return dir
-
-def genurl(pattern, fileclass, run, expname, **keys):
-    """
-    Generate a url using the input pattern.
-
-    parameters
-    ----------
-    pattern: string 
-        A patterns to convert run, expname, etc. into a file url.  If ccd is
-        sent in the keywords it will also be used.
-    fileclass: string
-        The fileclass, e.g. 'impyp' or 'am' etc.
-    run: string
-        The run identifier
-    expname:
-        The DES exposure name
-    ccd: integer, optional
-        The ccd number.
-    """
-
-    ccd=keys.get('ccd',None)
-    if ccd is not None:
-        basename=pattern % {'run':run,
-                            'expname':expname,
-                            'ccd':int(ccd)}
-    else:
-        basename=pattern % {'run':run,
-                            'expname':expname}
-
-    dir = gendir(fileclass, run, expname, **keys)
-
-    url = os.path.join(dir, basename)
-    return url
-
-def generate_filenames(patterns, fileclass, run, expname, **keys):
-    """
-    Generate all files for the input pattern dictionary.
-
-    parameters
-    ----------
-    patterns: dict
-        A dictionary with format patterns to convert run, expname, etc.  into a
-        file url.  If ccd is sent in the keywords it will also be used.
-    fileclass: string
-        The fileclass, e.g. 'impyp' or 'am' etc.
-    run: string
-        The run identifier
-    expname:
-        The DES exposure name
-    ccd: integer, optional
-        The ccd number.
-    """
-    fdict={}
-    for ftype,pattern in patterns.iteritems():
-        fdict[ftype] = genurl(pattern,fileclass,run,expname,**keys)
-
-    return fdict
-
-def generate_filenames_new(run, expname, **keys):
-    """
-    Generate all files for the input pattern dictionary.
-
-    parameters
-    ----------
-    some example keywords for SE runs
-    run: string
-        The run identifier
-    expname:
-        The DES exposure name
-    ccd: integer, optional
-        The ccd number.
-
-    for me runs
-    medsconf:
-        MEDS configuration
-    tilename:
-        coadd tile name
-    band:
-        filter
-    """
-    fdict={}
-    for ftype,pattern in patterns.iteritems():
-        fdict[ftype] = genurl(pattern,fileclass,run,expname,**keys)
-
-    return fdict
-
-
-class GenericConfig(dict):
-    """
-    to create and write the "config" files, which hold the command
-    to run, input/output file lists, and other metadata.
-
-    also write script files if needed
+    to create and write the metatadata files and scripts
     """
     def __init__(self,run, **keys):
         import desdb
@@ -201,10 +89,15 @@ class GenericConfig(dict):
         i=1
         ne=len(all_fd)
         modnum=ne/10
-        for fd in all_fd:
+        for i,fd in enumerate(all_fd):
             run=fd['run']
             expname=fd['expname']
             ccd=fd['ccd']
+
+            script_file=df.url('wlpipe_se_script',
+                               run=run,
+                               expname=expname,
+                               ccd=ccd)
 
             status_file=df.url('wlpipe_se_status',
                                run=run,
@@ -220,30 +113,36 @@ class GenericConfig(dict):
                             expname=expname,
                             ccd=ccd)
 
+            fd['script'] = script_file
             fd['output_files']['log']=log_file
             fd['output_files']['meta']=meta_file
             fd['output_files']['status']=status_file
 
-            # this is in the output directory, so we are good from
-            # here on!
-            eu.ostools.makedirs_fromfile(meta_file)
+            ii=i+1
+            if ii==1 or (ii % modnum) == 0:
+                print >>stderr,"%d/%d" % (ii,ne)
+                print >>stderr,"    %s" % meta_file
+                print >>stderr,"    %s" % fd['script']
 
-            if i==1 or (i % modnum) == 0:
-                print >>stderr,"Writing config (%d/%d) %s" % (i,ne,meta_file)
+            self._write_meta_and_script_byccd(fd)
 
-            eu.io.write(meta_file, fd)
+    def _write_meta_and_script_byccd(self, fd):
 
-            script_file=fd['script']
+        # this is in the output directory, so we are good from
+        # here on!
+        meta_file=fd['output_files']['meta']
+        script_file=fd['script']
 
-            if i==1 or (i % modnum) == 0:
-                print >>stderr,"    %s" % script_file
+        eu.ostools.makedirs_fromfile(meta_file)
+        eu.ostools.makedirs_fromfile(script_file)
 
-            with open(script_file,'w') as fobj:
-                script_data=self.get_script(fd)
-                fobj.write(script_data)
-            os.system('chmod u+x %s' % script_file)
+        eu.io.write(meta_file, fd)
 
-            i += 1
+        with open(script_file,'w') as fobj:
+            script_data=self.get_script(fd)
+            fobj.write(script_data)
+        os.system('chmod u+x %s' % script_file)
+
 
 
 
@@ -331,7 +230,8 @@ class GenericConfig(dict):
 
         queue=self.get('queue','regular')
 
-        job_file=deswl.files.get_minions_pbs_file(self['run'])
+        job_file=self._df.url(type='wlpipe_minions',
+                              run=self['run'])
 
         minions_text="""#!/bin/bash -l
 #PBS -N {job_name}
@@ -377,7 +277,8 @@ echo "done minions"
         walltime='00:30:00'
         queue=self.get('queue','regular')
 
-        job_file=deswl.files.get_minions_check_pbs_file(self['run'])
+        job_file=self._df.url(type='wlpipe_minions_check',
+                              run=self['run'])
 
         minions_text="""#!/bin/bash -l
 #PBS -N {job_name}
@@ -742,14 +643,24 @@ class GenericSEPBSJob(dict):
     Send check=True to generate the check file instead of the processing file
     """
     def __init__(self, run, expname, ccd, **keys):
+        import desdb
+
         self['run'] = run
         self['expname'] = expname
         self['ccd'] = ccd
         self['queue'] = keys.get('queue','serial')
 
-        self['job_file']= \
-            deswl.files.get_se_pbs_path(run, expname, ccd)
-        self['check_file'] = self['job_file'].replace('.pbs','-check.pbs')
+        df=desdb.files.DESFiles()
+        self._df=df
+
+        self['job_file']= df.url(type='wlpipe_se_script',
+                                 run=run,
+                                 expname=expname,
+                                 ccd=ccd)
+        self['check_file']= df.url(type='wlpipe_se_check',
+                                   run=run,
+                                   expname=expname,
+                                   ccd=ccd)
 
         self.rc=deswl.files.Runconfig(self['run'])
 
@@ -786,22 +697,26 @@ class GenericSEPBSJob(dict):
         rc=deswl.files.Runconfig(self['run'])
 
         # naming scheme for this generic type figured out from run
-        conf=deswl.files.get_se_config_path(run, expname, ccd=ccd)
+        df=self._df
+        meta=df.url(type='wlpipe_se_meta',
+                    run=run,
+                    expname=expname,
+                    ccd=ccd)
         if check:
-            chk=conf.replace('.yaml','-check.json')
-            err=conf.replace('.yaml','-check.err')
+            chk=job_file[0:job_file.rfind('.')]+'.json'
+            err=job_file[0:job_file.rfind('.')]+'.err'
 
             cmd="""
-conf="{conf}"
+meta="{meta}"
 chk="{chk}"
 err="{err}"
-deswl-check "$conf" 1> "$chk" 2> "$err"
+deswl-check "$meta" 1> "$chk" 2> "$err"
 """
-            cmd=cmd.format(conf=conf, chk=chk, err=err)
+            cmd=cmd.format(meta=meta, chk=chk, err=err)
         else:
             # log is now automatically created by GenericProcessor
             # and written into hdfs
-            cmd=get_run_command(conf)
+            cmd=get_run_command(meta)
 
         # need -l for login shell because of all the crazy module stuff
         # we have to load
@@ -838,4 +753,9 @@ fi
             fobj.write(text)
 
         os.system('chmod u+x %s' % job_file)
+
+
+def get_run_command(config_file):
+    return 'deswl-run %s' % config_file
+
 

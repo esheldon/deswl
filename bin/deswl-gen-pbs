@@ -31,7 +31,7 @@ from optparse import OptionParser
 parser = OptionParser(__doc__)
 parser.add_option("-q","--queue",default='serial', 
                   help="queue for processing %default")
-parser.add_option("-t","--types",default='config,minions,check,reduce', 
+parser.add_option("-t","--types",default='scripts,minions,check,reduce', 
                   help="types to write, default %default")
 
 
@@ -41,11 +41,13 @@ def write_reducer(run,expected_num):
 # $DESDATA/fileclass/run/collated/
 from sys import stderr
 import glob
-import deswl
+import desdb
 import esutil as eu
 
-goodfile=deswl.files.collated_path('{run}', 'goodlist',ftype='json')
-badfile=deswl.files.collated_path('{run}', 'badlist',ftype='json')
+run="{run}"
+df=desdb.files.DESFiles()
+goodfile=df.url(type='wlpipe_collated_goodlist', run=run)
+badfile=df.url(type='wlpipe_collated_badlist', run=run)
 
 files=glob.glob('byexp/*/*-check.json')
 if len(files) != {expected_num}:
@@ -105,7 +107,7 @@ def write_se_checkers(cfobj, queue):
         expname=fd['expname']
         ccd=fd['ccd']
         job=deswl.generic.GenericSEPBSJob(run, expname, ccd, queue=queue)
-        if ((i+1) % modnum) == 0:
+        if i==0 or (((i+1) % modnum) == 0):
             print >>stderr,'%d/%d %s' % (i+1,ntot,job['check_file'])
 
         job.write(check=True)
@@ -128,8 +130,8 @@ def main():
 
     is_se=True
     if rc['run_type'] == 'sse':
-        cfobj = deswl.modules.shapelets.ShapeletsSEConfig(run, 
-                                                          queue=queue)
+        cfobj = deswl.modules.shapelets.ShapeletsSEScripts(run, 
+                                                           queue=queue)
     elif rc['run_type'] == 'impyp':
         cfobj = deswl.modules.impyp.ImpypConfig(run, queue=queue)
     elif rc['run_type'] == 'am':

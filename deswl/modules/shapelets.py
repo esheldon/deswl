@@ -24,19 +24,19 @@ SE_FILETYPES={'stars':{'ext':'fits'},
 
 SE_TIMEOUT=15*60 # 15 minutes
 
-class ShapeletsSEConfig(generic.GenericConfig):
+class ShapeletsSEScripts(generic.GenericScripts):
     """
     to create and write the "config" files, which hold the command
     to run, input/output file lists, and other metadata.
     """
     def __init__(self, run, **keys):
-        super(ShapeletsSEConfig,self).__init__(run)
+        super(ShapeletsSEScripts,self).__init__(run)
 
     def write(self):
         """
         Write all config files for expname/ccd
         """
-        super(ShapeletsSEConfig,self).write_byccd()
+        super(ShapeletsSEScripts,self).write_byccd()
 
     def get_config_data(self):
         if self.config_data is not None:
@@ -57,18 +57,9 @@ class ShapeletsSEConfig(generic.GenericConfig):
                                  'cat':fd['cat_url']}
             fd['output_files']=self.get_output_filenames(expname=expname,
                                                          ccd=ccd)
-            """
-                generic.generate_filenames(_se_patterns,
-                                           'shapelets',
-                                           self['run'],
-                                           expname,
-                                           ccd=ccd)
-            """
 
             fd['timeout'] = SE_TIMEOUT
 
-            script_file=self.get_script_file(fd)
-            fd['script'] = script_file
 
         self.config_data = flists
         return flists
@@ -87,11 +78,6 @@ class ShapeletsSEConfig(generic.GenericConfig):
                                         ext=ext)
         return fdict
 
-    def get_script_file(self, fdict):
-        script_file=deswl.files.get_se_script_path(self['run'],
-                                                   fdict['expname'],
-                                                   fdict['ccd'])
-        return script_file
 
     def get_script(self, fdict):
         rc=self.rc
@@ -105,6 +91,17 @@ class ShapeletsSEConfig(generic.GenericConfig):
 
         # note only the {key} are set at this time
         text = """#!/bin/bash
+#PBS -q serial
+#PBS -l nodes=1:ppn=1
+#PBS -l walltime=30:00
+#PBS -N %(job_name)s
+#PBS -j oe
+#PBS -o %(job_file)s.pbslog
+#PBS -V
+#PBS -A des
+
+# If all goes as planned, there will be no output
+# from this at all
 %(shapelets_load)s
 
 wl_config=%(wl_config)s
@@ -119,12 +116,16 @@ psf=%(psf)s
 shear=%(shear)s
 timeout=%(timeout)d
 
-status_file="%(status)s"
+status_file=%(status)s
+log_file=%(log)s
 
 export OMP_NUM_THREADS=1
 
+echo "host: $(hostname)" > $log_file
+
 for prog in findstars measurepsf measureshear; do
-    echo "running $prog"
+    echo "running $prog" >> $log_file
+
     timeout $timeout $SHAPELETS_DIR/bin/$prog  \\
         $wl_config            \\
         +$wl_config_desdm     \\
@@ -135,19 +136,21 @@ for prog in findstars measurepsf measureshear; do
         fitpsf_file=$fitpsf   \\
         psf_file=$psf         \\
         shear_file=$shear     \\
-        output_dots=false
+        output_dots=false     \\
+            2>&1 >> $log_file
+
     exit_status=$?
     if [[ $exit_status != "0" ]]; then
-        echo "error running $prog: $err"
+        echo "error running $prog: $err" >> $log_file
         break
     fi
 done
 
-echo "time-seconds: $SECONDS"
+echo "time-seconds: $SECONDS" >> $log_file
 
 mess="writing status $exit_status to meds_status:
     $status_file"
-echo $mess 1>&2
+echo $mess >> $log_file
 
 echo "$exit_status" > "$status_file"
 exit $exit_status
@@ -167,6 +170,12 @@ exit $exit_status
         for k,v in fdict['output_files'].iteritems():
             allkeys[k] = v
 
+        allkeys['job_file']=fdict['script']
+
+        job_name='%s-%02d' % (fdict['expname'],fdict['ccd'])
+        job_name=job_name.replace('decam-','')
+        job_name=job_name.replace('DECam_','')
+        allkeys['job_name']=job_name
 
         text = text % allkeys
         return text
