@@ -10,8 +10,8 @@ scripts
 
 types
 -----
-config:
-    write config files and scripts for every ccd.
+scripts:
+    write meta files and scripts for every ccd.
 minions:
     A big mpi job that runs all the ccd scripts
 check:
@@ -138,9 +138,9 @@ def main():
         raise ValueError("unsupported run type: '%s'" % rc['run_type'])
 
 
-    if 'config' in types:
+    if 'scripts' in types:
         # write all the config files by ccd
-        print >>stderr,"writing all config and script filescmds"
+        print >>stderr,"writing all meta and script files"
         cfobj.write()
 
     if 'check' in types:

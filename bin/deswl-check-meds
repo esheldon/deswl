@@ -7,6 +7,7 @@ import os, sys
 from sys import stdout, stderr
 import deswl
 import desdb
+import json
 import yaml
 
 from optparse import OptionParser
@@ -27,7 +28,7 @@ def main():
     res=[]
     for coadd_run in coadd_runs:
         print >>stderr,coadd_run
-        cf=desdb.files.Coadd(run=coadd_run, band=band)
+        cf=desdb.files.Coadd(coadd_run=coadd_run, band=band)
         cf.load()
 
         info={'exit_status':255,
@@ -42,7 +43,7 @@ def main():
         for i,type in enumerate(ftypes):
             url=df.url(medsconf=medsconf,
                        type=type,
-                       run=coadd_run,
+                       coadd_run=coadd_run,
                        tilename=cf['tilename'],
                        band=band)
 
@@ -68,5 +69,6 @@ def main():
 
         res.append(info)
      
-    yaml.dump(res, stream=stdout)
+    json.dump(res, stdout, indent=1, separators=(',', ':'))
+
 main()

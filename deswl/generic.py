@@ -29,11 +29,11 @@ In short
 The GenericProcessor will send stdout and stderr for process, and
 some other diagnostics to the 'log' entry in config['output_files']['log']
 
-    - .../DES/{fileclass}/{run}/{expname}/{run}-{expname}-{ccd}.log
+    - $DESDATA/wlpipe//{run}/{expname}/{run}-{expname}-{ccd}.log
 
 Similarly, the GenericProcessor writes the stat file
 
-    - .../DES/{fileclass}/{run}/{expname}/{run}-{expname}-{ccd}-stat.yaml
+    - $DESDATA/wlpipe//{run}/{expname}/{run}-{expname}-{ccd}-stat.yaml
 
 The stat file holds the exit_status and whatever was in the config file.
 
@@ -44,9 +44,6 @@ import os
 from sys import stderr
 import esutil as eu
 import deswl
-
-_url_pattern_byexp='%(run)s-%(expname)s-%(ftype)s.%(ext)s'
-_url_pattern_byccd='%(run)s-%(expname)s-%(ccd)02d-%(ftype)s.%(ext)s'
 
 def get_run_command(config_file):
     return 'deswl-run %s' % config_file
@@ -129,6 +126,34 @@ def generate_filenames(patterns, fileclass, run, expname, **keys):
 
     return fdict
 
+def generate_filenames_new(run, expname, **keys):
+    """
+    Generate all files for the input pattern dictionary.
+
+    parameters
+    ----------
+    some example keywords for SE runs
+    run: string
+        The run identifier
+    expname:
+        The DES exposure name
+    ccd: integer, optional
+        The ccd number.
+
+    for me runs
+    medsconf:
+        MEDS configuration
+    tilename:
+        coadd tile name
+    band:
+        filter
+    """
+    fdict={}
+    for ftype,pattern in patterns.iteritems():
+        fdict[ftype] = genurl(pattern,fileclass,run,expname,**keys)
+
+    return fdict
+
 
 class GenericConfig(dict):
     """
@@ -138,6 +163,7 @@ class GenericConfig(dict):
     also write script files if needed
     """
     def __init__(self,run, **keys):
+        import desdb
         self['run'] = run
         for k,v in keys.iteritems():
             self[k] = v
@@ -147,6 +173,8 @@ class GenericConfig(dict):
 
         self.config_data=None
         self._make_module_loads()
+
+        self._df=desdb.files.DESFiles()
 
     def _make_module_loads(self):
         for module in ['desdb','deswl','esutil']:
@@ -167,45 +195,53 @@ class GenericConfig(dict):
         also make the output directory
         """
 
+        df=self._df
 
         all_fd = self.get_config_data()
         i=1
         ne=len(all_fd)
         modnum=ne/10
         for fd in all_fd:
-            config_file=deswl.files.get_se_config_path(fd['run'],
-                                                       fd['expname'],
-                                                       fd['ccd'])
-            log_file=deswl.files.get_se_log_path(fd['run'],
-                                                 fd['expname'],
-                                                 fd['ccd'])
+            run=fd['run']
+            expname=fd['expname']
+            ccd=fd['ccd']
 
-            eu.ostools.makedirs_fromfile(config_file)
-            key=list(fd['output_files'].keys())[0]
-            eu.ostools.makedirs_fromfile(fd['output_files'][key])
+            status_file=df.url('wlpipe_se_status',
+                               run=run,
+                               expname=expname,
+                               ccd=ccd)
+
+            meta_file=df.url('wlpipe_se_meta',
+                             run=run,
+                             expname=expname,
+                             ccd=ccd)
+            log_file=df.url('wlpipe_se_log',
+                            run=run,
+                            expname=expname,
+                            ccd=ccd)
 
             fd['output_files']['log']=log_file
+            fd['output_files']['meta']=meta_file
+            fd['output_files']['status']=status_file
+
+            # this is in the output directory, so we are good from
+            # here on!
+            eu.ostools.makedirs_fromfile(meta_file)
 
             if i==1 or (i % modnum) == 0:
-                print >>stderr,"Writing config (%d/%d) %s" % (i,ne,config_file)
+                print >>stderr,"Writing config (%d/%d) %s" % (i,ne,meta_file)
 
+            eu.io.write(meta_file, fd)
 
-            eu.io.write(config_file, fd)
+            script_file=fd['script']
 
-            minion_file=\
-                deswl.files.get_se_minion_path(fd['run'],
-                                               fd['expname'],
-                                               fd['ccd'])
+            if i==1 or (i % modnum) == 0:
+                print >>stderr,"    %s" % script_file
 
-            if 'script' in fd:
-                script_file=fd['script']
-                if i==1 or (i % modnum) == 0:
-                    print >>stderr,"    %s" % script_file
-                with open(script_file,'w') as fobj:
-                    script_data=self.get_script(fd)
-                    fobj.write(script_data)
-
-            self.write_mpi_script(fd)
+            with open(script_file,'w') as fobj:
+                script_data=self.get_script(fd)
+                fobj.write(script_data)
+            os.system('chmod u+x %s' % script_file)
 
             i += 1
 
@@ -213,7 +249,7 @@ class GenericConfig(dict):
 
     def write_mpi_script(self, fd):
         """
-        Can also be sent to pbs for quick checks
+        not used
         """
         config_file=deswl.files.get_se_config_path(fd['run'],
                                                    fd['expname'],
@@ -309,7 +345,7 @@ if [[ "Y${{PBS_O_WORKDIR}}" != "Y" ]]; then
     cd $PBS_O_WORKDIR
 fi
 
-find ./byexp -name "*-minion.pbs" | mpirun -np {np} minions
+find ./byexp -name "*-script.pbs" | mpirun -np {np} minions
 
 echo "done minions"
         \n"""
@@ -379,10 +415,16 @@ echo "done minions"
     def get_command(self, fdict):
         raise RuntimeError("you must over-ride get_command")
 
+    def get_output_filenames(self, **keys):
+        raise RuntimeError("you must over-ride get_output_filenames")
+
+
 
 class GenericProcessor(dict):
     def __init__(self, config):
         """
+        not using this at nersc
+
         required keys in config
             - 'run' The run id, just for identification
             - 'input_files', which is itself a dictionary.  The files will be

@@ -43,7 +43,7 @@ def get_proc_environ(extra=None):
     e['ESUTIL_DIR']=getenv_check('ESUTIL_DIR')
     e['ESUTIL_VERS']=getenv_check('ESUTIL_VERS')
 
-    e['DES_FILE_LISTS']=getenv_check('DES_FILE_LISTS')
+    #e['DES_FILE_LISTS']=getenv_check('DES_FILE_LISTS')
 
     e['PYTHON_VERS']=deswl.get_python_version()
 
