@@ -148,7 +148,7 @@ done
 
 echo "time-seconds: $SECONDS" >> $log_file
 
-mess="writing status $exit_status to meds_status:
+mess="writing status $exit_status to:
     $status_file"
 echo $mess >> $log_file
 
