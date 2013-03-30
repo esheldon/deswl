@@ -11,14 +11,15 @@ scripts
 types
 -----
 scripts:
-    write meta files and scripts for every ccd.
+    Just write meta files and scripts for every ccd, including checkers
 minions:
-    A big mpi job that runs all the ccd scripts
-check:
-    Write out by-exposure checker pbs scripts.  These can be submitted
-    one-by-one or you can use the minions checker
+    Just write out faster stuff
+        - minions
+            a big mpi job that runs all the ccd scripts
+        - check minions 
+            runs the checkers
 reduce:
-    Reduce the check files
+    reducer for the checks
 """
 
 import os,sys
@@ -31,7 +32,7 @@ from optparse import OptionParser
 parser = OptionParser(__doc__)
 parser.add_option("-q","--queue",default='serial', 
                   help="queue for processing %default")
-parser.add_option("-t","--types",default='scripts,minions,check,reduce', 
+parser.add_option("-t","--types",default='scripts,minions,reduce', 
                   help="types to write, default %default")
 
 
@@ -78,11 +79,10 @@ print >>stderr,"Writing badlist:",badfile
 eu.io.write(badfile,badlist,clobber=True)\n""".format(run=run,
                                          expected_num=expected_num)
 
-    d=deswl.files.get_pbs_run_dir(run)
-    f=os.path.join(d,'check-reduce.py')
+    df=desdb.files.DESFiles()
+    f=df.url('wlpipe_check_reduce',
+             run=run)
     print >>stderr,"writing check reduce script:",f
-
-    eu.ostools.makedirs_fromfile(f)
     with open(f,'w') as fobj:
         fobj.write(text)
 
@@ -145,7 +145,6 @@ def main():
         print >>stderr,"writing all meta and script files"
         cfobj.write()
 
-    if 'check' in types:
         print >>stderr,"writing the check scripts"
 
         if is_se:
@@ -153,14 +152,12 @@ def main():
         else:
             write_me_checkers(cfobj,queue)
 
-
     if 'minions' in types:
         cfobj.write_minions()
         cfobj.write_check_minions()
 
     if 'reduce' in types:
         print >>stderr,"writing reducer"
-        expected_num = 0
         cdata=cfobj.get_config_data()
         expected_num=len(cdata)
         write_reducer(run,expected_num)
