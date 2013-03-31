@@ -56,6 +56,9 @@
    printf("center pixel seg [%lf,%lf]: %g\n", 
        rowcen, colcen, CUTOUT_GET(scutout, (int)rowcen, (int)colcen));
 
+   // get struct with input coadd file path, etc.
+   const struct meds_meta *meta=meds_get_meta(meds);
+
    // using the pointer interface; good if you have your own image library
    long nrow=0, ncol=0;
    double *pix=meds_get_cutoutp(meds, iobj, icutout, &nrow, &ncol);
@@ -178,11 +181,26 @@ struct meds_info_cat {
     struct meds_image_info *data;
 };
 
+struct meds_meta {
+    char *cat_file;
+    char *coadd_file;
+    char *coadd_srclist;
+    char *cutout_file;
+
+    // optional
+    char *coaddcat_file;
+    char *medsconf;
+    int min_boxsize;
+    int max_boxsize;
+};
+void meds_meta_print(const struct meds_meta *self, FILE *stream);
+
 struct meds {
     char *meds_path;
     fitsfile *fits;
     struct meds_cat *cat;
     struct meds_info_cat *image_info;
+    struct meds_meta *meta;
 };
 
 
@@ -198,6 +216,9 @@ long meds_get_size(const struct meds *self);
 
 // the meds cutout filename
 const char *meds_get_path(const struct meds *self);
+
+// get the metadata structure with input file paths etc.
+const struct meds_meta *meds_get_meta(const struct meds *self);
 
 // get an entry in the catalog
 // if index does not exist, NULL is returned

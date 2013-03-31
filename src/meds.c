@@ -627,6 +627,106 @@ static struct meds_info_cat *read_image_info(fitsfile *fits)
 }
 
 //
+// struct meds_meta
+//
+
+static char *fits_read_string_byname(fitsfile *fits, const char* colname, long row)
+{
+    int status=0;
+
+    int colnum=get_colnum(fits,colname);
+    if (colnum==MEDS_DEFVAL) {
+        return NULL;
+    }
+
+    long len = get_array_col_size(fits,colname);
+    char* nulstr=" ";
+    LONGLONG firstelem=1;
+
+    char *data=calloc(len, sizeof(char));
+    if (fits_read_col_str(fits, colnum, row, firstelem, 1,
+                nulstr, &data, NULL, &status)) {
+        fits_report_error(stderr,status);
+        return 0;
+    }
+    return data;
+}
+
+static struct meds_meta *read_meta(fitsfile *fits)
+{
+    int status=0;
+    if (fits_movnam_hdu(fits, BINARY_TBL, "metadata", 0, &status)) {
+        fits_report_error(stderr,status);
+        return NULL;
+    }
+
+    struct meds_meta *self=calloc(1,sizeof(struct meds_meta));
+    if (!self) {
+        fprintf(stderr,"could not allocate struct meds_meta\n");
+    }
+    self->min_boxsize=MEDS_DEFVAL;
+    self->max_boxsize=MEDS_DEFVAL;
+
+    long row=1;
+    // these will always exist
+
+    self->cat_file = fits_read_string_byname(fits, "cat_file", row);
+    self->coadd_file = fits_read_string_byname(fits, "coadd_file", row);
+    self->coadd_srclist = fits_read_string_byname(fits, "coadd_srclist", row);
+    self->cutout_file = fits_read_string_byname(fits, "cutout_file", row);
+
+    // might not be present, if not will be null
+    self->coaddcat_file = fits_read_string_byname(fits, "coaddcat_file", row);
+    self->medsconf = fits_read_string_byname(fits, "medsconf", row);
+
+    char *minbox_str = fits_read_string_byname(fits, "min_boxsize", row);
+    char *maxbox_str = fits_read_string_byname(fits, "max_boxsize", row);
+    if (minbox_str) {
+        self->min_boxsize=atoi(minbox_str);
+    }
+    if (maxbox_str) {
+        self->max_boxsize=atoi(maxbox_str);
+    }
+
+    free(minbox_str);
+    free(maxbox_str);
+
+    return self;
+}
+
+void meds_meta_print(const struct meds_meta *self, FILE *stream)
+{
+    fprintf(stderr,"    cat_file:      %s\n", self->cat_file);
+    fprintf(stderr,"    coadd_file:    %s\n", self->coadd_file);
+    fprintf(stderr,"    coadd_srclist: %s\n", self->coadd_srclist);
+    fprintf(stderr,"    cutout_file:   %s\n", self->cutout_file);
+
+    if (self->coaddcat_file)
+        fprintf(stderr,"    coaddcat_file: %s\n", self->coaddcat_file);
+    if (self->medsconf)
+        fprintf(stderr,"    medsconf:      %s\n", self->medsconf);
+    if (self->min_boxsize > 0)
+        fprintf(stderr,"    min_boxsize:   %d\n", self->min_boxsize);
+    if (self->max_boxsize > 0)
+        fprintf(stderr,"    max_boxsize:   %d\n", self->max_boxsize);
+}
+
+static struct meds_meta *meds_meta_free(struct meds_meta *self)
+{
+    if (self) {
+        free(self->cat_file);
+        free(self->coadd_file);
+        free(self->coaddcat_file);
+        free(self->coadd_srclist);
+        free(self->cutout_file);
+        free(self->medsconf);
+        free(self);
+        self=NULL;
+    }
+    return self;
+}
+
+//
 // struct meds_cutout
 //
 
@@ -744,23 +844,35 @@ static struct meds_icutout *icutout_from_ptr(int *ptr,
 
 struct meds *meds_open(const char *filename)
 {
+    int err=0;
+    struct meds_cat *cat=NULL;
+    struct meds_info_cat *image_info=NULL;
+    struct meds_meta *meta=NULL;
+    struct meds *self=NULL;
+
     fitsfile *fits=fits_open(filename);
     if (!fits) {
         return NULL;
     }
 
-    struct meds_cat *cat=read_object_table(fits);
+    cat=read_object_table(fits);
     if (!cat) {
-        fits=fits_close(fits);
-        return NULL;
-    }
-    struct meds_info_cat *image_info=read_image_info(fits);
-    if (!image_info) {
-        fits=fits_close(fits);
-        return NULL;
+        err=1;
+        goto _meds_open_bail;
     }
 
-    struct meds *self=calloc(1, sizeof(struct meds));
+    image_info=read_image_info(fits);
+    if (!image_info) {
+        err=1;
+        goto _meds_open_bail;
+    }
+    meta=read_meta(fits);
+    if (!meta) {
+        err=1;
+        goto _meds_open_bail;
+    }
+
+    self=calloc(1, sizeof(struct meds));
     if (!self) {
         fprintf(stderr,"could not allocate struct meds\n");
         exit(1);
@@ -770,6 +882,17 @@ struct meds *meds_open(const char *filename)
     self->fits=fits;
     self->cat=cat;
     self->image_info=image_info;
+    self->meta=meta;
+
+_meds_open_bail:
+    if (err) {
+        // if we get here, fits was opened but self was not allocated, no need
+        // to free these functions are noop for NULL
+        fits=fits_close(fits);
+        cat=meds_cat_free(cat);
+        image_info=meds_info_cat_free(image_info);
+        meta=meds_meta_free(meta);
+    }
     return self;
 }
 
@@ -779,6 +902,7 @@ struct meds *meds_free(struct meds *self)
         free(self->meds_path);
         self->cat=meds_cat_free(self->cat);
         self->image_info=meds_info_cat_free(self->image_info);
+        self->meta=meds_meta_free(self->meta);
         self->fits=fits_close(self->fits);
         free(self);
     }
@@ -793,6 +917,8 @@ void meds_print(const struct meds *self,FILE* stream)
         fprintf(stream,"    meds path:     %s\n", self->meds_path);
         fprintf(stream,"    nobj:          %ld\n", self->cat->size);
         fprintf(stream,"    source images: %ld\n", self->image_info->size);
+        fprintf(stream,"metadata\n");
+        meds_meta_print(self->meta, stream);
     }
 }
 
@@ -815,7 +941,10 @@ const char *meds_get_path(const struct meds *self)
 {
     return self->meds_path;
 }
-
+const struct meds_meta *meds_get_meta(const struct meds *self)
+{
+    return self->meta;
+}
 
 const struct meds_obj *meds_get_obj(const struct meds *self, long iobj)
 {
