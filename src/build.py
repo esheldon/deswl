@@ -9,8 +9,10 @@ import glob
 
 parser = optparse.OptionParser()
 # make an options list, also send to fabricate
-optlist=[optparse.Option('--prefix',default=sys.exec_prefix,help="prefix for library install"),
-         optparse.Option('--test',action='store_true',help="build the test code")]
+optlist=[optparse.Option('--prefix',default=sys.exec_prefix,
+                         help="prefix for library install"),
+         optparse.Option('--test',action='store_true',
+                         help="build the test code")]
          
 parser.add_options(optlist)
 

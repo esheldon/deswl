@@ -45,12 +45,13 @@ To install
 
     cd src
     # to install in the "usual" place.
-    python build.py install
+    make install
+
 
     # to install to a different prefix
-    python build.py --prefix=/some/path install
+    make install prefix=/some/path install
     
-    # Make sure that path is in your LD_LIBRARY_PATH
+    # Make sure that path is in your LIBRARY_PATH
 
 You can also run a test from the /src directory against your
 favorite cutouts file.
@@ -65,17 +66,10 @@ To link your code against the library
 Making MEDS input catalogs
 --------------------------
 
-Running build.py as described above also creates a simple
-code to make meds input catalogs from a fits. file.
-
-    cd src
-    python build install
-    # or under a prefix
-    python build.py --prefix=/some/path install
-
-This installs the executable
-    make-meds-input
-under prefix/bin
+Followign the instructions above also results in a program
+called make-meds-input being installed.  This is a function
+to convert a fits file to an input file for the make-cutouts
+program
 
 See the docs:
     https://github.com/esheldon/deswl/blob/master/src/make-meds-input.c
