@@ -59,9 +59,9 @@ favorite cutouts file.
     ./test cutouts_file.fits
 
 
-To link your code against the library
+To link your code against the library, make sure to get the order correct
 
-    CC  ... -lcfitsio -lmeds ...
+    CC  ... -lmeds -lcfitsio -lm ...
 
 Making MEDS input catalogs
 --------------------------
