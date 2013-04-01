@@ -36,6 +36,7 @@ module unload shapelets && module load shapelets/{vers}
 module unload deswl && module load deswl/{vers}
 
 coadd_file="{coadd_image}"
+coaddseg_file="{coadd_seg}"
 coaddcat_file="{coadd_cat}"
 coadd_srclist="{meds_srclist}"
 cutout_file="{meds_file}"
@@ -61,6 +62,7 @@ if [[ $? == "0" ]]; then
     cmd="
     make-cutouts
         coadd_file=$coadd_file
+        coaddseg_file=$coaddseg_file
         cat_file=$meds_input
         coadd_srclist=$coadd_srclist
         cutout_file=$cutout_file
@@ -114,6 +116,12 @@ def main():
                        coadd_run=coadd_run,
                        tilename=cf['tilename'],
                        band=band)
+
+    coadd_seg=df.url(type='coadd_seg',
+                     coadd_run=coadd_run,
+                     tilename=cf['tilename'],
+                     band=band)
+
     coadd_cat=df.url(type='coadd_cat',
                      coadd_run=coadd_run,
                      tilename=cf['tilename'],
@@ -146,6 +154,7 @@ def main():
     text=_template.format(medsconf=medsconf,
                           vers=options.vers,
                           coadd_image=coadd_image,
+                          coadd_seg=coadd_seg,
                           coadd_cat=coadd_cat,
                           meds_input=meds_input,
                           meds_srclist=meds_srclist,
