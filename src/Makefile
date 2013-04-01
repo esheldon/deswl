@@ -70,4 +70,4 @@ $(MAKE_INPUT_PROG): $(MAKE_INPUT_OBJECTS)
 	$(LD) -o $@ $(MAKE_INPUT_OBJECTS) $(MAKE_INPUT_LINKFLAGS) 
 
 clean:
-	rm -f *.o $(LIB) $(PROGS)
+	rm -f *.o $(LIB) $(PROGS) .depend
