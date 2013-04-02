@@ -74,19 +74,7 @@ def get_python_version(numerical=False):
         pyvers='v%s.%s.%s' % sys.version_info[0:3]
     return pyvers
 
-from . import meds
-
-# these will fail if desdb or esutil are not available
-try:
-    from . import files
-except:
-    pass
-try:
-    from . import generic
-except:
-    pass
-try:
-    from . import modules
-except:
-    pass
+from . import files
+from . import generic
+from . import modules
 
