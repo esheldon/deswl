@@ -76,7 +76,7 @@ def get_python_version(numerical=False):
 
 from . import meds
 
-# use a try because these will fail if desdb is not loaded
+# these will fail if desdb is not available
 try:
     from . import files
 except:
@@ -91,4 +91,7 @@ except:
     pass
 
 # this is deprecated
-from . import wlpipe
+try:
+    from . import wlpipe
+except:
+    pass

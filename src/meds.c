@@ -2,7 +2,7 @@
 
 
    Two error styles are used here.  cfitsio uses a true return value to mean
-   error, my routines use false to reply an error.  The user should only see
+   error, my routines use false to mean an error.  The user should only see
    the "false is error" in the public api.
 
    Everywhere zero-offset is used except when calling the cfitsio routines,
