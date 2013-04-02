@@ -1,4 +1,11 @@
 """
+    deprecated
+
+    This module is no longer used
+
+
+
+
     vim: set ft=python:
     Order of doing things for SE image processing
 
