@@ -91,7 +91,6 @@ import shutil
 import pprint
 import logging
 
-import desdb
 import deswl
 
 import esutil
@@ -256,6 +255,7 @@ class CoaddTileProcessor(dict):
 
     """
     def __init__(self, fdict):
+        import desdb
         for k in fdict:
             self[k] = fdict[k]
 

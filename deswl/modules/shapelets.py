@@ -1,6 +1,5 @@
 import os
 from sys import stderr
-import desdb
 import deswl
 from deswl import generic
 import esutil as eu

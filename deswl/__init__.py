@@ -74,10 +74,21 @@ def get_python_version(numerical=False):
         pyvers='v%s.%s.%s' % sys.version_info[0:3]
     return pyvers
 
-from . import wlpipe
-from . import files
-from . import generic
-
-from . import modules
-
 from . import meds
+
+# use a try because these will fail if desdb is not loaded
+try:
+    from . import files
+except:
+    pass
+try:
+    from . import generic
+except:
+    pass
+try:
+    from . import modules
+except:
+    pass
+
+# this is deprecated
+from . import wlpipe

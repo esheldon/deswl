@@ -44,14 +44,13 @@ import os
 from sys import stderr
 import esutil as eu
 import deswl
-
+import desdb
 
 class GenericScripts(dict):
     """
     to create and write the metatadata files and scripts
     """
     def __init__(self,run, **keys):
-        import desdb
         self['run'] = run
         for k,v in keys.iteritems():
             self[k] = v
@@ -643,7 +642,6 @@ class GenericSEPBSJob(dict):
     Send check=True to generate the check file instead of the processing file
     """
     def __init__(self, run, expname, ccd, **keys):
-        import desdb
 
         self['run'] = run
         self['expname'] = expname
