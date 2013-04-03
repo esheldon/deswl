@@ -130,26 +130,26 @@ def main():
 
     is_se=True
     if rc['run_type'] == 'sse':
-        cfobj = deswl.modules.shapelets.ShapeletsSEScripts(run, 
-                                                           queue=queue)
+        cfobj = deswl.modules.shapelets.ShapeletsSEScripts(run)
     elif rc['run_type'] == 'impyp':
         cfobj = deswl.modules.impyp.ImpypConfig(run, queue=queue)
     elif rc['run_type'] == 'am':
         cfobj = deswl.modules.am.AMConfig(run, queue=queue)
+    elif rc['run_type'] == 'm3s':
+        is_se=False
+        cfobj = deswl.modules.im3shape.I3MEScripts(run)
     else:
         raise ValueError("unsupported run type: '%s'" % rc['run_type'])
 
 
     if 'scripts' in types:
         # write all the config files by ccd
-        print >>stderr,"writing all meta and script files"
-        cfobj.write()
-
-        print >>stderr,"writing the check scripts"
 
         if is_se:
+            cfobj.write_by_ccd()
             write_se_checkers(cfobj,queue)
         else:
+            cfobj.write_by_tile()
             write_me_checkers(cfobj,queue)
 
     if 'minions' in types:

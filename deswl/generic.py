@@ -58,10 +58,15 @@ class GenericScripts(dict):
         # this has serun in it
         self.rc = deswl.files.Runconfig(self['run'])
 
-        self.config_data=None
+        self.flists =None
         self._make_module_loads()
 
         self._df=desdb.files.DESFiles()
+
+    def get_flists(self):
+        raise RuntimeError("you must over-ride get_flists")
+    def get_script(self, fdict):
+        raise RuntimeError("you must over-ride get_script")
 
     def _make_module_loads(self):
         for module in ['desdb','deswl','esutil']:
@@ -74,17 +79,62 @@ class GenericScripts(dict):
 
             self[load_key] = lcmd
 
-
-    def write_byccd(self):
+    def write_by_tile(self):
         """
-        Write all config files for expname/ccd
+        Write all scripts by tilename/band
+        """
+        df=self._df
 
-        also make the output directory
+        all_fd = self.get_flists()
+        i=1
+        ne=len(all_fd)
+        modnum=ne/10
+        for i,fd in enumerate(all_fd):
+            run=fd['run']
+            tilename=fd['tilename']
+            band=fd['band']
+
+            script_file=df.url('wlpipe_me_script',
+                               run=run,
+                               tilename=tilename,
+                               band=band)
+
+            status_file=df.url('wlpipe_me_status',
+                               run=run,
+                               tilename=tilename,
+                               band=band)
+
+            meta_file=df.url('wlpipe_me_meta',
+                             run=run,
+                             tilename=tilename,
+                             band=band)
+            log_file=df.url('wlpipe_me_log',
+                            run=run,
+                            tilename=tilename,
+                            band=band)
+
+            fd['script'] = script_file
+            fd['output_files']['log']=log_file
+            fd['output_files']['meta']=meta_file
+            fd['output_files']['status']=status_file
+
+            ii=i+1
+            if ii==1 or (ii % modnum) == 0:
+                print >>stderr,"%d/%d" % (ii,ne)
+                print >>stderr,"    %s" % meta_file
+                print >>stderr,"    %s" % fd['script']
+
+            self._write_meta_and_script_single(fd)
+
+
+    def write_by_ccd(self):
+        """
+        Write all scripts by expname/ccd
         """
 
         df=self._df
 
-        all_fd = self.get_config_data()
+        all_fd = self.get_flists()
         i=1
         ne=len(all_fd)
         modnum=ne/10
@@ -123,9 +173,9 @@ class GenericScripts(dict):
                 print >>stderr,"    %s" % meta_file
                 print >>stderr,"    %s" % fd['script']
 
-            self._write_meta_and_script_byccd(fd)
+            self._write_meta_and_script_single(fd)
 
-    def _write_meta_and_script_byccd(self, fd):
+    def _write_meta_and_script_single(self, fd):
 
         # this is in the output directory, so we are good from
         # here on!
@@ -200,7 +250,7 @@ class GenericScripts(dict):
         npdef=128.
 
         print 'counting minion jobs'
-        cd=self.get_config_data()
+        cd=self.get_flists()
 
         walltime_hours=wdef*len(cd)/ndef*np/npdef
         walltime_hours=int(math.ceil(walltime_hours))
@@ -309,16 +359,119 @@ echo "done minions"
         with open(job_file,'w') as fobj:
             fobj.write(minions_text)
  
-    def get_config_data(self):
-        raise RuntimeError("you must over-ride get_config_data")
 
-    def get_command(self, fdict):
-        raise RuntimeError("you must over-ride get_command")
+    def get_se_outputs(self, filetypes, **keys):
+        """
+        Generate output file names for me processing.
 
-    def get_output_filenames(self, **keys):
-        raise RuntimeError("you must over-ride get_output_filenames")
+        parameters
+        ----------
+        filetypes: dict of dicts
+            Keyed by file type. The sub-dicts should have the 'ext' key
+
+        expname: string, keyword
+            The exposurename as a string,, e.g. 'DECam_00154939'
+        ccd: int, keyword
+            The ccd as an integer keyword keyword
+        """
+
+        expname=keys['expname']
+        ccd=keys['ccd']
+        fdict={}
+        for ftype in filetypes:
+            ext=filetypes[ftype]['ext']
+            fdict[ftype] = self._df.url(type='wlpipe_se_generic',
+                                        run=self['run'],
+                                        expname=expname,
+                                        ccd=ccd,
+                                        filetype=ftype,
+                                        ext=ext)
+        return fdict
 
 
+    def get_me_outputs(self, filetypes, **keys):
+        """
+        Generate output file names for me processing.
+
+        parameters
+        ----------
+        filetypes: dict of dicts
+            Keyed by file type. The sub-dicts should have the 'ext' key
+
+        tilename: string, keyword
+            The tilename as a string, e.g. 'DES0652-5622'
+        band: string, keyword
+            the band as a string, e.g. 'i'
+
+        start: int, optional
+            A start index for processing the MEDS file.  You must
+            send both start and end
+        end: int, optional
+            An end index for processing the MEDS file.  You must
+            send both start and end
+        """
+
+        tilename=keys['tilename']
+        band=keys['band']
+        start,end=self._extract_start_end(**keys)
+
+        if start is not None:
+            type='wlpipe_me_split'
+        else:
+            type='wlpipe_me_generic'
+
+        fdict={}
+        for ftype in filetypes:
+            ext=filetypes[ftype]['ext']
+            fdict[ftype] = self._df.url(type=type,
+                                        run=self['run'],
+                                        tilename=tilename,
+                                        band=band,
+                                        filetype=ftype,
+                                        ext=ext,
+                                        start=start,
+                                        end=end)
+        return fdict
+
+    def _extract_start_end(self, **keys):
+        start=keys.get('start',None)
+        end=keys.get('end',None)
+        if ((start is not None and end is None)
+                or 
+                (start is None and end is not None)):
+            raise ValueError("send both start= and end= or neither")
+
+        if start is not None:
+            start='%06d' % start
+            end='%06d' % end
+        return start, end
+
+    def _get_chunks(self, nrow, nper):
+        """
+        These are not slices!
+        """
+        startlist=[]
+        endlist=[]
+
+        nchunk, nleft = divmod(nrow, nper)
+        if nleft != 0:
+            nchunk += 1
+
+        for i in xrange(nchunk):
+            start=i*nper
+            end=(i+1)*nper-1
+            if end > (nrow-1):
+                end=nrow-1
+
+            startlist.append(start)
+            endlist.append(end)
+        return startlist, endlist
+
+    def _get_nrows(self, cat_file):
+        import fitsio
+        with fitsio.FITS(cat_file) as fobj:
+            nrows=fobj[1].get_nrows()
+        return nrows
 
 class GenericProcessor(dict):
     def __init__(self, config):

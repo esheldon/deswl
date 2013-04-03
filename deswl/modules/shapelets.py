@@ -27,20 +27,12 @@ class ShapeletsSEScripts(generic.GenericScripts):
     def __init__(self, run, **keys):
         super(ShapeletsSEScripts,self).__init__(run)
 
-    def write(self):
-        """
-        Write all config files for expname/ccd
-        """
-        super(ShapeletsSEScripts,self).write_byccd()
+    def get_flists(self):
+        if self.flists is not None:
+            return self.flists
 
-    def get_config_data(self):
-        if self.config_data is not None:
-            return self.config_data
-
-        desdata=desdb.files.get_des_rootdir()
         flists = desdb.files.get_red_info_by_release(self.rc['dataset'],
-                                                     self.rc['band'],
-                                                     desdata=desdata)
+                                                     self.rc['band'])
 
         for fd in flists:
             expname=fd['expname']
@@ -50,29 +42,15 @@ class ShapeletsSEScripts(generic.GenericScripts):
             fd['cat_url']=fd['image_url'].replace('.fits.fz','_cat.fits')
             fd['input_files'] = {'image':fd['image_url'],
                                  'cat':fd['cat_url']}
-            fd['output_files']=self.get_output_filenames(expname=expname,
-                                                         ccd=ccd)
+            fd['output_files']=self.get_se_outputs(SE_FILETYPES,
+                                                   expname=expname,
+                                                   ccd=ccd)
 
             fd['timeout'] = SE_TIMEOUT
 
 
-        self.config_data = flists
+        self.flists = flists
         return flists
-
-    def get_output_filenames(self, **keys):
-        expname=keys['expname']
-        ccd=keys['ccd']
-        fdict={}
-        for ftype in SE_FILETYPES:
-            ext=SE_FILETYPES[ftype]['ext']
-            fdict[ftype] = self._df.url(type='wlpipe_se_generic',
-                                        run=self['run'],
-                                        expname=expname,
-                                        ccd=ccd,
-                                        filetype=ftype,
-                                        ext=ext)
-        return fdict
-
 
     def get_script(self, fdict):
         rc=self.rc
@@ -92,7 +70,7 @@ class ShapeletsSEScripts(generic.GenericScripts):
 #PBS -l walltime=30:00
 #PBS -N %(job_name)s
 #PBS -j oe
-#PBS -o %(job_file)s.pbslog
+#PBS -o %(pbslog)s
 #PBS -V
 #PBS -A des
 
@@ -166,7 +144,7 @@ exit $exit_status
         for k,v in fdict['output_files'].iteritems():
             allkeys[k] = v
 
-        allkeys['job_file']=fdict['script']
+        allkeys['pbslog']=fdict['script']+'.pbslog'
 
         job_name='%s-%02d' % (fdict['expname'],fdict['ccd'])
         job_name=job_name.replace('decam-','')

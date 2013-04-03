@@ -31,6 +31,13 @@ parser.add_option("--comment",default=None,
 parser.add_option("--serun",default=None,
                   help="Serun to associate. Default %default")
 
+parser.add_option("--medsconf",default=None,
+                  help="medsconf to associate. Default %default")
+parser.add_option("--nper",default=None,
+                  help="nper for meds splits. Default %default")
+parser.add_option("--version",default=None,
+                  help="version of code. Default %default")
+
 def main():
     options, args = parser.parse_args(sys.argv[1:])
     if len(args) < 3:
@@ -43,6 +50,10 @@ def main():
 
     rc=deswl.files.Runconfig()
 
+    nper=options.nper
+    if nper is not None:
+        nper=int(nper)
+
     config=rc.generate_new_runconfig(run_type, 
                                      dataset, 
                                      band,
@@ -51,6 +62,9 @@ def main():
                                      test=options.test, 
                                      dryrun=options.dryrun, 
                                      comment=options.comment,
-                                     serun=options.serun)
+                                     serun=options.serun,
+                                     medsconf=options.medsconf,
+                                     nper=nper,
+                                     version=options.version)
 
 main()

@@ -209,6 +209,10 @@ class Runconfig(dict):
             e.g. 'dr012'
         band: string
             'g','r','i','z','Y'
+        medsconf: 
+            MEDS configuration id for multi-epoch processing
+        nper: 
+            size of MEDS splits
         config: optional
             The name of a config file for this run/code.
                 E.g.  'wldc6b-v2.config'
@@ -237,7 +241,6 @@ class Runconfig(dict):
             tmp=Runconfig(serun)
 
 
-
         if run_name is None:
             run_name=self.generate_new_runconfig_name(run_type,
                                                       band,
@@ -251,6 +254,9 @@ class Runconfig(dict):
                    'run_type':run_type,
                    'band':band,
                    'dataset':dataset}
+
+        if run_type in ['m3s']:
+            self._setup_im3shape(runconfig, extra)
 
         if run_type in ['sme','sse']:
             if config is None:
@@ -280,6 +286,19 @@ class Runconfig(dict):
         else:
             stdout.write(" .... dry run, skipping file write\n")
 
+
+    def _setup_im3shape(self, runconfig, extra):
+        medsconf=extra.get('medsconf',None)
+        nper=extra.get('nper',None)
+        version=extra.get('version',None)
+        if medsconf is None or nper is None or version is None:
+            raise ValueError("medsconf,nper,version required for "
+                             "run_type '%s'" % run_type)
+
+        del extra['version']
+        runconfig['medsconf']=medsconf
+        runconfig['nper']=nper
+        runconfig['IM3SHAPE_VERS'] = version
 
     def get_required_env_keys(self, run_type):
         """
