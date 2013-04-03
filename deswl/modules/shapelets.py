@@ -1,8 +1,4 @@
-import os
-from sys import stderr
-import deswl
 from deswl import generic
-import esutil as eu
 import desdb
 
 """
@@ -25,7 +21,7 @@ SE_TIMEOUT=15*60 # 15 minutes
 
 class ShapeletsSEScripts(generic.GenericScripts):
     """
-    to create and write the "config" files, which hold the command
+    to create and write the script files, which hold the command
     to run, input/output file lists, and other metadata.
     """
     def __init__(self, run, **keys):
@@ -69,7 +65,7 @@ class ShapeletsSEScripts(generic.GenericScripts):
         fdict={}
         for ftype in SE_FILETYPES:
             ext=SE_FILETYPES[ftype]['ext']
-            fdict[ftype] = self._df.url(type='wlpipe_se_gen',
+            fdict[ftype] = self._df.url(type='wlpipe_se_generic',
                                         run=self['run'],
                                         expname=expname,
                                         ccd=ccd,
@@ -80,7 +76,8 @@ class ShapeletsSEScripts(generic.GenericScripts):
 
     def get_script(self, fdict):
         rc=self.rc
-        shapelets_load = 'module unload shapelets && module load shapelets/%s' % rc['SHAPELETS_VERS']
+        shapelets_load='module unload shapelets && module load shapelets/%s'
+        shapelets_load = shapelets_load % rc['SHAPELETS_VERS']
 
         wl_config='$SHAPELETS_DIR/etc/wl.config'
         wl_config_desdm='$SHAPELETS_DIR/etc/wl_desdm.config'

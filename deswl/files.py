@@ -140,10 +140,10 @@ class Runconfig(dict):
         the runconfig directory
         """
 
-        if run_type not in self.run_types:
-            mess="Unknown run type: '%s'.  Must be one "+\
-                 "of: (%s)" % (run_type, ', '.join(self.run_types))
-            raise ValueError(mess)
+        #if run_type not in self.run_types:
+        #    mess="Unknown run type: '%s'.  Must be one "+\
+        #         "of: (%s)" % (run_type, ', '.join(self.run_types))
+        #    raise ValueError(mess)
 
         if run_type == 'sme':
             if test:
@@ -212,7 +212,7 @@ class Runconfig(dict):
         config: optional
             The name of a config file for this run/code.
                 E.g.  'wldc6b-v2.config'
-            It must be located at $DESWL_DIR/{fileclass}/{config}
+            It must be located at $DESWL_DIR/{config}
 
         run_name: string, optional
             If not sent, will be generated.
@@ -243,14 +243,13 @@ class Runconfig(dict):
                                                       band,
                                                       test=test)
 
-        fileclass = self.run_types[run_type]['fileclass']
+        #fileclass = self.run_types[run_type]['fileclass']
 
         # software versions.  Default to whatever is in our environment
 
         runconfig={'run':run_name, 
                    'run_type':run_type,
                    'band':band,
-                   'fileclass': fileclass,
                    'dataset':dataset}
 
         if run_type in ['sme','sse']:
