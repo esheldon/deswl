@@ -37,9 +37,9 @@ parser.add_option("-t","--types",default='scripts,minions,reduce',
 
 
 def write_reducer(run,expected_num):
-    text="""# run through the ./byexp/*/*-check.json files to find problems
+    text="""# run through the check json files to find problems
 # write out the "goodlist" and "badlist" in the collated dir for this run
-# $DESDATA/fileclass/run/collated/
+# $DESDATA/wlpipe/run/collate
 from sys import stderr
 import glob
 import desdb
@@ -50,7 +50,7 @@ df=desdb.files.DESFiles()
 goodfile=df.url(type='wlpipe_collated_goodlist', run=run)
 badfile=df.url(type='wlpipe_collated_badlist', run=run)
 
-files=glob.glob('byexp/*/*-check.json')
+files=glob.glob('*/*/*-check*json')
 if len(files) != {expected_num}:
     raise ValueError("expected {expected_num} files, found %s" % len(files))
 goodlist=[]
@@ -156,7 +156,7 @@ def main():
         cfobj = deswl.modules.impyp.ImpypConfig(run, queue=queue)
     elif rc['run_type'] == 'am':
         cfobj = deswl.modules.am.AMConfig(run, queue=queue)
-    elif rc['run_type'] == 'i3se':
+    elif rc['run_type'] == 'i3me':
         is_se=False
         cfobj = deswl.modules.im3shape.I3MEScripts(run)
     else:
@@ -179,8 +179,8 @@ def main():
 
     if 'reduce' in types:
         print >>stderr,"writing reducer"
-        cdata=cfobj.get_config_data()
-        expected_num=len(cdata)
+        flists=cfobj.get_flists()
+        expected_num=len(flists)
         write_reducer(run,expected_num)
 main()
 

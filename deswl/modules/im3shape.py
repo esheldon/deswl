@@ -25,9 +25,6 @@ class I3MEScripts(generic.GenericScripts):
 
 
     def get_flists(self):
-        """
-        im3shape is slow so we use the chunking functionality
-        """
         return self.get_flists_by_tile()
 
     def get_script(self, fdict):

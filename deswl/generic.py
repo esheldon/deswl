@@ -513,8 +513,8 @@ class GenericScripts(dict):
         """
         rc=self.rc
         job_name='%s-minions' % self['run']
-        nodes=16
-        ppn=8
+        nodes=rc['nodes']
+        ppn=rc['ppn']
         ncpu=nodes*ppn
 
         print 'calculating wall time'
@@ -537,7 +537,7 @@ if [[ "Y${{PBS_O_WORKDIR}}" != "Y" ]]; then
     cd $PBS_O_WORKDIR
 fi
 
-find . -name "*-script.pbs" | mpirun -np {ncpu} minions
+find . -name "*-script*.pbs" | mpirun -np {ncpu} minions
 
 echo "done minions"
         \n"""
@@ -586,7 +586,7 @@ if [[ "Y${{PBS_O_WORKDIR}}" != "Y" ]]; then
     cd $PBS_O_WORKDIR
 fi
 
-find . -name "*-check.pbs" | mpirun -np {ncpu} minions
+find . -name "*-check*.pbs" | mpirun -np {ncpu} minions
 
 echo "done minions"
         \n"""

@@ -258,7 +258,7 @@ class Runconfig(dict):
                    'nodes':nodes,
                    'ppn':ppn}
 
-        if run_type in ['i3se']:
+        if run_type in ['i3me']:
             self._setup_im3shape(runconfig, extra)
 
         if run_type in ['sme','sse']:
@@ -296,7 +296,7 @@ class Runconfig(dict):
         version=extra.get('version',None)
         if medsconf is None or nper is None or version is None:
             raise ValueError("medsconf,nper,version required for "
-                             "run_type '%s'" % run_type)
+                             "run_type 'i3me'")
 
         del extra['version']
         runconfig['medsconf']=medsconf
