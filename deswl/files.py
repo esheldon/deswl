@@ -189,6 +189,8 @@ class Runconfig(dict):
                                run_type, 
                                dataset, 
                                band,
+                               nodes,
+                               ppn,
                                config=None,
                                run_name=None,
                                test=False, 
@@ -209,6 +211,11 @@ class Runconfig(dict):
             e.g. 'dr012'
         band: string
             'g','r','i','z','Y'
+        nodes:
+            number of nodes to use
+        ppn:
+            processors per node
+
         medsconf: 
             MEDS configuration id for multi-epoch processing
         nper: 
@@ -240,22 +247,18 @@ class Runconfig(dict):
             # make sure serun exists by reading the config
             tmp=Runconfig(serun)
 
-
         if run_name is None:
             run_name=self.generate_new_runconfig_name(run_type,
                                                       band,
                                                       test=test)
-
-        #fileclass = self.run_types[run_type]['fileclass']
-
-        # software versions.  Default to whatever is in our environment
-
         runconfig={'run':run_name, 
                    'run_type':run_type,
                    'band':band,
-                   'dataset':dataset}
+                   'dataset':dataset,
+                   'nodes':nodes,
+                   'ppn':ppn}
 
-        if run_type in ['m3s']:
+        if run_type in ['i3se']:
             self._setup_im3shape(runconfig, extra)
 
         if run_type in ['sme','sse']:

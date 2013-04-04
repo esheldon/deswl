@@ -10,14 +10,6 @@ _se_patterns={'stars':'%(run)s-%(expname)s-%(ccd)02d-stars.fits',
               'log':'%(run)s-%(expname)s-%(ccd)02d.log'}
 """
 
-# don't put status, meta, or log here, they will get
-# over-written
-SE_FILETYPES={'stars':{'ext':'fits'},
-              'psf':{'ext':'fits'},
-              'fitpsf':{'ext':'fits'},
-              'shear':{'ext':'fits'}}
-
-SE_TIMEOUT=15*60 # 15 minutes
 
 class ShapeletsSEScripts(generic.GenericScripts):
     """
@@ -27,30 +19,22 @@ class ShapeletsSEScripts(generic.GenericScripts):
     def __init__(self, run, **keys):
         super(ShapeletsSEScripts,self).__init__(run)
 
+        # don't put status, meta, or log here, they will get
+        # over-written
+        self.filetypes={'stars':{'ext':'fits'},
+                        'psf':{'ext':'fits'},
+                        'fitpsf':{'ext':'fits'},
+                        'shear':{'ext':'fits'}}
+        
+        # we set timeout much longer than expected time per
+        # the time per is the mean plus one standard deviation
+        # so should itself be plenty
+        self.seconds_per = 250 #
+        self.timeout=15*60 # 15 minutes -> 900
+
+
     def get_flists(self):
-        if self.flists is not None:
-            return self.flists
-
-        flists = desdb.files.get_red_info_by_release(self.rc['dataset'],
-                                                     self.rc['band'])
-
-        for fd in flists:
-            expname=fd['expname']
-            ccd=fd['ccd']
-
-            fd['run'] = self['run']
-            fd['cat_url']=fd['image_url'].replace('.fits.fz','_cat.fits')
-            fd['input_files'] = {'image':fd['image_url'],
-                                 'cat':fd['cat_url']}
-            fd['output_files']=self.get_se_outputs(SE_FILETYPES,
-                                                   expname=expname,
-                                                   ccd=ccd)
-
-            fd['timeout'] = SE_TIMEOUT
-
-
-        self.flists = flists
-        return flists
+        return self.get_flists_by_ccd()
 
     def get_script(self, fdict):
         rc=self.rc

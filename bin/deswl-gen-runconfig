@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-    %prog [options] run_type dataset band
+    %prog [options] run_type dataset band nodes ppn
 
 Generate a new runconfig.  You should set up all the versions of code you will use before running this.
 
@@ -40,13 +40,15 @@ parser.add_option("--version",default=None,
 
 def main():
     options, args = parser.parse_args(sys.argv[1:])
-    if len(args) < 3:
+    if len(args) < 5:
         parser.print_help()
         sys.exit(45)
 
     run_type=args[0]
     dataset=args[1]
     band=args[2]
+    nodes=int(args[3])
+    ppn=int(args[4])
 
     rc=deswl.files.Runconfig()
 
@@ -57,6 +59,8 @@ def main():
     config=rc.generate_new_runconfig(run_type, 
                                      dataset, 
                                      band,
+                                     nodes,
+                                     ppn,
                                      config=options.config,
                                      run_name=options.run_name,
                                      test=options.test, 

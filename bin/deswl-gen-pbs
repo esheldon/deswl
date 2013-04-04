@@ -89,12 +89,33 @@ eu.io.write(badfile,badlist,clobber=True)\n""".format(run=run,
 
 
 def write_me_checkers(cfobj,queue):
-    raise RuntimeError("implement me checkers")
+    # every class must have the get_config_data method
+    flists=cfobj.get_flists()
+
+    ntot=len(flists)
+    modnum=ntot/10
+
+    run=flists[0]['run']
+
+    print >>stderr,'writing check scripts for',ntot
+    for i,fd in enumerate(flists):
+        job=deswl.generic.GenericMEChecker(run, 
+                                           fd['tilename'],
+                                           fd['band'],
+                                           start=fd['start'],
+                                           end=fd['end'],
+                                           queue=queue)
+
+        if i==0 or (((i+1) % modnum) == 0):
+            print >>stderr,'%d/%d %s' % (i+1,ntot,job['check_file'])
+
+        job.write()
+
 
 def write_se_checkers(cfobj, queue):
     # every class must have the get_config_data method
     print >>stderr,"getting ccd data"
-    flists=cfobj.get_config_data()
+    flists=cfobj.get_flists()
 
     # number of exposures
     ntot=len(flists)
@@ -135,7 +156,7 @@ def main():
         cfobj = deswl.modules.impyp.ImpypConfig(run, queue=queue)
     elif rc['run_type'] == 'am':
         cfobj = deswl.modules.am.AMConfig(run, queue=queue)
-    elif rc['run_type'] == 'm3s':
+    elif rc['run_type'] == 'i3se':
         is_se=False
         cfobj = deswl.modules.im3shape.I3MEScripts(run)
     else:

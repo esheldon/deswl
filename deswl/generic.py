@@ -42,6 +42,7 @@ have to do this step.
 """
 import os
 from sys import stderr
+import copy
 import esutil as eu
 import deswl
 import desdb
@@ -49,6 +50,14 @@ import desdb
 class GenericScripts(dict):
     """
     to create and write the metatadata files and scripts
+
+    The user must over-ride the methods
+        get_flists
+        get_script
+    And set the member variables
+        seconds_per
+        timeout
+        filetypes
     """
     def __init__(self,run, **keys):
         self['run'] = run
@@ -63,7 +72,14 @@ class GenericScripts(dict):
 
         self._df=desdb.files.DESFiles()
 
+        # time to check the outputs
+        self.seconds_per_check=1.0
+
     def get_flists(self):
+        """
+        The over-ridden version will call get_flists_by_ccd
+        or get_flists_by_tile or customize
+        """
         raise RuntimeError("you must over-ride get_flists")
     def get_script(self, fdict):
         raise RuntimeError("you must over-ride get_script")
@@ -83,49 +99,204 @@ class GenericScripts(dict):
         """
         Write all scripts by tilename/band
         """
-        df=self._df
 
         all_fd = self.get_flists()
+        if all_fd[0]['start'] is not None:
+            dosplit=True
+            basename='wlpipe_me_split_'
+        else:
+            dosplit=False
+            basename='wlpipe_me_'
+
         i=1
         ne=len(all_fd)
         modnum=ne/10
         for i,fd in enumerate(all_fd):
-            run=fd['run']
-            tilename=fd['tilename']
-            band=fd['band']
 
-            script_file=df.url('wlpipe_me_script',
-                               run=run,
-                               tilename=tilename,
-                               band=band)
+            # start/end are for 
+            script,status,meta,log=self._extract_tile_files(fd)
 
-            status_file=df.url('wlpipe_me_status',
-                               run=run,
-                               tilename=tilename,
-                               band=band)
-
-            meta_file=df.url('wlpipe_me_meta',
-                             run=run,
-                             tilename=tilename,
-                             band=band)
-            log_file=df.url('wlpipe_me_log',
-                            run=run,
-                            tilename=tilename,
-                            band=band)
-
-            fd['script'] = script_file
-            fd['output_files']['log']=log_file
-            fd['output_files']['meta']=meta_file
-            fd['output_files']['status']=status_file
+            fd['script'] = script
+            fd['output_files']['log']=log
+            fd['output_files']['meta']=meta
+            fd['output_files']['status']=status
 
             ii=i+1
             if ii==1 or (ii % modnum) == 0:
                 print >>stderr,"%d/%d" % (ii,ne)
-                print >>stderr,"    %s" % meta_file
+                print >>stderr,"    %s" % meta
                 print >>stderr,"    %s" % fd['script']
 
             self._write_meta_and_script_single(fd)
 
+    def _extract_tile_files(self, fd):
+        run=fd['run']
+        tilename=fd['tilename']
+        band=fd['band']
+        if 'start' in fd:
+            extra='_split'
+            start,end=_extract_start_end(**fd)
+        else:
+            extra=''
+            start=None
+            end=None
+
+        df=self._df
+        script=df.url('wlpipe_me_script'+extra,
+                      run=run,
+                      tilename=tilename,
+                      band=band,
+                      start=start,
+                      end=end)
+
+        status=df.url('wlpipe_me_status'+extra,
+                      run=run,
+                      tilename=tilename,
+                      band=band,
+                      start=start,
+                      end=end)
+
+        meta=df.url('wlpipe_me_meta'+extra,
+                    run=run,
+                    tilename=tilename,
+                    band=band,
+                    start=start,
+                    end=end)
+        log=df.url('wlpipe_me_log'+extra,
+                   run=run,
+                   tilename=tilename,
+                   band=band,
+                   start=start,
+                   end=end)
+        return script, status, meta, log
+
+    def get_flists_by_tile(self):
+        """
+        For each tile and band, get the input and outputs
+        files and some other data.  Return as a list of dicts
+
+        If nper is set, split into chunks
+
+        The sub-modules will create a get_flists() function
+        that calls this
+        """
+        if self.flists is not None:
+            return self.flists
+
+        df=desdb.files.DESFiles()
+
+        print 'getting coadd info by release'
+        flists0 = desdb.files.get_coadd_info_by_release(self.rc['dataset'],
+                                                        self.rc['band'])
+
+        medsconf=self.rc['medsconf']
+        nper=self.rc.get('nper',None)
+
+        flists=[]
+        for fd0 in flists0:
+
+            tilename=fd0['tilename']
+            band=fd0['band']
+
+            fd0['run'] = self['run']
+            fd0['medsconf']=medsconf
+            fd0['timeout'] = self.timeout
+
+            meds_file=df.url('meds',
+                             coadd_run=fd0['coadd_run'],
+                             medsconf=fd0['medsconf'],
+                             tilename=tilename,
+                             band=band)
+
+            fd0['input_files'] = {'meds':meds_file}
+
+            if nper:
+                fd0['nper']=nper
+                fd_bychunk=self._set_me_outputs_by_chunk(fd0,
+                                                         self.filetypes)
+                flists += fd_bychunk
+            else:
+                self._set_me_outputs(fd0, self.filetypes)
+                fd0['start']=None
+                fd0['end']=None
+                flists.append(fd0)
+
+        self.flists = flists
+        return flists
+
+    def _set_me_outputs(self, fd, filetypes, start=None, end=None):
+        tilename=fd['tilename']
+        band=fd['band']
+
+        fd['output_files']=self.get_me_outputs(filetypes,
+                                               tilename=tilename,
+                                               band=band,
+                                               start=start,
+                                               end=end)
+
+
+    def _set_me_outputs_by_chunk(self, fd0, filetypes):
+        nper=fd0['nper']
+        nrows=self._get_nrows(fd0['cat_url'])
+        startlist,endlist=self._get_chunks(nrows, nper)
+
+        flists=[]
+        for start,end in zip(startlist,endlist):
+            fd=copy.deepcopy(fd0)
+
+            self._set_me_outputs(fd, filetypes, start=start, end=end)
+
+            fd['start'] = start
+            fd['end'] = end
+
+            flists.append( fd )
+
+        return flists
+
+
+    def get_me_outputs(self, filetypes, **keys):
+        """
+        Generate output file names for me processing.
+
+        parameters
+        ----------
+        filetypes: dict of dicts
+            Keyed by file type. The sub-dicts should have the 'ext' key
+
+        tilename: string, keyword
+            The tilename as a string, e.g. 'DES0652-5622'
+        band: string, keyword
+            the band as a string, e.g. 'i'
+
+        start: int, optional
+            A start index for processing the MEDS file.  You must
+            send both start and end
+        end: int, optional
+            An end index for processing the MEDS file.  You must
+            send both start and end
+        """
+
+        tilename=keys['tilename']
+        band=keys['band']
+        start,end=_extract_start_end(**keys)
+
+        if start is not None:
+            type='wlpipe_me_split'
+        else:
+            type='wlpipe_me_generic'
+
+        fdict={}
+        for ftype in filetypes:
+            ext=filetypes[ftype]['ext']
+            fdict[ftype] = self._df.url(type=type,
+                                        run=self['run'],
+                                        tilename=tilename,
+                                        band=band,
+                                        filetype=ftype,
+                                        ext=ext,
+                                        start=start,
+                                        end=end)
+        return fdict
 
     def write_by_ccd(self):
         """
@@ -174,6 +345,67 @@ class GenericScripts(dict):
                 print >>stderr,"    %s" % fd['script']
 
             self._write_meta_and_script_single(fd)
+
+    def get_flists_by_ccd(self):
+        """
+        For each expname and ccd, get the input and outputs
+        files and some other data.  Return as a list of dicts
+
+        The sub-modules will create a get_flists() function
+        that calls this
+        """
+        if self.flists is not None:
+            return self.flists
+
+        flists = desdb.files.get_red_info_by_release(self.rc['dataset'],
+                                                     self.rc['band'])
+
+        for fd in flists:
+            expname=fd['expname']
+            ccd=fd['ccd']
+
+            fd['run'] = self['run']
+            fd['cat_url']=fd['image_url'].replace('.fits.fz','_cat.fits')
+            fd['input_files'] = {'image':fd['image_url'],
+                                 'cat':fd['cat_url']}
+            fd['output_files']=self.get_se_outputs(self.filetypes,
+                                                   expname=expname,
+                                                   ccd=ccd)
+
+            fd['timeout'] = self.timeout
+
+
+        self.flists = flists
+        return flists
+
+    def get_se_outputs(self, filetypes, **keys):
+        """
+        Generate output file names for me processing.
+
+        parameters
+        ----------
+        filetypes: dict of dicts
+            Keyed by file type. The sub-dicts should have the 'ext' key
+
+        expname: string, keyword
+            The exposurename as a string,, e.g. 'DECam_00154939'
+        ccd: int, keyword
+            The ccd as an integer keyword keyword
+        """
+
+        expname=keys['expname']
+        ccd=keys['ccd']
+        fdict={}
+        for ftype in filetypes:
+            ext=filetypes[ftype]['ext']
+            fdict[ftype] = self._df.url(type='wlpipe_se_generic',
+                                        run=self['run'],
+                                        expname=expname,
+                                        ccd=ccd,
+                                        filetype=ftype,
+                                        ext=ext)
+        return fdict
+
 
     def _write_meta_and_script_single(self, fd):
 
@@ -243,19 +475,34 @@ class GenericScripts(dict):
             fobj.write(text)
         os.system('chmod u+x %s' % minion_file)
 
-    def calc_walltime(self, np):
-        import math
-        ndef=31000.
-        wdef=36.
-        npdef=128.
+    def calc_walltime(self, ncpu, check=False):
+        """
+        If check=True, use the time expected
+        to for each check
+        """
+        from math import ceil
 
-        print 'counting minion jobs'
-        cd=self.get_flists()
+        flists=self.get_flists()
 
-        walltime_hours=wdef*len(cd)/ndef*np/npdef
-        walltime_hours=int(math.ceil(walltime_hours))
+        # get the total cpu time
+        njobs = len(flists)
+
+        if check:
+            seconds_per=self.seconds_per_check
+        else:
+            seconds_per=self.seconds_per
+
+        total_time=seconds_per*njobs
+
+        # the walltime in seconds given our
+        # ncpu
+        walltime_seconds = total_time/ncpu
+
+        walltime_hours=walltime_seconds/3600.
+        walltime_hours=int(ceil(walltime_hours))
 
         walltime='%d:00:00' % walltime_hours
+        print '  ',walltime
         return walltime
 
     def write_minions(self):
@@ -268,14 +515,10 @@ class GenericScripts(dict):
         job_name='%s-minions' % self['run']
         nodes=16
         ppn=8
-        np=nodes*ppn
-        # assuming 31,000 jobs (ccds), 7 minutes
-        # per job and 16*8=128 cores, we need ~29
-        # hours.  36 should be plenty
-        # using 128 and less than 48 hours cores means means
-        # we expect to end up in the reg_small exec queue
-        #walltime='36:00:00'
-        walltime=self.calc_walltime(np)
+        ncpu=nodes*ppn
+
+        print 'calculating wall time'
+        walltime=self.calc_walltime(ncpu)
 
         queue=self.get('queue','regular')
 
@@ -294,7 +537,7 @@ if [[ "Y${{PBS_O_WORKDIR}}" != "Y" ]]; then
     cd $PBS_O_WORKDIR
 fi
 
-find ./byexp -name "*-script.pbs" | mpirun -np {np} minions
+find . -name "*-script.pbs" | mpirun -np {ncpu} minions
 
 echo "done minions"
         \n"""
@@ -302,7 +545,7 @@ echo "done minions"
         minions_text=minions_text.format(job_name=job_name,
                          nodes=nodes,
                          ppn=ppn,
-                         np=np,
+                         ncpu=ncpu,
                          walltime=walltime,
                          queue=queue,
                          job_file=job_file)
@@ -322,8 +565,10 @@ echo "done minions"
         job_name='%s-check' % self['run']
         nodes=8
         ppn=8
-        np=nodes*ppn
-        walltime='00:30:00'
+        ncpu=nodes*ppn
+        walltime=self.calc_walltime(ncpu,check=True)
+
+        print 'calculating check walltime'
         queue=self.get('queue','regular')
 
         job_file=self._df.url(type='wlpipe_minions_check',
@@ -341,7 +586,7 @@ if [[ "Y${{PBS_O_WORKDIR}}" != "Y" ]]; then
     cd $PBS_O_WORKDIR
 fi
 
-find ./byexp -name "*-check.pbs" | mpirun -np {np} minions
+find . -name "*-check.pbs" | mpirun -np {ncpu} minions
 
 echo "done minions"
         \n"""
@@ -349,7 +594,7 @@ echo "done minions"
         minions_text=minions_text.format(job_name=job_name,
                          nodes=nodes,
                          ppn=ppn,
-                         np=np,
+                         ncpu=ncpu,
                          walltime=walltime,
                          queue=queue,
                          job_file=job_file)
@@ -360,91 +605,6 @@ echo "done minions"
             fobj.write(minions_text)
  
 
-    def get_se_outputs(self, filetypes, **keys):
-        """
-        Generate output file names for me processing.
-
-        parameters
-        ----------
-        filetypes: dict of dicts
-            Keyed by file type. The sub-dicts should have the 'ext' key
-
-        expname: string, keyword
-            The exposurename as a string,, e.g. 'DECam_00154939'
-        ccd: int, keyword
-            The ccd as an integer keyword keyword
-        """
-
-        expname=keys['expname']
-        ccd=keys['ccd']
-        fdict={}
-        for ftype in filetypes:
-            ext=filetypes[ftype]['ext']
-            fdict[ftype] = self._df.url(type='wlpipe_se_generic',
-                                        run=self['run'],
-                                        expname=expname,
-                                        ccd=ccd,
-                                        filetype=ftype,
-                                        ext=ext)
-        return fdict
-
-
-    def get_me_outputs(self, filetypes, **keys):
-        """
-        Generate output file names for me processing.
-
-        parameters
-        ----------
-        filetypes: dict of dicts
-            Keyed by file type. The sub-dicts should have the 'ext' key
-
-        tilename: string, keyword
-            The tilename as a string, e.g. 'DES0652-5622'
-        band: string, keyword
-            the band as a string, e.g. 'i'
-
-        start: int, optional
-            A start index for processing the MEDS file.  You must
-            send both start and end
-        end: int, optional
-            An end index for processing the MEDS file.  You must
-            send both start and end
-        """
-
-        tilename=keys['tilename']
-        band=keys['band']
-        start,end=self._extract_start_end(**keys)
-
-        if start is not None:
-            type='wlpipe_me_split'
-        else:
-            type='wlpipe_me_generic'
-
-        fdict={}
-        for ftype in filetypes:
-            ext=filetypes[ftype]['ext']
-            fdict[ftype] = self._df.url(type=type,
-                                        run=self['run'],
-                                        tilename=tilename,
-                                        band=band,
-                                        filetype=ftype,
-                                        ext=ext,
-                                        start=start,
-                                        end=end)
-        return fdict
-
-    def _extract_start_end(self, **keys):
-        start=keys.get('start',None)
-        end=keys.get('end',None)
-        if ((start is not None and end is None)
-                or 
-                (start is None and end is not None)):
-            raise ValueError("send both start= and end= or neither")
-
-        if start is not None:
-            start='%06d' % start
-            end='%06d' % end
-        return start, end
 
     def _get_chunks(self, nrow, nper):
         """
@@ -473,6 +633,279 @@ echo "done minions"
             nrows=fobj[1].get_nrows()
         return nrows
 
+
+class GenericSEPBSJob(dict):
+    """
+    only using check scripts at nersc currently
+
+    You should also create the config files for each exposure/ccd using. config
+    files go to deswl.files.se_config_path(run,expname,ccd=ccd)
+
+    Send check=True to generate the check file instead of the processing file
+    """
+    def __init__(self, run, expname, ccd, **keys):
+
+        self['run'] = run
+        self['expname'] = expname
+        self['ccd'] = ccd
+        self['queue'] = keys.get('queue','serial')
+
+        df=desdb.files.DESFiles()
+        self._df=df
+
+        self['job_file']= df.url(type='wlpipe_se_script',
+                                 run=run,
+                                 expname=expname,
+                                 ccd=ccd)
+        self['check_file']= df.url(type='wlpipe_se_check',
+                                   run=run,
+                                   expname=expname,
+                                   ccd=ccd)
+
+        self.rc=deswl.files.Runconfig(self['run'])
+
+        ver=self.rc['DESDB_VERS']
+        self['desdb_load'] = \
+            'module unload desdb && module load desdb/%s' % ver
+
+        ver=self.rc['DESWL_VERS']
+        self['deswl_load'] = \
+            'module unload deswl && module load deswl/%s' % ver
+
+        ver=self.rc['ESUTIL_VERS']
+        self['esutil_load'] = \
+            'module unload esutil && module load esutil/%s' % ver
+
+    def write(self, check=False):
+
+        run=self['run']
+        expname=self['expname']
+        ccd=self['ccd']
+
+        queue = self['queue']
+
+        job_name=expname.replace('decam-','')
+        job_name=expname.replace('DECam-','')
+        job_name='se-'+job_name
+
+        if check:
+            job_file=self['check_file']
+            job_name += '-chk'
+        else:
+            job_file=self['job_file']
+
+        rc=deswl.files.Runconfig(self['run'])
+
+        # naming scheme for this generic type figured out from run
+        df=self._df
+        meta=df.url(type='wlpipe_se_meta',
+                    run=run,
+                    expname=expname,
+                    ccd=ccd)
+        if check:
+            chk=job_file[0:job_file.rfind('.')]+'.json'
+            err=job_file[0:job_file.rfind('.')]+'.err'
+
+            cmd="""
+meta="{meta}"
+chk="{chk}"
+err="{err}"
+deswl-check "$meta" 1> "$chk" 2> "$err"
+"""
+            cmd=cmd.format(meta=meta, chk=chk, err=err)
+        else:
+            # log is now automatically created by GenericProcessor
+            # and written into hdfs
+            cmd=get_run_command(meta)
+
+        # need -l for login shell because of all the crazy module stuff
+        # we have to load
+        text = """#!/bin/bash -l
+#PBS -q %(queue)s
+#PBS -l nodes=1:ppn=1
+#PBS -l walltime=02:00:00
+#PBS -N %(job_name)s
+#PBS -j oe
+#PBS -o %(job_file)s.pbslog
+#PBS -V
+#PBS -A des
+
+if [[ "Y${PBS_O_WORKDIR}" != "Y" ]]; then
+    cd $PBS_O_WORKDIR
+fi
+
+%(esutil_load)s
+%(desdb_load)s
+%(deswl_load)s
+
+%(cmd)s
+        \n""" % {'esutil_load':self['esutil_load'],
+                 'desdb_load':self['desdb_load'],
+                 'deswl_load':self['deswl_load'],
+                 'cmd':cmd,
+                 'queue':queue,
+                 'job_file':job_file,
+                 'job_name':job_name}
+
+
+        eu.ostools.makedirs_fromfile(job_file)
+        with open(job_file,'w') as fobj:
+            fobj.write(text)
+
+        os.system('chmod u+x %s' % job_file)
+
+
+
+class GenericMEChecker(dict):
+    """
+    Write out scripts that are also PBS scripts for checking outputs.
+
+    I've been calling these as minions at nersc
+    """
+    def __init__(self, run, tilename, band, start=None, end=None,
+                 **keys):
+
+        self['run'] = run
+        self['tilename'] = tilename
+        self['band'] = band
+        self['queue'] = keys.get('queue','serial')
+
+        start,end=_extract_start_end(start=start,end=end)
+        self['start']=start
+        self['end']=end
+        if self['start'] is None:
+            self._extra=''
+        else:
+            self._extra='_split'
+
+        df=desdb.files.DESFiles()
+        self._df=df
+
+        extra=self._extra
+        self['job_file']= df.url(type='wlpipe_me_script'+extra,
+                                 run=run,
+                                 tilename=tilename,
+                                 band=band,
+                                 start=self['start'],
+                                 end=self['end'])
+        self['check_file']= df.url(type='wlpipe_me_check'+extra,
+                                   run=run,
+                                   tilename=tilename,
+                                   band=band,
+                                   start=self['start'],
+                                   end=self['end'])
+
+        self.rc=deswl.files.Runconfig(self['run'])
+
+        ver=self.rc['DESDB_VERS']
+        self['desdb_load'] = \
+            'module unload desdb && module load desdb/%s' % ver
+
+        ver=self.rc['DESWL_VERS']
+        self['deswl_load'] = \
+            'module unload deswl && module load deswl/%s' % ver
+
+        ver=self.rc['ESUTIL_VERS']
+        self['esutil_load'] = \
+            'module unload esutil && module load esutil/%s' % ver
+
+    def write(self):
+
+        run=self['run']
+        tilename=self['tilename']
+        band=self['band']
+
+        queue = self['queue']
+
+        if self['start'] is not None:
+            job_name='%s-%s' % (self['start'],self['end'])
+        else:
+            job_name='%s-%s' % (tilename,band)
+
+        job_file=self['check_file']
+
+        rc=deswl.files.Runconfig(self['run'])
+
+        # naming scheme for this generic type figured out from run
+        df=self._df
+        extra=self._extra
+        meta=df.url(type='wlpipe_me_meta'+extra,
+                    run=run,
+                    tilename=tilename,
+                    band=band,
+                    start=self['start'],
+                    end=self['end'])
+        chk=job_file[0:job_file.rfind('.')]+'.json'
+        err=job_file[0:job_file.rfind('.')]+'.err'
+
+        cmd="""
+meta="{meta}"
+chk="{chk}"
+err="{err}"
+deswl-check "$meta" 1> "$chk" 2> "$err"
+"""
+        cmd=cmd.format(meta=meta, chk=chk, err=err)
+
+        # need -l for login shell because of all the crazy module stuff
+        # we have to load
+        text = """#!/bin/bash -l
+#PBS -q %(queue)s
+#PBS -l nodes=1:ppn=1
+#PBS -l walltime=02:00:00
+#PBS -N %(job_name)s
+#PBS -j oe
+#PBS -o %(job_file)s.pbslog
+#PBS -V
+#PBS -A des
+
+if [[ "Y${PBS_O_WORKDIR}" != "Y" ]]; then
+    cd $PBS_O_WORKDIR
+fi
+
+%(esutil_load)s
+%(desdb_load)s
+%(deswl_load)s
+
+%(cmd)s
+        \n""" % {'esutil_load':self['esutil_load'],
+                 'desdb_load':self['desdb_load'],
+                 'deswl_load':self['deswl_load'],
+                 'cmd':cmd,
+                 'queue':queue,
+                 'job_file':job_file,
+                 'job_name':job_name}
+
+
+        eu.ostools.makedirs_fromfile(job_file)
+        with open(job_file,'w') as fobj:
+            fobj.write(text)
+
+        os.system('chmod u+x %s' % job_file)
+
+
+
+def get_run_command(config_file):
+    return 'deswl-run %s' % config_file
+
+def _extract_start_end(**keys):
+    """
+    get start and end as strings
+    """
+    start=keys.get('start',None)
+    end=keys.get('end',None)
+    if ((start is not None and end is None)
+            or 
+            (start is None and end is not None)):
+        raise ValueError("send both start= and end= or neither")
+
+    if start is not None:
+        start='%06d' % start
+        end='%06d' % end
+    return start, end
+
+
+
+# not using these right now
 class GenericProcessor(dict):
     def __init__(self, config):
         """
@@ -784,129 +1217,4 @@ job_name: %(job_name)s\n""" % {'esutil_load':esutil_load,
 
         with open(job_file,'w') as fobj:
             fobj.write(text)
-
-class GenericSEPBSJob(dict):
-    """
-    only using check scripts at nersc currently
-
-    You should also create the config files for each exposure/ccd using. config
-    files go to deswl.files.se_config_path(run,expname,ccd=ccd)
-
-    Send check=True to generate the check file instead of the processing file
-    """
-    def __init__(self, run, expname, ccd, **keys):
-
-        self['run'] = run
-        self['expname'] = expname
-        self['ccd'] = ccd
-        self['queue'] = keys.get('queue','serial')
-
-        df=desdb.files.DESFiles()
-        self._df=df
-
-        self['job_file']= df.url(type='wlpipe_se_script',
-                                 run=run,
-                                 expname=expname,
-                                 ccd=ccd)
-        self['check_file']= df.url(type='wlpipe_se_check',
-                                   run=run,
-                                   expname=expname,
-                                   ccd=ccd)
-
-        self.rc=deswl.files.Runconfig(self['run'])
-
-        ver=self.rc['DESDB_VERS']
-        self['desdb_load'] = \
-            'module unload desdb && module load desdb/%s' % ver
-
-        ver=self.rc['DESWL_VERS']
-        self['deswl_load'] = \
-            'module unload deswl && module load deswl/%s' % ver
-
-        ver=self.rc['ESUTIL_VERS']
-        self['esutil_load'] = \
-            'module unload esutil && module load esutil/%s' % ver
-
-    def write(self, check=False):
-
-        run=self['run']
-        expname=self['expname']
-        ccd=self['ccd']
-
-        queue = self['queue']
-
-        job_name=expname.replace('decam-','')
-        job_name=expname.replace('DECam-','')
-        job_name='se-'+job_name
-
-        if check:
-            job_file=self['check_file']
-            job_name += '-chk'
-        else:
-            job_file=self['job_file']
-
-        rc=deswl.files.Runconfig(self['run'])
-
-        # naming scheme for this generic type figured out from run
-        df=self._df
-        meta=df.url(type='wlpipe_se_meta',
-                    run=run,
-                    expname=expname,
-                    ccd=ccd)
-        if check:
-            chk=job_file[0:job_file.rfind('.')]+'.json'
-            err=job_file[0:job_file.rfind('.')]+'.err'
-
-            cmd="""
-meta="{meta}"
-chk="{chk}"
-err="{err}"
-deswl-check "$meta" 1> "$chk" 2> "$err"
-"""
-            cmd=cmd.format(meta=meta, chk=chk, err=err)
-        else:
-            # log is now automatically created by GenericProcessor
-            # and written into hdfs
-            cmd=get_run_command(meta)
-
-        # need -l for login shell because of all the crazy module stuff
-        # we have to load
-        text = """#!/bin/bash -l
-#PBS -q %(queue)s
-#PBS -l nodes=1:ppn=1
-#PBS -l walltime=02:00:00
-#PBS -N %(job_name)s
-#PBS -j oe
-#PBS -o %(job_file)s.pbslog
-#PBS -V
-#PBS -A des
-
-if [[ "Y${PBS_O_WORKDIR}" != "Y" ]]; then
-    cd $PBS_O_WORKDIR
-fi
-
-%(esutil_load)s
-%(desdb_load)s
-%(deswl_load)s
-
-%(cmd)s
-        \n""" % {'esutil_load':self['esutil_load'],
-                 'desdb_load':self['desdb_load'],
-                 'deswl_load':self['deswl_load'],
-                 'cmd':cmd,
-                 'queue':queue,
-                 'job_file':job_file,
-                 'job_name':job_name}
-
-
-        eu.ostools.makedirs_fromfile(job_file)
-        with open(job_file,'w') as fobj:
-            fobj.write(text)
-
-        os.system('chmod u+x %s' % job_file)
-
-
-def get_run_command(config_file):
-    return 'deswl-run %s' % config_file
-
 

@@ -1,76 +1,34 @@
 from deswl import generic
 import desdb
-import copy
-
-# don't put status, meta, or log here, they will get
-# over-written
-ME_FILETYPES={'raw':{'ext':'txt'},
-              'clean':{'ext':'txt'}}
-
-# I'm taking 3 seconds per object and 120 
-# objects per chunk, and 10 images per object.
-# that would give 1 hour, so 3 is plenty
-ME_TIMEOUT=3*60*60 # seconds
-
 
 class I3MEScripts(generic.GenericScripts):
     def __init__(self, run, **keys):
         super(I3MEScripts,self).__init__(run)
 
+        # we set timeout much longer than expected time per
+        # the time per is the mean plus one standard deviation
+        # so should itself be plenty
+
+        # number of objects per job
+        nper=self.rc['nper']
+        time_per_object=30 # assuming 10 images in stack
+        self.seconds_per = nper*time_per_object
+
+        # buffer quite a bit.  Note the above estimate
+        # should already be way too big, so this is fine
+        self.timeout=5*self.seconds_per
+
+        # don't put status, meta, or log here, they will get
+        # over-written
+        self.filetypes={'raw':{'ext':'txt'},
+                        'clean':{'ext':'txt'}}
+
+
     def get_flists(self):
         """
         im3shape is slow so we use the chunking functionality
         """
-        if self.flists is not None:
-            return self.flists
-
-        df=desdb.files.DESFiles()
-
-        print 'getting coadd info by release'
-        flists0 = desdb.files.get_coadd_info_by_release(self.rc['dataset'],
-                                                       self.rc['band'])
-
-        medsconf=self.rc['medsconf']
-        nper=self.rc['nper']
-
-        flists=[]
-        for fd0 in flists0:
-
-            tilename=fd0['tilename']
-            band=fd0['band']
-
-            fd0['run'] = self['run']
-            fd0['medsconf']=medsconf
-            fd0['nper']=nper
-            fd0['timeout'] = ME_TIMEOUT
-
-            meds_file=df.url('meds',
-                             coadd_run=fd0['coadd_run'],
-                             medsconf=fd0['medsconf'],
-                             tilename=tilename,
-                             band=band)
-
-            fd0['input_files'] = {'meds':meds_file}
-
-            nrows=self._get_nrows(fd0['cat_url'])
-            startlist,endlist=self._get_chunks(nrows, nper)
-
-            for start,end in zip(startlist,endlist):
-                fd=copy.deepcopy(fd0)
-
-                fd['output_files']=self.get_me_outputs(ME_FILETYPES,
-                                                       tilename=tilename,
-                                                       band=band,
-                                                       start=start,
-                                                       end=end)
-                fd['start'] = start
-                fd['end'] = end
-
-                flists.append( fd )
-
-
-        self.flists = flists
-        return flists
+        return self.get_flists_by_tile()
 
     def get_script(self, fdict):
         rc=self.rc
@@ -106,7 +64,7 @@ export OMP_NUM_THREADS=1
 echo "host: $(hostname)" > $log_file
 
 command="
-    %(script_path)s >> $log_file
+    echo hello >> $log_file
 "
 
 echo "time-seconds: $SECONDS" >> $log_file
