@@ -58,53 +58,66 @@ class ShapeletsSEScripts(generic.GenericScripts):
 #PBS -V
 #PBS -A des
 
-# If all goes as planned, there will be no output
-# from this at all
-%(shapelets_load)s
+%(load_modules_func)s
 
-wl_config=%(wl_config)s
-wl_config_desdm=%(wl_config_desdm)s
-wl_config_local=%(wl_config_local)s
+function run_shapelets() {
 
-image=%(image)s
-cat=%(cat)s
-stars=%(stars)s
-fitpsf=%(fitpsf)s
-psf=%(psf)s
-shear=%(shear)s
-timeout=%(timeout)d
+    wl_config=%(wl_config)s
+    wl_config_desdm=%(wl_config_desdm)s
+    wl_config_local=%(wl_config_local)s
 
-status_file=%(status)s
+    image=%(image)s
+    cat=%(cat)s
+    stars=%(stars)s
+    fitpsf=%(fitpsf)s
+    psf=%(psf)s
+    shear=%(shear)s
+    timeout=%(timeout)d
+
+
+    export OMP_NUM_THREADS=1
+
+
+    for prog in findstars measurepsf measureshear; do
+        echo "running $prog" >> $log_file
+
+        timeout $timeout $SHAPELETS_DIR/bin/$prog  \\
+            $wl_config            \\
+            +$wl_config_desdm     \\
+            +$wl_config_local     \\
+            image_file=$image     \\
+            cat_file=$cat         \\
+            stars_file=$stars     \\
+            fitpsf_file=$fitpsf   \\
+            psf_file=$psf         \\
+            shear_file=$shear     \\
+            output_dots=false     \\
+                2>&1 >> $log_file
+
+        exit_status=$?
+        if [[ $exit_status != "0" ]]; then
+            echo "error running $prog: $err" >> $log_file
+            return $exit_status
+        fi
+    done
+
+    echo "time-seconds: $SECONDS" >> $log_file
+    return 0
+}
+
+
 log_file=%(log)s
-
-export OMP_NUM_THREADS=1
+status_file=%(status)s
 
 echo "host: $(hostname)" > $log_file
 
-for prog in findstars measurepsf measureshear; do
-    echo "running $prog" >> $log_file
+load_modules
+exit_status=$?
 
-    timeout $timeout $SHAPELETS_DIR/bin/$prog  \\
-        $wl_config            \\
-        +$wl_config_desdm     \\
-        +$wl_config_local     \\
-        image_file=$image     \\
-        cat_file=$cat         \\
-        stars_file=$stars     \\
-        fitpsf_file=$fitpsf   \\
-        psf_file=$psf         \\
-        shear_file=$shear     \\
-        output_dots=false     \\
-            2>&1 >> $log_file
-
+if [[ $exit_status == "0" ]]; then
+    run_shapelets
     exit_status=$?
-    if [[ $exit_status != "0" ]]; then
-        echo "error running $prog: $err" >> $log_file
-        break
-    fi
-done
-
-echo "time-seconds: $SECONDS" >> $log_file
+fi
 
 mess="writing status $exit_status to:
     $status_file"
@@ -114,9 +127,12 @@ echo "$exit_status" > "$status_file"
 exit $exit_status
         \n"""
 
+        lmodfunc=generic.get_load_modules_func()
+        lmodfunc=lmodfunc % {'load_modules':load}
+
         # now interpolate the rest
         allkeys={}
-        allkeys['shapelets_load'] = shapelets_load
+        allkeys['load_modules_func'] = lmodfunc
         allkeys['wl_config'] = wl_config
         allkeys['wl_config_desdm'] = wl_config_desdm
         allkeys['wl_config_local'] = wl_config_local

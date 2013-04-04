@@ -44,27 +44,43 @@ class I3MEScripts(generic.GenericScripts):
 #PBS -V
 #PBS -A des
 
-# stdout goes to the log file
-%(load)s
+%(load_modules_func)s
 
-meds_file=%(meds)s
-raw_file=%(raw)s
-clean_file=%(clean)s
+function run_im3shape() {
+    # stdout goes to the log file
+    meds_file=%(meds)s
+    raw_file=%(raw)s
+    clean_file=%(clean)s
 
-timeout=%(timeout)d
+    timeout=%(timeout)d
 
-status_file=%(status)s
+
+    export OMP_NUM_THREADS=1
+
+
+    command="
+        echo hello
+    "
+
+    $command >> $log_file
+    exit_status=$?
+    echo "time-seconds: $SECONDS" >> $log_file
+    
+    return $exit_status
+}
+
 log_file=%(log)s
-
-export OMP_NUM_THREADS=1
+status_file=%(status)s
 
 echo "host: $(hostname)" > $log_file
 
-command="
-    echo hello >> $log_file
-"
+load_modules
+exit_status=$?
 
-echo "time-seconds: $SECONDS" >> $log_file
+if [[ $exit_status == "0" ]]; then
+    run_im3shape
+    exit_status=$?
+fi
 
 mess="writing status $exit_status to:
     $status_file"
@@ -74,9 +90,12 @@ echo "$exit_status" > "$status_file"
 exit $exit_status
         \n"""
 
+        lmodfunc=generic.get_load_modules_func()
+        lmodfunc=lmodfunc % {'load_modules':load}
+
         # now interpolate the rest
         allkeys={}
-        allkeys['load'] = load
+        allkeys['load_modules_func'] = lmodfunc
         for k,v in fdict.iteritems():
             if k not in ['input_files','output_files']:
                 allkeys[k] = v

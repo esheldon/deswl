@@ -537,7 +537,7 @@ if [[ "Y${{PBS_O_WORKDIR}}" != "Y" ]]; then
     cd $PBS_O_WORKDIR
 fi
 
-find . -name "*-script*.pbs" | mpirun -np {ncpu} minions
+find . -name "*-script.pbs" | mpirun -np {ncpu} minions
 
 echo "done minions"
         \n"""
@@ -586,7 +586,7 @@ if [[ "Y${{PBS_O_WORKDIR}}" != "Y" ]]; then
     cd $PBS_O_WORKDIR
 fi
 
-find . -name "*-check*.pbs" | mpirun -np {ncpu} minions
+find . -name "*-check.pbs" | mpirun -np {ncpu} minions
 
 echo "done minions"
         \n"""
@@ -1218,3 +1218,24 @@ job_name: %(job_name)s\n""" % {'esutil_load':esutil_load,
         with open(job_file,'w') as fobj:
             fobj.write(text)
 
+def get_load_modules_func():
+    """
+    This is a bash wrapper for module that checks for errors
+
+    You need to interpolat in the load commands
+    """
+
+    return """
+function load_modules() {
+    cmd="
+%(load_modules)s
+    "
+    res=$($cmd 2>&1 | grep -i error)
+    if [[ $res == "" ]]; then
+        return 0
+    else
+        echo "$res" 1>&2
+        return 1
+    fi
+}
+    \n"""
