@@ -101,7 +101,6 @@ function run_shapelets() {
         fi
     done
 
-    echo "time-seconds: $SECONDS" >> $log_file
     return 0
 }
 
@@ -122,6 +121,7 @@ fi
 mess="writing status $exit_status to:
     $status_file"
 echo $mess >> $log_file
+echo "time-seconds: $SECONDS" >> $log_file
 
 echo "$exit_status" > "$status_file"
 exit $exit_status

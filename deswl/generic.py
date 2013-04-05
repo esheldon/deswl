@@ -53,11 +53,24 @@ class GenericScripts(dict):
 
     The user must over-ride the methods
         get_flists
-        get_script
+            just call your choise of _by_tile or _by_ccd
+        get_job_name
+            given a fdict
     And set the member variables
         seconds_per
+            seconds per job
         timeout
+            timeout for job
         filetypes
+            output file types
+        module_uses
+            module use dirs to add
+        modules
+            a *list* of modules to load
+        commands
+            A single string with commands, can be
+            multi-line, should do error checking etc.
+            See the get_script function for details
     """
     def __init__(self,run, **keys):
         self['run'] = run
@@ -75,25 +88,127 @@ class GenericScripts(dict):
         # time to check the outputs
         self.seconds_per_check=1.0
 
+        # these need to be over-ridden
+        self.seconds_per=None
+        self.timeout=None
+        self.filetypes=None
+        self.modules=None
+        self.module_uses=None
+        self.commands=None
+
     def get_flists(self):
         """
         The over-ridden version will call get_flists_by_ccd
         or get_flists_by_tile or customize
         """
         raise RuntimeError("you must over-ride get_flists")
+
+    def get_job_name(self, fd):
+        raise RuntimeError("you must over-ride get_job_name")
+
     def get_script(self, fdict):
-        raise RuntimeError("you must over-ride get_script")
+        rc=self.rc
 
-    def _make_module_loads(self):
-        for module in ['desdb','deswl','esutil']:
-            load_key='%s_load' % module
-            mup=module.upper()
-            vers=self.rc['%s_VERS'% mup]
+        # note we interpolate commands first
+        text = """#!/bin/bash
+#PBS -q serial
+#PBS -l nodes=1:ppn=1
+#PBS -l walltime=3:00:00
+#PBS -N %(job_name)s
+#PBS -j oe
+#PBS -o %(pbslog)s
+#PBS -V
+#PBS -A des
 
-            lcmd='module unload {module} && module load {module}/{vers}'
-            lcmd=lcmd.format(module=module,vers=vers)
+function wlpipe_module_use {
+    for mod_dir; do
+        module use $mod_dir
+    done
+}
+# workaround because the module command does
+# not indicate an error status
+function wlpipe_load_modules() {
+    for mod; do
+        module load $mod
 
-            self[load_key] = lcmd
+        res=$(module show $mod 2>&1 | grep -i error)
+        if [[ $res != "" ]]; then
+            return 1
+        fi
+    done
+    return 0
+}
+
+# rules for commmands
+# - set before entry are $timeout, $log_file
+# - commands is a single string
+# - test for errors and use return to indicate a status
+# - append stdout to the $log_file, e.g. use >> 
+# - commands should be run with 
+#        timeout $timeout command...
+
+function wlpipe_run_code() {
+%(commands)s
+}
+
+#
+# main
+#
+
+log_file=%(log)s
+status_file=%(status)s
+timeout=%(timeout)d
+
+echo "host: $(hostname)" > $log_file
+
+module_uses="%(module_uses)s"
+wlpipe_module_use "$module_uses"
+wlpipe_load_modules %(modules)s
+exit_status=$?
+
+if [[ $exit_status == "0" ]]; then
+    wlpipe_run_code
+    exit_status=$?
+fi
+
+mess="writing status $exit_status to:
+    $status_file"
+echo $mess >> $log_file
+echo "time-seconds: $SECONDS" >> $log_file
+
+echo "$exit_status" > "$status_file"
+exit $exit_status
+        \n"""
+
+
+        # now interpolate the rest
+        allkeys={}
+        module_uses=' '.join(self.module_uses)
+        allkeys['module_uses']=module_uses
+        modules=' '.join(self.modules)
+        allkeys['modules'] = modules
+
+
+
+        for k,v in fdict.iteritems():
+            if k not in ['input_files','output_files']:
+                allkeys[k] = v
+        for k,v in fdict['input_files'].iteritems():
+            allkeys[k] = v
+        for k,v in fdict['output_files'].iteritems():
+            allkeys[k] = v
+
+        allkeys['pbslog']=fdict['script']+'.pbslog'
+
+        job_name=self.get_job_name(fdict)
+        allkeys['job_name']=job_name
+
+        commands=self.commands % allkeys
+        allkeys['commands']=commands
+
+        text = text % allkeys
+        return text
+
 
     def write_by_tile(self):
         """
@@ -219,6 +334,7 @@ class GenericScripts(dict):
                 self._set_me_outputs(fd0, self.filetypes)
                 fd0['start']=None
                 fd0['end']=None
+                fd0['nobj']=None
                 flists.append(fd0)
 
         self.flists = flists
@@ -248,6 +364,7 @@ class GenericScripts(dict):
 
             fd['start'] = start
             fd['end'] = end
+            fd['nobj'] = end-start+1
 
             flists.append( fd )
 
@@ -537,6 +654,7 @@ if [[ "Y${{PBS_O_WORKDIR}}" != "Y" ]]; then
     cd $PBS_O_WORKDIR
 fi
 
+module load openmpi-gnu
 find . -name "*-script.pbs" | mpirun -np {ncpu} minions
 
 echo "done minions"
@@ -586,6 +704,7 @@ if [[ "Y${{PBS_O_WORKDIR}}" != "Y" ]]; then
     cd $PBS_O_WORKDIR
 fi
 
+module load openmpi-gnu
 find . -name "*-check.pbs" | mpirun -np {ncpu} minions
 
 echo "done minions"
@@ -632,6 +751,20 @@ echo "done minions"
         with fitsio.FITS(cat_file) as fobj:
             nrows=fobj[1].get_nrows()
         return nrows
+
+    def _make_module_loads(self):
+        """
+        Not using these right now
+        """
+        for module in ['desdb','deswl','esutil']:
+            load_key='%s_load' % module
+            mup=module.upper()
+            vers=self.rc['%s_VERS'% mup]
+
+            lcmd='module unload {module} && module load {module}/{vers}'
+            lcmd=lcmd.format(module=module,vers=vers)
+
+            self[load_key] = lcmd
 
 
 class GenericSEPBSJob(dict):
@@ -1218,24 +1351,4 @@ job_name: %(job_name)s\n""" % {'esutil_load':esutil_load,
         with open(job_file,'w') as fobj:
             fobj.write(text)
 
-def get_load_modules_func():
-    """
-    This is a bash wrapper for module that checks for errors
 
-    You need to interpolat in the load commands
-    """
-
-    return """
-function load_modules() {
-    cmd="
-%(load_modules)s
-    "
-    res=$($cmd 2>&1 | grep -i error)
-    if [[ $res == "" ]]; then
-        return 0
-    else
-        echo "$res" 1>&2
-        return 1
-    fi
-}
-    \n"""

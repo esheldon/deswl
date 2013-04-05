@@ -11,7 +11,9 @@ class I3MEScripts(generic.GenericScripts):
 
         # number of objects per job
         nper=self.rc['nper']
-        time_per_object=30 # assuming 10 images in stack
+
+        # assuming 10 images in stack
+        time_per_object=30
         self.seconds_per = nper*time_per_object
 
         # buffer quite a bit.  Note the above estimate
@@ -23,14 +25,54 @@ class I3MEScripts(generic.GenericScripts):
         self.filetypes={'raw':{'ext':'txt'},
                         'clean':{'ext':'txt'}}
 
+        self.module_uses=\
+            ['/project/projectdirs/des/wl/desdata/users/cogs/usr/modulefiles']
+        self.modules=['im3shape']
+        self.commands=self._get_commands()
 
     def get_flists(self):
         return self.get_flists_by_tile()
 
-    def get_script(self, fdict):
+    def get_job_name(self, fd):
+        job_name='%s-%s' % (fd['tilename'],fd['band'])
+        return job_name
+
+
+    def _get_commands(self):
+        """
+        timeout and log_file are defined on entry
+        """
+
+        commands="""
+    tilename=%(tilename)s
+    meds_file=%(meds)s
+    start=%(start)d
+    nobj=%(nobj)d
+    raw=%(raw)s
+    clean=%(clean)s
+
+    export OMP_NUM_THREADS=1
+    timeout $timeout $IM3SHAPE_DIR/launch_im3shape.sh ${tilename} ${meds_file} ${start} ${nobj} ${raw} ${clean} >> $log_file
+
+    exit_status=$?
+    
+    return $exit_status
+        """
+
+        return commands
+
+
+
+
+
+
+
+    def get_script_old(self, fdict):
         rc=self.rc
         load='module load im3shape/%s'
         load = load % rc['IM3SHAPE_VERS']
+
+        load="echo > /dev/null"
 
 
         # note only the {key} are set at this time
@@ -47,24 +89,19 @@ class I3MEScripts(generic.GenericScripts):
 %(load_modules_func)s
 
 function run_im3shape() {
-    # stdout goes to the log file
     meds_file=%(meds)s
     raw_file=%(raw)s
     clean_file=%(clean)s
-
     timeout=%(timeout)d
-
 
     export OMP_NUM_THREADS=1
 
-
     command="
-        echo hello
+        timeout $timeout echo hello
     "
 
     $command >> $log_file
     exit_status=$?
-    echo "time-seconds: $SECONDS" >> $log_file
     
     return $exit_status
 }
@@ -85,6 +122,7 @@ fi
 mess="writing status $exit_status to:
     $status_file"
 echo $mess >> $log_file
+echo "time-seconds: $SECONDS" >> $log_file
 
 echo "$exit_status" > "$status_file"
 exit $exit_status
