@@ -22,6 +22,7 @@ def process_status(info, verbose=False):
     """
 
     info['error_string'] = ''
+    info['missing']=[]
 
     status_file=info['output_files']['status']
 
@@ -37,6 +38,7 @@ def process_status(info, verbose=False):
                 exit_status=int(fobj.read())
 
             info['exit_status'] = exit_status
+            stat_read=True
         except ValueError as e:
             print >>stderr,"Error reading stat file:",status_file
             info['error_string'] = 'Error reading stat file'
@@ -48,6 +50,7 @@ def process_status(info, verbose=False):
                         % exit_status
                 info['error_string'] = 'Processing error'
             else:
+                missing_types=[]
                 missing=[]
                 for ftype,f in info['output_files'].iteritems():
                     if ftype=='qa':
@@ -58,11 +61,14 @@ def process_status(info, verbose=False):
                         # only print first missing one
                         if len(missing) == 0:
                             print >>stderr,'file missing:',f
-                        missing.append(ftype)
+                        missing_types.append(ftype)
+                        missing.append(f)
 
-                if len(missing) > 0:
-                    fmiss=' '.join(missing)
+                if len(missing_types) > 0:
+                    fmiss=' '.join(missing_types)
                     info['error_string'] = 'files missing: %s' % fmiss
+                info['missing']=missing
+
     return info
 
 def main():
@@ -75,7 +81,10 @@ def main():
     fname=args[0]
     if verbose:
         print >>stderr,'reading:',fname
-    info={'meta':fname,'error_string':''}
+
+    info={'meta':fname,
+          'error_string':'',
+          'missing':[]}
 
     if not fexists(fname):
         info['error_string'] = 'meta file not found'
