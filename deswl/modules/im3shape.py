@@ -27,14 +27,17 @@ class I3MEScripts(generic.GenericScripts):
 
         self.module_uses=\
             ['/project/projectdirs/des/wl/desdata/users/cogs/usr/modulefiles']
-        self.modules=['im3shape']
+
+        module='im3shape/%s' % self.rc['IM3SHAPE_VERS']
+        self.modules=[module]
         self.commands=self._get_commands()
 
     def get_flists(self):
         return self.get_flists_by_tile()
 
     def get_job_name(self, fd):
-        job_name='%s-%s' % (fd['tilename'],fd['band'])
+        job_name='%s-%s-%d' % (fd['tilename'],fd['band'],fd['start'])
+        job_name=job_name.replace('DES','')
         return job_name
 
 
@@ -52,7 +55,7 @@ class I3MEScripts(generic.GenericScripts):
     clean=%(clean)s
 
     export OMP_NUM_THREADS=1
-    timeout $timeout $IM3SHAPE_DIR/launch_im3shape.sh ${tilename} ${meds_file} ${start} ${nobj} ${raw} ${clean} >> $log_file
+    timeout $timeout $IM3SHAPE_DIR/launch_im3shape.sh ${tilename} ${meds_file} ${start} ${nobj} ${raw} ${clean} 2>&1 >> $log_file
 
     exit_status=$?
     
