@@ -120,16 +120,18 @@ class GenericScripts(dict):
 #PBS -V
 #PBS -A des
 
+# this script is auto-generated
+
 function wlpipe_module_use {
     for mod_dir; do
-        module use $mod_dir
+        module use $mod_dir 2>&1 >> $log_file
     done
 }
 # workaround because the module command does
 # not indicate an error status
 function wlpipe_load_modules() {
     for mod; do
-        module load $mod
+        module load $mod 2>&1 >> $log_file
 
         res=$(module show $mod 2>&1 | grep -i error)
         if [[ $res != "" ]]; then
@@ -140,10 +142,11 @@ function wlpipe_load_modules() {
 }
 
 # rules for commmands
-# - set before entry are $timeout, $log_file
+# - before entry these are set $timeout, $log_file
 # - commands is a single string
 # - test for errors and use return to indicate a status
-# - append stdout to the $log_file, e.g. use >> 
+# - append stdout/stderr to the $log_file, e.g. 
+#        use 2>&1 >> $log_file
 # - commands should be run with 
 #        timeout $timeout command...
 
@@ -704,7 +707,7 @@ if [[ "Y${{PBS_O_WORKDIR}}" != "Y" ]]; then
     cd $PBS_O_WORKDIR
 fi
 
-module load openmpi-gnu
+nsetup_ess
 find . -name "*-check.pbs" | mpirun -np {ncpu} minions
 
 echo "done minions"
