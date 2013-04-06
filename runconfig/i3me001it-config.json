@@ -7,7 +7,7 @@
  "DESDB_DIR":"/global/homes/e/esheldon/exports/desdb-work",
  "ppn":8,
  "dataset":"sve01",
- "IM3SHAPE_VERS":"master",
+ "IM3SHAPE_VERS":"1.0",
  "band":"i",
  "medsconf":"003",
  "ESUTIL_DIR":"/global/homes/e/esheldon/exports/esutil-work",
