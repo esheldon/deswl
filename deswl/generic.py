@@ -164,9 +164,8 @@ timeout=%(timeout)d
 
 echo "host: $(hostname)" > $log_file
 
-module_uses="%(module_uses)s"
-wlpipe_module_use "$module_uses"
-wlpipe_load_modules %(modules)s
+%(module_uses)s
+%(module_loads)s
 exit_status=$?
 
 if [[ $exit_status == "0" ]]; then
@@ -186,10 +185,19 @@ exit $exit_status
 
         # now interpolate the rest
         allkeys={}
-        module_uses=' '.join(self.module_uses)
+        if self.module_uses is not None:
+            module_uses=' '.join(self.module_uses)
+            module_uses='wlpipe_module_use "%s"' % module_uses
+        else:
+            module_uses=''
+
+        if self.modules is not None:
+            modules=' '.join(self.modules)
+            module_loads='wlpipe_load_modules %s'
+        else:
+            module_loads=''
         allkeys['module_uses']=module_uses
-        modules=' '.join(self.modules)
-        allkeys['modules'] = modules
+        allkeys['module_loads'] = module_loads
 
 
 
@@ -517,12 +525,17 @@ exit $exit_status
         ccd=keys['ccd']
         fdict={}
         for ftype in filetypes:
-            ext=filetypes[ftype]['ext']
+            tinfo=filetypes[ftype]
+            ext=tinfo['ext']
+            if 'typename' in tinfo:
+                tname=tinfo['typename']
+            else:
+                tname=ftype
             fdict[ftype] = self._df.url(type='wlpipe_se_generic',
                                         run=self['run'],
                                         expname=expname,
                                         ccd=ccd,
-                                        filetype=ftype,
+                                        filetype=tname,
                                         ext=ext)
         return fdict
 
@@ -707,7 +720,7 @@ if [[ "Y${{PBS_O_WORKDIR}}" != "Y" ]]; then
     cd $PBS_O_WORKDIR
 fi
 
-nsetup_ess
+module load openmpi-gnu
 find . -name "*-check.pbs" | mpirun -np {ncpu} minions
 
 echo "done minions"
@@ -870,6 +883,7 @@ if [[ "Y${PBS_O_WORKDIR}" != "Y" ]]; then
     cd $PBS_O_WORKDIR
 fi
 
+nsetup_ess
 %(esutil_load)s
 %(desdb_load)s
 %(deswl_load)s
@@ -987,7 +1001,7 @@ deswl-check "$meta" 1> "$chk" 2> "$err"
         text = """#!/bin/bash -l
 #PBS -q %(queue)s
 #PBS -l nodes=1:ppn=1
-#PBS -l walltime=02:00:00
+#PBS -l walltime=00:10:00
 #PBS -N %(job_name)s
 #PBS -j oe
 #PBS -o %(job_file)s.pbslog
@@ -998,6 +1012,7 @@ if [[ "Y${PBS_O_WORKDIR}" != "Y" ]]; then
     cd $PBS_O_WORKDIR
 fi
 
+nsetup_ess
 %(esutil_load)s
 %(desdb_load)s
 %(deswl_load)s
