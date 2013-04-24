@@ -33,13 +33,14 @@ _template="""#!/bin/bash
 # stderr is written to a log file (meds_log)
 
 module unload shapelets && module load shapelets/{vers}
-module unload deswl && module load deswl/{vers}
+module unload meds && module load meds/{vers}
 
 coadd_file="{coadd_image}"
 coaddseg_file="{coadd_seg}"
 coaddcat_file="{coadd_cat}"
 coadd_srclist="{meds_srclist}"
-cutout_file="{meds_file}"
+cutout_file_uc="{meds_file_uc}"
+cutout_file_fz="{meds_file_fz}"
 meds_input="{meds_input}"
 medsconf={medsconf}
 meds_status="{meds_status}"
@@ -47,10 +48,14 @@ meds_status="{meds_status}"
 min_boxsize={min_boxsize}
 max_boxsize={max_boxsize}
 
-d=$(dirname "$cutout_file")
+d=$(dirname "$cutout_file_uc")
 mkdir -p "$d"
 
-echo "creating meds input $meds_input" 1>&2
+if [[ -e "$cutout_file_fz" ]]; then
+    rm -v "$cutout_file_fz"
+fi
+
+echo "creating meds input $meds_input"
 make-meds-input "$coaddcat_file" $min_boxsize $max_boxsize > "$meds_input"
 
 exit_status=$?
@@ -65,7 +70,7 @@ if [[ $? == "0" ]]; then
         coaddseg_file=$coaddseg_file
         cat_file=$meds_input
         coadd_srclist=$coadd_srclist
-        cutout_file=$cutout_file
+        cutout_file=$cutout_file_uc
         medsconf=$medsconf
         coaddcat_file=$coaddcat_file
         min_boxsize=$min_boxsize
@@ -75,11 +80,23 @@ if [[ $? == "0" ]]; then
     $cmd
 
     exit_status=$?
+    if [[ $exit_status == "0" ]]; then
+        echo "fpacking to $cutout_file_fz"
+        fpack -t 10240,1 "$cutout_file_uc" 
+        exit_status=$?
+        if [[ $exit_status == "0" ]]; then
+            if [[ ! -e "$cutout_file_fz" ]]; then
+                echo "compressed cutout file not made $cutout_file_fz"
+                exit_status=1
+            fi
+        fi
+        rm -v "$cutout_file_uc"
+    fi
 fi
 
 mess="writing status $exit_status to meds_status:
     $meds_status"
-echo $mess 1>&2
+echo $mess
 
 echo "exit_status: $exit_status" > "$meds_status"
 exit $exit_status
@@ -138,12 +155,12 @@ def main():
                       tilename=cf['tilename'],
                       band=band)
 
-    meds_file=df.url(medsconf=medsconf,
-                     type='meds',
-                     coadd_run=coadd_run,
-                     tilename=cf['tilename'],
-                     band=band)
-
+    meds_file_fz=df.url(medsconf=medsconf,
+                        type='meds',
+                        coadd_run=coadd_run,
+                        tilename=cf['tilename'],
+                        band=band)
+    meds_file_uc = meds_file_fz.replace('.fz','')
     meds_status=df.url(medsconf=medsconf,
                        type='meds_status',
                        coadd_run=coadd_run,
@@ -160,7 +177,8 @@ def main():
                           meds_srclist=meds_srclist,
                           min_boxsize=conf['min_boxsize'],
                           max_boxsize=conf['max_boxsize'],
-                          meds_file=meds_file,
+                          meds_file_uc=meds_file_uc,
+                          meds_file_fz=meds_file_fz,
                           meds_status=meds_status)
 
     script_file=df.url(medsconf=medsconf,
@@ -169,7 +187,7 @@ def main():
                        tilename=cf['tilename'],
                        band=band)
 
-    make_dirs(script_file, meds_file)
+    make_dirs(script_file, meds_file_uc)
     
     print script_file
     with open(script_file,'w') as fobj:

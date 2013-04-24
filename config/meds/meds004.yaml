@@ -1,0 +1,6 @@
+min_boxsize: 32
+max_boxsize: 256
+
+comment: |
+    This version has zeropoint scaling to put all SE
+    images on same zeropoint.  Used median zp as reference.

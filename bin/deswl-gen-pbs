@@ -50,7 +50,7 @@ df=desdb.files.DESFiles()
 goodfile=df.url(type='wlpipe_collated_goodlist', run=run)
 badfile=df.url(type='wlpipe_collated_badlist', run=run)
 
-files=glob.glob('*/*/*-check*json')
+files=glob.glob('*/*/*check*json')
 if len(files) != {expected_num}:
     raise ValueError("expected {expected_num} files, found %s" % len(files))
 goodlist=[]

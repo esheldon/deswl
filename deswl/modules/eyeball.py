@@ -17,12 +17,12 @@ class EyeballScripts(generic.GenericScripts):
         # same type name but different extensions
         self.filetypes={'mosaic_jpg':  {'typename':'mosaic', 'ext':'jpg'},
                         'mosaic_fits': {'typename':'mosaic', 'ext':'fits.fz'},
-                        'field_jpg2':  {'typename':'field2', 'ext':'.jpg'},
-                        'field_jpg4':  {'typename':'field4', 'ext':'.jpg'}}
+                        'field_jpg2':  {'typename':'field2', 'ext':'jpg'},
+                        'field_jpg4':  {'typename':'field4', 'ext':'jpg'}}
 
         # don't need this, will just load my normal modules
         self.module_uses=None
-        self.modules=Noen
+        self.modules=None
         self.commands=self._get_commands()
 
     def get_flists(self):

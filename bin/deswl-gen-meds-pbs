@@ -36,8 +36,7 @@ fi
 cmd="%(cmd)s"
 meds_log="%(meds_log)s"
 
-# we expect only stderr
-$cmd 2> "$meds_log"
+$cmd &> "$meds_log"
 """
 def main():
     options, args = parser.parse_args(sys.argv[1:])

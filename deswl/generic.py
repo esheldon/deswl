@@ -72,7 +72,7 @@ class GenericScripts(dict):
             multi-line, should do error checking etc.
             See the get_script function for details
     """
-    def __init__(self,run, **keys):
+    def __init__(self, run, **keys):
         self['run'] = run
         for k,v in keys.iteritems():
             self[k] = v
@@ -482,19 +482,20 @@ exit $exit_status
         The sub-modules will create a get_flists() function
         that calls this
         """
+
         if self.flists is not None:
             return self.flists
 
-        flists = desdb.files.get_red_info_by_release(self.rc['dataset'],
-                                                     self.rc['band'])
-
+        flists = self.cache_flists_by_ccd()
         for fd in flists:
             expname=fd['expname']
             ccd=fd['ccd']
 
             fd['run'] = self['run']
+            fd['bkg_url']=fd['image_url'].replace('.fits.fz','_bkg.fits.fz')
             fd['cat_url']=fd['image_url'].replace('.fits.fz','_cat.fits')
             fd['input_files'] = {'image':fd['image_url'],
+                                 'bkg':fd['bkg_url'],
                                  'cat':fd['cat_url']}
             fd['output_files']=self.get_se_outputs(self.filetypes,
                                                    expname=expname,
@@ -505,6 +506,25 @@ exit $exit_status
 
         self.flists = flists
         return flists
+
+    def cache_flists_by_ccd(self):
+        """
+        Get raw red info
+        """
+        fname=self._df.url(type='wlpipe_flist_red', run=self['run'])
+        if not os.path.exists(fname):
+            print 'cache not found, generating raw red info list'
+            eu.ostools.makedirs_fromfile(fname)
+            flists = desdb.files.get_red_info_by_release(self.rc['dataset'],
+                                                         self.rc['band'])
+            print 'writing cache:',fname
+            eu.io.write(fname, flists)
+        else:
+            print 'reading cache:',fname
+            flists = eu.io.read(fname)
+
+        return flists
+
 
     def get_se_outputs(self, filetypes, **keys):
         """
@@ -569,8 +589,8 @@ exit $exit_status
                                                    fd['ccd'])
 
         minion_file=deswl.files.get_se_minion_path(self['run'],
-                                                      fd['expname'],
-                                                      fd['ccd'])
+                                                   fd['expname'],
+                                                   fd['ccd'])
  
         job_name='%s_%02d' % (fd['expname'],fd['ccd'])
         job_name=job_name.replace('decam-','')
@@ -671,7 +691,7 @@ if [[ "Y${{PBS_O_WORKDIR}}" != "Y" ]]; then
 fi
 
 module load openmpi-gnu
-find . -name "*-script.pbs" | mpirun -np {ncpu} minions
+find . -name "*script.pbs" | mpirun -np {ncpu} minions
 
 echo "done minions"
         \n"""
@@ -721,7 +741,7 @@ if [[ "Y${{PBS_O_WORKDIR}}" != "Y" ]]; then
 fi
 
 module load openmpi-gnu
-find . -name "*-check.pbs" | mpirun -np {ncpu} minions
+find . -name "*check.pbs" | mpirun -np {ncpu} minions
 
 echo "done minions"
         \n"""

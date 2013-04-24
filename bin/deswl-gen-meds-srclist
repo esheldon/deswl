@@ -42,8 +42,8 @@ def main():
     print 'writing:',srclist
     with open(srclist,'w') as fobj:
         for r in cf.srclist:
-            line='%s %s %s\n'
-            line = line % (r['red_image'],r['red_bkg'],r['red_seg'])
+            line='%s %s %s %s\n'
+            line = line % (r['red_image'],r['red_bkg'],r['red_seg'],r['magzp'])
             fobj.write(line)
                          
 main()
