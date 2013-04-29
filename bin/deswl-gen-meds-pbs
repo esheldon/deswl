@@ -16,6 +16,8 @@ parser = OptionParser(__doc__)
 
 parser.add_option("-q","--queue",default='serial', 
                   help="queue for processing, default: %default")
+parser.add_option("--dbi",action='store_true',
+                  help="use i as the detection band")
 
 # 8 hours should be more than enough, but hard to say.  Jobs
 # run very slowly in the serial queue due to memory pressure
@@ -38,6 +40,7 @@ meds_log="%(meds_log)s"
 
 $cmd &> "$meds_log"
 """
+
 def main():
     options, args = parser.parse_args(sys.argv[1:])
     if len(args) < 3:
@@ -48,23 +51,28 @@ def main():
     coadd_run=args[1]
     band=args[2]
 
+    if options.dbi:
+        dbi='_dbi'
+    else:
+        dbi=''
+
     df=desdb.files.DESFiles()
     cf=desdb.files.Coadd(coadd_run=coadd_run, band=band)
     cf.load()
 
     script_file=df.url(medsconf=medsconf,
-                       type='meds_script',
+                       type='meds%s_script' % dbi,
                        coadd_run=coadd_run,
                        tilename=cf['tilename'],
                        band=band)
 
     pbs_file=df.url(medsconf=medsconf,
-                    type='meds_pbs',
+                    type='meds%s_pbs' % dbi,
                     coadd_run=coadd_run,
                     tilename=cf['tilename'],
                     band=band)
     meds_log=df.url(medsconf=medsconf,
-                    type='meds_log',
+                    type='meds%s_log' % dbi,
                     coadd_run=coadd_run,
                     tilename=cf['tilename'],
                     band=band)

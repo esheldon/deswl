@@ -1,4 +1,5 @@
-from deswl import generic
+import os
+from deswl import generic, files
 import desdb
 
 class EyeballScripts(generic.GenericScripts):
@@ -64,9 +65,149 @@ class EyeballScripts(generic.GenericScripts):
         return commands
 
 
+def get_sqlite_dir(run):
+    df = desdb.files.DESFiles()
+    dir = df.dir(type='wlpipe_run', run=run)
+    dir = os.path.join(dir, 'www')
+    return dir
+
+def get_sqlite_url(run):
+    dir=get_sqlite_dir(run)
+    name='%s.db' % run
+    url=os.path.join(dir, name)
+    return url
+
+def _make_dir(dir):
+    try:
+        os.makedirs(dir)
+    except:
+        pass
+
+class SqliteMaker(object):
+    def __init__(self, run):
+        self.run=run
+
+        self.files_table='files'
+        self.files_index_fields=['ccdname','expname','ccd','band']
+        self.qa_table='qa'
+        self.qa_index_fields=['userid','fileid','score','comments']
+
+        self.rc = files.Runconfig(self.run)
+        self._open_connection()
+        os.chdir(self.dir)
+
+    def go(self):
+        self.make_files_table()
+        self.make_qa_table()
+        self.populate_files_table()
+
+        self.add_indices(self.files_table, self.files_index_fields)
+        self.add_indices(self.qa_table, self.qa_index_fields)
+    
+    def add_indices(self, tablename, index_fields):
+        curs=self.conn.cursor()
 
 
+        for field in index_fields:
+            idname='%s_%s_idx' % (tablename, field)
+            query="CREATE INDEX {idname} ON {tablename} ({field})"
+            query=query.format(idname=idname,
+                               tablename=tablename,
+                               field=field)
+            print query
+            curs.execute(query)
 
+        curs.close()
+        self.conn.commit()
 
+    def populate_files_table(self):
+        import glob
+        print 'populating files table'
 
+        fzlist = glob.glob('../*/*mosaic.fits.fz')
+        nf=len(fzlist)
+        band=self.rc['band']
 
+        insert_query="""
+        INSERT INTO {tablename} VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """.format(tablename=self.files_table)
+
+        curs=self.conn.cursor()
+        for i,fzfile in enumerate(fzlist):
+            if (i % 1000) == 0:
+                print '    %d/%d' % (i+1,nf)
+
+            bname=os.path.basename(fzfile)
+            sp=bname.split('_')
+            expname='%s_%s' % (sp[2], sp[3])
+            ccdname='%s_%s_%s' % (sp[2], sp[3], sp[4])
+            ccd = int(sp[4])
+
+            mosaic_jpeg=fzfile.replace('.fits.fz','.jpg')
+            field_jpeg2=fzfile.replace('mosaic.fits.fz','field2.jpg')
+            field_jpeg4=fzfile.replace('mosaic.fits.fz','field4.jpg')
+
+            data=(ccdname, expname, ccd, band,
+                  fzfile, mosaic_jpeg, field_jpeg2, field_jpeg4)
+
+            curs.execute(insert_query, data)
+         
+        curs.close()
+        self.conn.commit()
+
+    def make_files_table(self):
+        curs=self.conn.cursor()
+
+        q="""
+create table {tablename} (
+    ccdname text,
+    expname text,
+    ccd integer,
+    band text,
+    mosaic text,
+    mosaic_jpeg text,
+    field_jpeg2 text,
+    field_jpeg4 text
+)
+        """.format(tablename=self.files_table)
+
+        print q
+        curs.execute(q)
+        curs.close()
+        self.conn.commit()
+
+    def make_qa_table(self):
+        curs=self.conn.cursor()
+
+        q="""
+create table {tablename} (
+    userid int,
+    fileid int,
+    score int,
+    comments text
+)
+        """.format(tablename=self.qa_table)
+
+        print q
+        curs.execute(q)
+
+        curs.close()
+        self.conn.commit()
+
+    def _open_connection(self):
+        import sqlite3 as sqlite
+        self.url=get_sqlite_url(self.run)
+        self.dir=get_sqlite_dir(self.run)
+
+        _make_dir(self.dir)
+
+        if os.path.exists(self.url):
+            print 'removing existing:',self.url
+            os.remove(self.url)
+        
+        print 'opening database:',self.url
+        self.conn=sqlite.Connection(self.url)
+
+def make_sqlite_database(run):
+    sm=SqliteMaker(run)
+    sm.go()

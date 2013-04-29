@@ -17,6 +17,8 @@ parser = OptionParser(__doc__)
 
 parser.add_option('--vers',default='work',
                   help="Code version, default %default")
+parser.add_option("--dbi",action='store_true',
+                  help="use i as the detection band")
 
 _template="""#!/bin/bash
 # we write stdout from make-meds-input to the meds_input file; log messages
@@ -129,6 +131,13 @@ def main():
     cf=desdb.files.Coadd(coadd_run=coadd_run, band=band)
     cf.load()
 
+    if options.dbi:
+        dbi='_dbi'
+        catband='i'
+    else:
+        dbi=''
+        catband=band
+
     coadd_image=df.url(type='coadd_image',
                        coadd_run=coadd_run,
                        tilename=cf['tilename'],
@@ -142,27 +151,27 @@ def main():
     coadd_cat=df.url(type='coadd_cat',
                      coadd_run=coadd_run,
                      tilename=cf['tilename'],
-                     band=band)
+                     band=catband)
 
     meds_srclist=df.url(medsconf=medsconf,
-                        type='meds_srclist',
+                        type='meds%s_srclist' % dbi,
                         coadd_run=coadd_run,
                         tilename=cf['tilename'],
                         band=band)
     meds_input=df.url(medsconf=medsconf,
-                      type='meds_input',
+                      type='meds%s_input' % dbi,
                       coadd_run=coadd_run,
                       tilename=cf['tilename'],
                       band=band)
 
     meds_file_fz=df.url(medsconf=medsconf,
-                        type='meds',
+                        type='meds%s' % dbi,
                         coadd_run=coadd_run,
                         tilename=cf['tilename'],
                         band=band)
     meds_file_uc = meds_file_fz.replace('.fz','')
     meds_status=df.url(medsconf=medsconf,
-                       type='meds_status',
+                       type='meds%s_status' % dbi,
                        coadd_run=coadd_run,
                        tilename=cf['tilename'],
                        band=band)
@@ -182,7 +191,7 @@ def main():
                           meds_status=meds_status)
 
     script_file=df.url(medsconf=medsconf,
-                       type='meds_script',
+                       type='meds%s_script' % dbi,
                        coadd_run=coadd_run,
                        tilename=cf['tilename'],
                        band=band)

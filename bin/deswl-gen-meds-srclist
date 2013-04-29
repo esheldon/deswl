@@ -12,6 +12,9 @@ import desdb
 from optparse import OptionParser
 parser=OptionParser(__doc__)
 
+parser.add_option("--dbi",action='store_true',
+                  help="use i as the detection band")
+
 def main():
     options,args = parser.parse_args(sys.argv[1:])
 
@@ -23,6 +26,11 @@ def main():
     coadd_run=args[1]
     band=args[2]
 
+    if options.dbi:
+        dbi='_dbi'
+    else:
+        dbi=''
+
     cf=desdb.files.Coadd(coadd_run=coadd_run,
                          band=band)
 
@@ -30,7 +38,7 @@ def main():
 
     df=desdb.files.DESFiles()
     srclist=df.url(medsconf=medsconf,
-                   type='meds_srclist',
+                   type='meds%s_srclist' % dbi,
                    coadd_run=coadd_run,
                    tilename=cf['tilename'],
                    band=band)

@@ -1,8 +1,11 @@
 """
-The process is similar to what happens for the SE and ME runs
 
 In short
+    - Create a module for the code and add loading of it in deswl-gen-pbs
     - Generate a runconfig
+        - if you are splitting the processing of meds files, 
+          send --nper  
+
     - /bin/deswl-gen-pbs
 
         - /{run}/{expname}.pbs
