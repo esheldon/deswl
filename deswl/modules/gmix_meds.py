@@ -13,11 +13,10 @@ class GMixMEScripts(generic.GenericScripts):
         nper=self.rc['nper']
 
         # assuming 10 images in stack
-        time_per_object=30
+        time_per_object=2.0
         self.seconds_per = nper*time_per_object
 
-        # buffer quite a bit.  Note the above estimate
-        # should already be way too big, so this is fine
+        # buffer quite a huge amount!
         self.timeout=5*self.seconds_per
 
         # don't put status, meta, or log here, they will get
