@@ -45,6 +45,7 @@ have to do this step.
 """
 import os
 from sys import stderr
+from math import ceil
 import copy
 import esutil as eu
 import deswl
@@ -116,7 +117,7 @@ class GenericScripts(dict):
         text = """#!/bin/bash
 #PBS -q serial
 #PBS -l nodes=1:ppn=1
-#PBS -l walltime=3:00:00
+#PBS -l walltime=%(walltime_hours)d:00:00
 #PBS -N %(job_name)s
 #PBS -j oe
 #PBS -o %(pbslog)s
@@ -127,14 +128,14 @@ class GenericScripts(dict):
 
 function wlpipe_module_use {
     for mod_dir; do
-        module use $mod_dir 2>&1 >> $log_file
+        module use $mod_dir >> $log_file 2>&1 
     done
 }
 # workaround because the module command does
 # not indicate an error status
 function wlpipe_load_modules() {
     for mod; do
-        module load $mod 2>&1 >> $log_file
+        module load $mod >> $log_file 2>&1 
 
         res=$(module show $mod 2>&1 | grep -i error)
         if [[ $res != "" ]]; then
@@ -149,7 +150,7 @@ function wlpipe_load_modules() {
 # - commands is a single string
 # - test for errors and use return to indicate a status
 # - append stdout/stderr to the $log_file, e.g. 
-#        use 2>&1 >> $log_file
+#        use >> $log_file 2>&1 
 # - commands should be run with 
 #        timeout $timeout command...
 
@@ -172,7 +173,7 @@ echo "host: $(hostname)" > $log_file
 exit_status=$?
 
 if [[ $exit_status == "0" ]]; then
-    wlpipe_run_code
+    wlpipe_run_code >> $log_file 2>&1 
     exit_status=$?
 fi
 
@@ -188,6 +189,7 @@ exit $exit_status
 
         # now interpolate the rest
         allkeys={}
+        allkeys.update(rc)
         if self.module_uses is not None:
             module_uses=' '.join(self.module_uses)
             module_uses='wlpipe_module_use "%s"' % module_uses
@@ -201,7 +203,6 @@ exit $exit_status
             module_loads=''
         allkeys['module_uses']=module_uses
         allkeys['module_loads'] = module_loads
-
 
 
         for k,v in fdict.iteritems():
@@ -219,6 +220,8 @@ exit $exit_status
 
         commands=self.commands % allkeys
         allkeys['commands']=commands
+
+        allkeys['walltime_hours']=self.calc_walltime_job()
 
         text = text % allkeys
         return text
@@ -631,12 +634,19 @@ exit $exit_status
             fobj.write(text)
         os.system('chmod u+x %s' % minion_file)
 
-    def calc_walltime(self, ncpu, check=False):
+    def calc_walltime_job(self):
+        seconds_per_job=self.seconds_per
+        walltime_hours=seconds_per_job/3600.
+        walltime_hours=int(ceil(walltime_hours))
+        return walltime_hours
+
+
+
+    def calc_minions_walltime(self, ncpu, check=False):
         """
         If check=True, use the time expected
         to for each check
         """
-        from math import ceil
 
         flists=self.get_flists()
 
@@ -674,7 +684,7 @@ exit $exit_status
         ncpu=nodes*ppn
 
         print 'calculating wall time'
-        walltime=self.calc_walltime(ncpu)
+        walltime=self.calc_minions_walltime(ncpu)
 
         queue=self.get('queue','regular')
 
@@ -723,7 +733,7 @@ echo "done minions"
         nodes=8
         ppn=8
         ncpu=nodes*ppn
-        walltime=self.calc_walltime(ncpu,check=True)
+        walltime=self.calc_minions_walltime(ncpu,check=True)
 
         print 'calculating check walltime'
         queue=self.get('queue','regular')

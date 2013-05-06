@@ -191,7 +191,6 @@ class Runconfig(dict):
                                band,
                                nodes,
                                ppn,
-                               config=None,
                                run_name=None,
                                test=False, 
                                dryrun=False, 
@@ -260,8 +259,11 @@ class Runconfig(dict):
 
         if run_type in ['i3me']:
             self._setup_im3shape(runconfig, extra)
+        elif run_type in ['gfme']:
+            self._setup_gmix_fit(runconfig, extra)
 
         if run_type in ['sme','sse']:
+            config=extra.get('config',None)
             if config is None:
                 raise ValueError("Send config for run type '%s'" % run_type)
             runconfig['wl_config'] = config
@@ -288,6 +290,23 @@ class Runconfig(dict):
             stdout.write("Don't forget to check in the file!\n")
         else:
             stdout.write(" .... dry run, skipping file write\n")
+
+
+    def _setup_gmix_fit(self, runconfig, extra):
+        config=extra.get('config',None)
+        medsconf=extra.get('medsconf',None)
+        nper=extra.get('nper',None)
+        version=extra.get('version',None)
+        if (medsconf is None or nper is None 
+                or version is None or config is None):
+            raise ValueError("config,medsconf,nper,version required for "
+                             "run_type 'gfme'")
+
+        del extra['version']
+        runconfig['config']=config
+        runconfig['medsconf']=medsconf
+        runconfig['nper']=nper
+        runconfig['version'] = version
 
 
     def _setup_im3shape(self, runconfig, extra):

@@ -159,6 +159,9 @@ def main():
     elif rc['run_type'] == 'i3me':
         is_se=False
         cfobj = deswl.modules.im3shape.I3MEScripts(run)
+    elif rc['run_type'] == 'gfme':
+        is_se=False
+        cfobj = deswl.modules.gmix_fit_meds.GMixFitMEScripts(run)
     elif rc['run_type'] == 'eye_se':
         cfobj = deswl.modules.eyeball.EyeballScripts(run)
     else:
