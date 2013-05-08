@@ -146,13 +146,8 @@ function wlpipe_load_modules() {
 }
 
 # rules for commmands
-# - before entry these are set $timeout, $log_file
 # - commands is a single string
 # - test for errors and use return to indicate a status
-# - append stdout/stderr to the $log_file, e.g. 
-#        use >> $log_file 2>&1 
-# - commands should be run with 
-#        timeout $timeout command...
 
 function wlpipe_run_code() {
 %(commands)s
@@ -208,10 +203,8 @@ exit $exit_status
         for k,v in fdict.iteritems():
             if k not in ['input_files','output_files']:
                 allkeys[k] = v
-        for k,v in fdict['input_files'].iteritems():
-            allkeys[k] = v
-        for k,v in fdict['output_files'].iteritems():
-            allkeys[k] = v
+        allkeys.update(fdict['input_files'])
+        allkeys.update(fdict['output_files'])
 
         allkeys['pbslog']=fdict['script']+'.pbslog'
 
@@ -220,7 +213,6 @@ exit $exit_status
 
         commands=self.commands % allkeys
         allkeys['commands']=commands
-
         allkeys['walltime_hours']=self.calc_walltime_job()
 
         text = text % allkeys

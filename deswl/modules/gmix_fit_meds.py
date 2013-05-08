@@ -75,3 +75,4 @@ class GMixFitMEScripts(generic.GenericScripts):
         """
 
         return commands
+
