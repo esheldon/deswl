@@ -147,24 +147,24 @@ def main():
                      band=catband)
 
     meds_srclist=df.url(medsconf=medsconf,
-                        type='meds_srclist'
+                        type='meds_srclist',
                         coadd_run=coadd_run,
                         tilename=cf['tilename'],
                         band=band)
     meds_input=df.url(medsconf=medsconf,
-                      type='meds_input'
+                      type='meds_input',
                       coadd_run=coadd_run,
                       tilename=cf['tilename'],
                       band=band)
 
     meds_file_fz=df.url(medsconf=medsconf,
-                        type='meds'
+                        type='meds',
                         coadd_run=coadd_run,
                         tilename=cf['tilename'],
                         band=band)
     meds_file_uc = meds_file_fz.replace('.fz','')
     meds_status=df.url(medsconf=medsconf,
-                       type='meds_status'
+                       type='meds_status',
                        coadd_run=coadd_run,
                        tilename=cf['tilename'],
                        band=band)
@@ -184,7 +184,7 @@ def main():
                           meds_status=meds_status)
 
     script_file=df.url(medsconf=medsconf,
-                       type='meds_script'
+                       type='meds_script',
                        coadd_run=coadd_run,
                        tilename=cf['tilename'],
                        band=band)

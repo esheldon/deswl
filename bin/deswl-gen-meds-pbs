@@ -54,18 +54,18 @@ def main():
     cf.load()
 
     script_file=df.url(medsconf=medsconf,
-                       type='meds_script'
+                       type='meds_script',
                        coadd_run=coadd_run,
                        tilename=cf['tilename'],
                        band=band)
 
     pbs_file=df.url(medsconf=medsconf,
-                    type='meds_pbs'
+                    type='meds_pbs',
                     coadd_run=coadd_run,
                     tilename=cf['tilename'],
                     band=band)
     meds_log=df.url(medsconf=medsconf,
-                    type='meds_log'
+                    type='meds_log',
                     coadd_run=coadd_run,
                     tilename=cf['tilename'],
                     band=band)

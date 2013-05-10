@@ -627,10 +627,13 @@ exit $exit_status
         os.system('chmod u+x %s' % minion_file)
 
     def calc_walltime_job(self):
-        seconds_per_job=self.seconds_per
-        walltime_hours=seconds_per_job/3600.
-        walltime_hours=int(ceil(walltime_hours))
-        return walltime_hours
+        if hasattr(self, 'walltime_job_hours'):
+            return self.walltime_job_hours
+        else:
+            seconds_per_job=self.seconds_per
+            walltime_hours=seconds_per_job/3600.
+            walltime_hours=int(ceil(walltime_hours))
+            return walltime_hours
 
 
 

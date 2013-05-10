@@ -22,6 +22,10 @@ class GMixFitMEScripts(generic.GenericScripts):
         # buffer a lot
         self.timeout=self.seconds_per
 
+        # over-ride the walltime per job for the single job files
+        # this is to deal with outliers
+        self.walltime_job_hours=4
+
         # don't put status, meta, or log here, they will get
         # over-written
         self.filetypes={'lmfit':{'ext':'fits'}}
