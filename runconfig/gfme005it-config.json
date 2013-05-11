@@ -9,7 +9,7 @@
  "dataset":"sve01",
  "DESWL_DIR":"/global/homes/e/esheldon/exports/deswl-local",
  "band":"i",
- "medsconf":"004",
+ "medsconf":"005",
  "ESUTIL_DIR":"/global/homes/e/esheldon/exports/esutil-local",
  "nper":500,
  "DESDB_VERS":"local",
