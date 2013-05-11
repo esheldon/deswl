@@ -1,0 +1,20 @@
+{
+ "PYTHON_VERS":"v2.7.3",
+ "run_type":"gfme",
+ "run":"gfme005it",
+ "version":"work2",
+ "DESWL_VERS":"local",
+ "DESDB_DIR":"/global/homes/e/esheldon/exports/desdb-local",
+ "ppn":8,
+ "dataset":"sve01",
+ "DESWL_DIR":"/global/homes/e/esheldon/exports/deswl-local",
+ "band":"i",
+ "medsconf":"004",
+ "ESUTIL_DIR":"/global/homes/e/esheldon/exports/esutil-local",
+ "nper":500,
+ "DESDB_VERS":"local",
+ "nodes":64,
+ "config":"004",
+ "ESUTIL_VERS":"local",
+ "serun":null
+}
