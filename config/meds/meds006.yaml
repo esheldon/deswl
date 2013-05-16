@@ -1,0 +1,9 @@
+min_boxsize: 32
+max_boxsize: 256
+detband: i
+
+comment: |
+    Simplified code by sky-subtracting whole image at once, but
+    putting bad pixels to zero.
+
+    Also fix whole weight map with bad pix at once.
