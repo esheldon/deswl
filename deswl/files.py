@@ -310,6 +310,12 @@ class Runconfig(dict):
 
         detrun=extra.get('detrun',None)
         runconfig['detrun'] = detrun
+        if detrun is not None:
+            rc=Runconfig(detrun)
+            detband=rc['band']
+        else:
+            detband=None
+        runconfig['detband'] = detband
 
 
     def _setup_im3shape(self, runconfig, extra):

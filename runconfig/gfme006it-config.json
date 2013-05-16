@@ -5,6 +5,7 @@
  "run":"gfme006it",
  "version":"work",
  "DESWL_VERS":"local",
+ "ESUTIL_VERS":"local",
  "DESDB_DIR":"/global/homes/e/esheldon/exports/desdb-local",
  "ppn":8,
  "dataset":"sve02",
@@ -16,6 +17,6 @@
  "DESDB_VERS":"local",
  "nodes":64,
  "config":"004",
- "ESUTIL_VERS":"local",
+ "detband":null,
  "serun":null
 }

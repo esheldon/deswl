@@ -50,7 +50,8 @@ class GMixFitMEScripts(generic.GenericScripts):
         timeout and log_file are defined on entry
         """
 
-        if self.rc['detband'] != self.rc['band']:
+        detband=self.rc.get('detband',None)
+        if detband is not None and detband != self.rc['band']:
             det_cat_str='%(lmfit_detband)s'
         else:
             det_cat_str=''
