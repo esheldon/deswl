@@ -82,7 +82,7 @@ if [[ $? == "0" ]]; then
     exit_status=$?
     if [[ $exit_status == "0" ]]; then
         echo "fpacking to $cutout_file_fz"
-        fpack -t {fpack_dim0,fpack_dim1} "$cutout_file_uc" 
+        fpack -t {fpack_dim0},{fpack_dim1} "$cutout_file_uc" 
         exit_status=$?
         if [[ $exit_status == "0" ]]; then
             if [[ ! -e "$cutout_file_fz" ]]; then

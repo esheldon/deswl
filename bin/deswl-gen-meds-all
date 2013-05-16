@@ -1,0 +1,14 @@
+#!/bin/bash
+
+if [[ $# -lt 3 ]; then
+    echo "deswl-gen-meds-all medsconf coadd_run band"
+    exit 1
+fi
+
+medsconf=$1
+coadd_run=$2
+band=$3
+
+deswl-gen-meds-script $medsconf $coadd_run $band
+deswl-gen-meds-pbs $medsconf $coadd_run $band
+deswl-gen-meds-srclist $medsconf $coadd_run $band
