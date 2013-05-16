@@ -1,6 +1,7 @@
 min_boxsize: 32
 max_boxsize: 256
 detband: i
+fpack_dims: [10240,1]
 
 comment: |
     Simplified code by sky-subtracting whole image at once, but

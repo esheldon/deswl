@@ -82,7 +82,7 @@ if [[ $? == "0" ]]; then
     exit_status=$?
     if [[ $exit_status == "0" ]]; then
         echo "fpacking to $cutout_file_fz"
-        fpack -t 10240,1 "$cutout_file_uc" 
+        fpack -t {fpack_dim0,fpack_dim1} "$cutout_file_uc" 
         exit_status=$?
         if [[ $exit_status == "0" ]]; then
             if [[ ! -e "$cutout_file_fz" ]]; then
@@ -181,7 +181,9 @@ def main():
                           max_boxsize=conf['max_boxsize'],
                           meds_file_uc=meds_file_uc,
                           meds_file_fz=meds_file_fz,
-                          meds_status=meds_status)
+                          meds_status=meds_status,
+                          fpack_dim0=conf['fpack_dims'][0],
+                          fpack_dim1=conf['fpack_dims'][1])
 
     script_file=df.url(medsconf=medsconf,
                        type='meds_script',
