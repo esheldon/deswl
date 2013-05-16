@@ -110,6 +110,9 @@ class GenericScripts(dict):
     def get_job_name(self, fd):
         raise RuntimeError("you must over-ride get_job_name")
 
+    def get_detrun(self):
+        return self.rc.get('detrun',None)
+
     def get_script(self, fdict):
         rc=self.rc
 
@@ -225,6 +228,15 @@ exit $exit_status
         """
 
         all_fd = self.get_flists()
+
+        detrun=self.get_detrun()
+        detrun_fd = None
+        if detrun is not None:
+            rc = deswl.files.Runconfig(run)
+            detband=rc['band']
+            if detband != self.rc['band']:
+                detrun_fd = self.get_flists(run=detrun)
+
         if all_fd[0]['start'] is not None:
             dosplit=True
             basename='wlpipe_me_split_'
@@ -244,6 +256,12 @@ exit $exit_status
             fd['output_files']['log']=log
             fd['output_files']['meta']=meta
             fd['output_files']['status']=status
+
+            if detrun_fd is not None:
+                dfd = detrun_fd[i]
+                for key in dfd['output_files']:
+                    new_key = '%s_detband' % (key,)
+                    fd['input_files'][new_key] = dfd[key]
 
             ii=i+1
             if ii==1 or (ii % modnum) == 0:
@@ -294,7 +312,7 @@ exit $exit_status
                    end=end)
         return script, status, meta, log
 
-    def get_flists_by_tile(self):
+    def get_flists_by_tile(self, run=None):
         """
         For each tile and band, get the input and outputs
         files and some other data.  Return as a list of dicts
@@ -304,25 +322,30 @@ exit $exit_status
         The sub-modules will create a get_flists() function
         that calls this
         """
-        if self.flists is not None:
-            return self.flists
+        
+        if run is None:
+            rc = self.rc
+        else:
+            run=self['run']
+            rc = deswl.files.Runconfig(run)
 
         df=desdb.files.DESFiles()
 
-        print 'getting coadd info by release'
-        flists0 = desdb.files.get_coadd_info_by_release(self.rc['dataset'],
-                                                        self.rc['band'])
+        band=rc['band']
 
-        medsconf=self.rc['medsconf']
-        nper=self.rc.get('nper',None)
+        print 'getting coadd info by release'
+        flists0 = desdb.files.get_coadd_info_by_release(rc['dataset'], band)
+
+        medsconf=rc['medsconf']
+        nper=rc.get('nper',None)
 
         flists=[]
         for fd0 in flists0:
 
             tilename=fd0['tilename']
-            band=fd0['band']
+            #band=fd0['band']
 
-            fd0['run'] = self['run']
+            fd0['run'] = run
             fd0['medsconf']=medsconf
             fd0['timeout'] = self.timeout
 
@@ -340,6 +363,7 @@ exit $exit_status
                                                          self.filetypes)
                 flists += fd_bychunk
             else:
+                # copies into fd0
                 self._set_me_outputs(fd0, self.filetypes)
                 fd0['start']=None
                 fd0['end']=None

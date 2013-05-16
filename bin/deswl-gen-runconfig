@@ -31,6 +31,9 @@ parser.add_option("--comment",default=None,
 parser.add_option("--serun",default=None,
                   help="Serun to associate. Default %default")
 
+parser.add_option("--detrun",default=None,
+                  help="detrun to associate. Default %default")
+
 parser.add_option("--medsconf",default=None,
                   help="medsconf to associate. Default %default")
 parser.add_option("--nper",default=None,
@@ -69,6 +72,7 @@ def main():
                                      serun=options.serun,
                                      medsconf=options.medsconf,
                                      nper=nper,
+                                     detrun=options.detrun,
                                      version=options.version)
 
 main()

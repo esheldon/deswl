@@ -50,6 +50,11 @@ class GMixFitMEScripts(generic.GenericScripts):
         timeout and log_file are defined on entry
         """
 
+        if self.rc['detband'] != self.rc['band']:
+            det_cat_str='%(lmfit_detband)s'
+        else:
+            det_cat_str=''
+        
         commands="""
     nsetup_ess
     gmvers=%(version)s
@@ -65,18 +70,21 @@ class GMixFitMEScripts(generic.GenericScripts):
     out_file="%(lmfit)s"
     start=%(start)d
     end=%(end)d
+    
+    det_cat="{det_cat_str}"
 
     confname=gfmeds-%(config)s.yaml
 
     conf=$GMIX_MEDS_DIR/share/config/$confname
 
-    $GMIX_MEDS_DIR/bin/gmix-fit-meds            \\
-            --obj-range $start,$end             \\
-            ${conf} ${meds_file} ${out_file}
+    $GMIX_MEDS_DIR/bin/gmix-fit-meds               \\
+            --obj-range $start,$end                \\
+            --det-cat "$det_cat"                   \\
+            $conf $meds_file $out_file
 
     exit_status=$?
     return $exit_status
-        """
+        """.format(det_cat_str=det_cat_str)
 
         return commands
 

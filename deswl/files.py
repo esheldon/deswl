@@ -299,14 +299,17 @@ class Runconfig(dict):
         version=extra.get('version',None)
         if (medsconf is None or nper is None 
                 or version is None or config is None):
-            raise ValueError("config,medsconf,nper,version required for "
-                             "run_type 'gfme'")
+            raise ValueError("config,medsconf,detrun,nper,version "
+                             "required for run_type 'gfme'")
 
         del extra['version']
         runconfig['config']=config
         runconfig['medsconf']=medsconf
         runconfig['nper']=nper
         runconfig['version'] = version
+
+        detrun=extra.get('detrun',None)
+        runconfig['detrun'] = detrun
 
 
     def _setup_im3shape(self, runconfig, extra):
