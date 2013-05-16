@@ -232,9 +232,7 @@ exit $exit_status
         detrun=self.get_detrun()
         detrun_fd = None
         if detrun is not None:
-            rc = deswl.files.Runconfig(run)
-            detband=rc['band']
-            if detband != self.rc['band']:
+            if self['detband'] != self.rc['band']:
                 detrun_fd = self.get_flists(run=detrun)
 
         if all_fd[0]['start'] is not None:
@@ -248,6 +246,8 @@ exit $exit_status
         ne=len(all_fd)
         modnum=ne/10
         for i,fd in enumerate(all_fd):
+
+            fd['run'] = self['run']
 
             # start/end are for 
             script,status,meta,log=self._extract_tile_files(fd)
@@ -272,6 +272,7 @@ exit $exit_status
             self._write_meta_and_script_single(fd)
 
     def _extract_tile_files(self, fd):
+        #import pprint
         run=fd['run']
         tilename=fd['tilename']
         band=fd['band']
@@ -284,6 +285,7 @@ exit $exit_status
             end=None
 
         df=self._df
+        #pprint.pprint( fd )
         script=df.url('wlpipe_me_script'+extra,
                       run=run,
                       tilename=tilename,
@@ -335,6 +337,7 @@ exit $exit_status
 
         print 'getting coadd info by release'
         flists0 = desdb.files.get_coadd_info_by_release(rc['dataset'], band)
+        print 'done'
 
         medsconf=rc['medsconf']
         nper=rc.get('nper',None)
