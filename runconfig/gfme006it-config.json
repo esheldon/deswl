@@ -13,7 +13,7 @@
  "band":"i",
  "medsconf":"006",
  "ESUTIL_DIR":"/global/homes/e/esheldon/exports/esutil-local",
- "nper":100,
+ "nper":250,
  "DESDB_VERS":"local",
  "nodes":64,
  "config":"004",
