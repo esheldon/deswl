@@ -51,6 +51,8 @@ import esutil as eu
 import deswl
 import desdb
 
+MODFAC=20
+
 class GenericScripts(dict):
     """
     to create and write the metatadata files and scripts
@@ -100,7 +102,7 @@ class GenericScripts(dict):
         self.module_uses=None
         self.commands=None
 
-    def get_flists(self):
+    def get_flists(self, **keys):
         """
         The over-ridden version will call get_flists_by_ccd
         or get_flists_by_tile or customize
@@ -222,6 +224,12 @@ exit $exit_status
         return text
 
 
+    def _extract_tilename(self,fdlist,tilename):
+        for fd in fdlist:
+            if fd['tilename'] == tilename:
+                return fd
+        raise ValueError("tilename not found: %d" % tilename)
+
     def write_by_tile(self):
         """
         Write all scripts by tilename/band
@@ -232,8 +240,9 @@ exit $exit_status
         detrun=self.get_detrun()
         detrun_fd = None
         if detrun is not None:
-            if self['detband'] != self.rc['band']:
-                detrun_fd = self.get_flists(run=detrun)
+            if self.rc['detband'] != self.rc['band']:
+                # note these are the collated files
+                detrun_fd = self.get_flists(run=detrun, nper=None)
 
         if all_fd[0]['start'] is not None:
             dosplit=True
@@ -242,9 +251,8 @@ exit $exit_status
             dosplit=False
             basename='wlpipe_me_'
 
-        i=1
         ne=len(all_fd)
-        modnum=ne/10
+        modnum=ne/MODFAC
         for i,fd in enumerate(all_fd):
 
             fd['run'] = self['run']
@@ -258,14 +266,14 @@ exit $exit_status
             fd['output_files']['status']=status
 
             if detrun_fd is not None:
-                dfd = detrun_fd[i]
-                for key in dfd['output_files']:
+                # copy in collated files
+                dfd = self._extract_tilename(detrun_fd,fd['tilename'])
+                for key,val in dfd['output_files'].iteritems():
                     new_key = '%s_detband' % (key,)
-                    fd['input_files'][new_key] = dfd[key]
+                    fd['input_files'][new_key] = val
 
-            ii=i+1
-            if ii==1 or (ii % modnum) == 0:
-                print >>stderr,"%d/%d" % (ii,ne)
+            if i==0 or (i % modnum) == 0:
+                print >>stderr,"%d/%d" % (i+1,ne)
                 print >>stderr,"    %s" % meta
                 print >>stderr,"    %s" % fd['script']
 
@@ -273,7 +281,7 @@ exit $exit_status
 
     def _extract_tile_files(self, fd):
         #import pprint
-        run=fd['run']
+        run=self['run']
         tilename=fd['tilename']
         band=fd['band']
         if 'start' in fd:
@@ -314,21 +322,26 @@ exit $exit_status
                    end=end)
         return script, status, meta, log
 
-    def get_flists_by_tile(self, run=None):
+    def get_flists_by_tile(self, run=None, nper=None):
         """
         For each tile and band, get the input and outputs
         files and some other data.  Return as a list of dicts
 
-        If nper is set, split into chunks
+        If run is not sent, then the rc of the current run
+        and nper are used.  If run is sent, that runconfig
+        will be loaded and nper will be taken from the keyword.
 
         The sub-modules will create a get_flists() function
         that calls this
         """
         
         if run is None:
-            rc = self.rc
-        else:
+            # using current run, we always honor the requested nper
+            # if set
             run=self['run']
+            rc = self.rc
+            nper=rc.get('nper',None)
+        else:
             rc = deswl.files.Runconfig(run)
 
         df=desdb.files.DESFiles()
@@ -337,10 +350,8 @@ exit $exit_status
 
         print 'getting coadd info by release'
         flists0 = desdb.files.get_coadd_info_by_release(rc['dataset'], band)
-        print 'done'
 
         medsconf=rc['medsconf']
-        nper=rc.get('nper',None)
 
         flists=[]
         for fd0 in flists0:
@@ -362,12 +373,11 @@ exit $exit_status
 
             if nper:
                 fd0['nper']=nper
-                fd_bychunk=self._set_me_outputs_by_chunk(fd0,
-                                                         self.filetypes)
+                fd_bychunk=self._set_me_outputs_by_chunk(run, fd0, self.filetypes)
                 flists += fd_bychunk
             else:
                 # copies into fd0
-                self._set_me_outputs(fd0, self.filetypes)
+                self._set_me_outputs(run, fd0, self.filetypes)
                 fd0['start']=None
                 fd0['end']=None
                 fd0['nobj']=None
@@ -376,18 +386,19 @@ exit $exit_status
         self.flists = flists
         return flists
 
-    def _set_me_outputs(self, fd, filetypes, start=None, end=None):
+    def _set_me_outputs(self, run, fd, filetypes, start=None, end=None):
         tilename=fd['tilename']
         band=fd['band']
 
         fd['output_files']=self.get_me_outputs(filetypes,
+                                               run=run,
                                                tilename=tilename,
                                                band=band,
                                                start=start,
                                                end=end)
 
 
-    def _set_me_outputs_by_chunk(self, fd0, filetypes):
+    def _set_me_outputs_by_chunk(self, run, fd0, filetypes):
         nper=fd0['nper']
         nrows=self._get_nrows(fd0['cat_url'])
         startlist,endlist=self._get_chunks(nrows, nper)
@@ -396,7 +407,7 @@ exit $exit_status
         for start,end in zip(startlist,endlist):
             fd=copy.deepcopy(fd0)
 
-            self._set_me_outputs(fd, filetypes, start=start, end=end)
+            self._set_me_outputs(run, fd, filetypes, start=start, end=end)
 
             fd['start'] = start
             fd['end'] = end
@@ -416,6 +427,8 @@ exit $exit_status
         filetypes: dict of dicts
             Keyed by file type. The sub-dicts should have the 'ext' key
 
+        run: 
+            processing run
         tilename: string, keyword
             The tilename as a string, e.g. 'DES0652-5622'
         band: string, keyword
@@ -429,6 +442,7 @@ exit $exit_status
             send both start and end
         """
 
+        run=keys['run']
         tilename=keys['tilename']
         band=keys['band']
         start,end=_extract_start_end(**keys)
@@ -442,7 +456,7 @@ exit $exit_status
         for ftype in filetypes:
             ext=filetypes[ftype]['ext']
             fdict[ftype] = self._df.url(type=type,
-                                        run=self['run'],
+                                        run=run,
                                         tilename=tilename,
                                         band=band,
                                         filetype=ftype,
@@ -461,7 +475,7 @@ exit $exit_status
         all_fd = self.get_flists()
         i=1
         ne=len(all_fd)
-        modnum=ne/10
+        modnum=ne/MODFAC
         for i,fd in enumerate(all_fd):
             run=fd['run']
             expname=fd['expname']
@@ -491,15 +505,14 @@ exit $exit_status
             fd['output_files']['meta']=meta_file
             fd['output_files']['status']=status_file
 
-            ii=i+1
-            if ii==1 or (ii % modnum) == 0:
-                print >>stderr,"%d/%d" % (ii,ne)
+            if i==0 or (i % modnum) == 0:
+                print >>stderr,"%d/%d" % (i,ne)
                 print >>stderr,"    %s" % meta_file
                 print >>stderr,"    %s" % fd['script']
 
             self._write_meta_and_script_single(fd)
 
-    def get_flists_by_ccd(self):
+    def get_flists_by_ccd(self, **keys):
         """
         For each expname and ccd, get the input and outputs
         files and some other data.  Return as a list of dicts

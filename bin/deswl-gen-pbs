@@ -25,14 +25,16 @@ reduce:
 import os,sys
 from sys import stderr
 import deswl
+from deswl.generic import MODFAC
 import desdb
 import esutil as eu
+
 
 from optparse import OptionParser
 parser = OptionParser(__doc__)
 parser.add_option("-q","--queue",default='serial', 
                   help="queue for processing %default")
-parser.add_option("-t","--types",default='scripts,minions,reduce', 
+parser.add_option("-t","--types",default='scripts,check,minions,reduce', 
                   help="types to write, default %default")
 
 
@@ -93,20 +95,19 @@ def write_me_checkers(cfobj,queue):
     flists=cfobj.get_flists()
 
     ntot=len(flists)
-    modnum=ntot/10
+    modnum=ntot/MODFAC
 
-    run=flists[0]['run']
 
     print >>stderr,'writing check scripts for',ntot
     for i,fd in enumerate(flists):
-        job=deswl.generic.GenericMEChecker(run, 
+        job=deswl.generic.GenericMEChecker(cfobj['run'], 
                                            fd['tilename'],
                                            fd['band'],
                                            start=fd['start'],
                                            end=fd['end'],
                                            queue=queue)
 
-        if i==0 or (((i+1) % modnum) == 0):
+        if i==0 or (i % modnum)==0:
             print >>stderr,'%d/%d %s' % (i+1,ntot,job['check_file'])
 
         job.write()
@@ -119,16 +120,14 @@ def write_se_checkers(cfobj, queue):
 
     # number of exposures
     ntot=len(flists)
-    modnum=ntot/10
-
-    run=flists[0]['run']
+    modnum=ntot/MODFAC
 
     print >>stderr,'writing scripts for',ntot,'ccds'
     for i,fd in enumerate(flists):
         expname=fd['expname']
         ccd=fd['ccd']
-        job=deswl.generic.GenericSEPBSJob(run, expname, ccd, queue=queue)
-        if i==0 or (((i+1) % modnum) == 0):
+        job=deswl.generic.GenericSEPBSJob(cfobj['run'], expname, ccd, queue=queue)
+        if i==0 or (i % modnum) == 0:
             print >>stderr,'%d/%d %s' % (i+1,ntot,job['check_file'])
 
         job.write(check=True)
@@ -143,7 +142,6 @@ def main():
 
     run=args[0]
     types = options.types.split(',')
-    modnum=20
 
     rc=deswl.files.Runconfig(run)
 
@@ -168,15 +166,19 @@ def main():
         raise ValueError("unsupported run type: '%s'" % rc['run_type'])
 
 
+    if 'check' in types:
+        if is_se:
+            write_se_checkers(cfobj,queue)
+        else:
+            write_me_checkers(cfobj,queue)
+
     if 'scripts' in types:
         # write all the config files by ccd
 
         if is_se:
             cfobj.write_by_ccd()
-            write_se_checkers(cfobj,queue)
         else:
             cfobj.write_by_tile()
-            write_me_checkers(cfobj,queue)
 
     if 'minions' in types:
         cfobj.write_minions()

@@ -33,8 +33,8 @@ class ShapeletsSEScripts(generic.GenericScripts):
         self.timeout=15*60 # 15 minutes -> 900
 
 
-    def get_flists(self):
-        return self.get_flists_by_ccd()
+    def get_flists(self, **keys):
+        return self.get_flists_by_ccd(**keys)
 
     def get_script(self, fdict):
         rc=self.rc

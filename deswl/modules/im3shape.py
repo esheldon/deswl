@@ -32,8 +32,9 @@ class I3MEScripts(generic.GenericScripts):
         self.modules=[module]
         self.commands=self._get_commands()
 
-    def get_flists(self):
-        return self.get_flists_by_tile()
+
+    def get_flists(self, **keys):
+        return self.get_flists_by_tile(**keys)
 
     def get_job_name(self, fd):
         job_name='%s-%s-%d' % (fd['tilename'],fd['band'],fd['start'])
