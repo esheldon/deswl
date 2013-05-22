@@ -18,9 +18,6 @@ parser = OptionParser(__doc__)
 parser.add_option("-v","--verbose",action='store_true',
                   help="verbose, default %default")
 def process_status(info, verbose=False):
-    """
-    """
-
     info['error_string'] = ''
     info['missing']=[]
 
@@ -34,6 +31,7 @@ def process_status(info, verbose=False):
         try:
             if verbose:
                 print >>stderr,'    reading:',status_file
+
             with open(status_file) as fobj:
                 exit_status=int(fobj.read())
 
