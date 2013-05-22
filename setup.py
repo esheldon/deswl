@@ -8,6 +8,7 @@ scripts= ['deswl-gen-runconfig',
           'deswl-gen-meds-pbs',
           'deswl-gen-meds-srclist',
           'deswl-gen-meds-all',
+          'deswl-gen-meds-all-release',
           'deswl-check-meds',
           'deswl-run',
           'deswl-check']

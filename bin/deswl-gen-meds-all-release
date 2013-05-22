@@ -1,0 +1,16 @@
+#!/bin/bash
+
+if [[ $# -lt 3 ]]; then
+    echo "deswl-gen-meds-all medsconf release band"
+    exit 1
+fi
+
+medsconf=$1
+release=$2
+band=$3
+
+for coadd_run in $(get-release-runs $release); do
+    deswl-gen-meds-script $medsconf $coadd_run $band
+    deswl-gen-meds-pbs $medsconf $coadd_run $band
+    deswl-gen-meds-srclist $medsconf $coadd_run $band
+done
