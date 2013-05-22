@@ -83,7 +83,9 @@ def main():
     d=os.path.dirname(pbs_file)
     if not os.path.exists(d):
         os.makedirs(d)
+
     print 'writing pbs script:',pbs_file
+
     with open(pbs_file,'w') as fobj:
         fobj.write(text)
 main()

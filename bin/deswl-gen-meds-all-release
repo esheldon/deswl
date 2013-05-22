@@ -1,16 +1,37 @@
-#!/bin/bash
+#!/usr/bin/env python
+"""
+    %prog [options] medsconf band
 
-if [[ $# -lt 3 ]]; then
-    echo "deswl-gen-meds-all medsconf release band"
-    exit 1
-fi
+Generate shell scripts to run make-meds-input and make-cutouts.
 
-medsconf=$1
-release=$2
-band=$3
+meds_config is a meds config id, e.g. meds001
+"""
 
-for coadd_run in $(get-release-runs $release); do
-    deswl-gen-meds-script $medsconf $coadd_run $band
-    deswl-gen-meds-pbs $medsconf $coadd_run $band
-    deswl-gen-meds-srclist $medsconf $coadd_run $band
-done
+import os,sys
+from sys import stderr
+import deswl
+import desdb
+
+from optparse import OptionParser
+parser = OptionParser(__doc__)
+
+def main():
+    options, args = parser.parse_args(sys.argv[1:])
+    if len(args) < 2:
+        parser.print_help()
+        sys.exit(45)
+
+    medsconf=args[0]
+    band=args[1]
+
+    conf=deswl.files.read_meds_config(medsconf)
+
+    runs=desdb.files.get_release_runs(conf['release'])
+
+    for run in runs:
+        print '-'*70
+        cmd='deswl-gen-meds-all %s %s %s' % (medsconf,run,band)
+        os.system(cmd)
+
+main()
+

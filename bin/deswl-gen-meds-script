@@ -133,7 +133,7 @@ def main():
 
     detband=conf['detband']
 
-    magzp_ref = get_release_magzp_ref(conf['release'], band)
+    magzp_ref = desdb.files.get_release_magzp_ref(conf['release'], band)
 
     coadd_image=df.url(type='coadd_image',
                        coadd_run=coadd_run,

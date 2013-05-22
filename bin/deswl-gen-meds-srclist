@@ -40,6 +40,7 @@ def main():
         os.makedirs(d)
 
     print 'writing:',srclist
+
     with open(srclist,'w') as fobj:
         for r in cf.srclist:
             line='%s %s %s %s\n'
