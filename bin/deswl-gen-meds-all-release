@@ -27,9 +27,11 @@ def main():
     conf=deswl.files.read_meds_config(medsconf)
 
     runs=desdb.files.get_release_runs(conf['release'])
+    nrun=len(runs)
 
-    for run in runs:
+    for i,run in enumerate(runs):
         print '-'*70
+        print '%d/%d' % (i+1,nrun)
         cmd='deswl-gen-meds-all %s %s %s' % (medsconf,run,band)
         os.system(cmd)
 
