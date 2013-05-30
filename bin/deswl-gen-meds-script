@@ -89,10 +89,15 @@ if [[ $? == "0" ]]; then
         if [[ $exit_status == "0" ]]; then
             if [[ ! -e "$cutout_file_fz" ]]; then
                 echo "compressed cutout file not made $cutout_file_fz"
+                echo "leaving uncompressed file in place"
                 exit_status=1
+            else
+                # only remove uncompressed file if all went well
+                rm -v "$cutout_file_uc"
             fi
+        else
+            echo "leaving uncompressed file in place"
         fi
-        rm -v "$cutout_file_uc"
     fi
 fi
 

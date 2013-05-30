@@ -299,7 +299,7 @@ class Runconfig(dict):
         version=extra.get('version',None)
         if (medsconf is None or nper is None 
                 or version is None or config is None):
-            raise ValueError("config,medsconf,detrun,nper,version "
+            raise ValueError("config,medsconf,nper,version "
                              "required for run_type 'gfme'")
 
         del extra['version']

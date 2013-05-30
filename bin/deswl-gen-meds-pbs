@@ -22,7 +22,7 @@ parser.add_option("-q","--queue",default='serial',
 _template="""#!/bin/bash -l
 #PBS -q %(queue)s
 #PBS -l nodes=1:ppn=1
-#PBS -l walltime=24:00:00
+#PBS -l walltime=48:00:00
 #PBS -N %(job_name)s
 #PBS -j oe
 #PBS -o %(job_file)s.pbslog
