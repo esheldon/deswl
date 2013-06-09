@@ -162,6 +162,10 @@ function wlpipe_run_code() {
 # main
 #
 
+if [[ "Y${PBS_O_WORKDIR}" != "Y" ]]; then
+    cd $PBS_O_WORKDIR
+fi
+
 log_file=%(log)s
 status_file=%(status)s
 timeout=%(timeout)d

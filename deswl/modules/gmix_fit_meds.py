@@ -74,7 +74,7 @@ class GMixFitMEScripts(generic.GenericScripts):
     
     det_cat="{det_cat_str}"
 
-    confname=gfmeds-%(config)s.yaml
+    confname=%(config)s.yaml
 
     conf=$GMIX_MEDS_DIR/share/config/$confname
 
