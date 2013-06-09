@@ -51,7 +51,7 @@ import esutil as eu
 import deswl
 import desdb
 
-MODFAC=20
+MODFAC=1000
 
 class GenericScripts(dict):
     """
