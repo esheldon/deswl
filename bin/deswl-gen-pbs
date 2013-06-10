@@ -37,6 +37,9 @@ parser.add_option("-q","--queue",default='serial',
 parser.add_option("-t","--types",default='scripts,check,minions,reduce', 
                   help="types to write, default %default")
 
+parser.add_option("--tilename",default=None,
+                  help="only generate pbs for this tilename")
+
 
 def write_reducer(run,expected_num):
     text="""# run through the check json files to find problems
@@ -142,6 +145,7 @@ def main():
 
     run=args[0]
     types = options.types.split(',')
+    tilename=options.tilename
 
     rc=deswl.files.Runconfig(run)
 
@@ -178,7 +182,7 @@ def main():
         if is_se:
             cfobj.write_by_ccd()
         else:
-            cfobj.write_by_tile()
+            cfobj.write_by_tile(tilename=tilename)
 
     if 'minions' in types:
         cfobj.write_minions()

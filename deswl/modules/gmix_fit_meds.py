@@ -24,7 +24,7 @@ class GMixFitMEScripts(generic.GenericScripts):
 
         # over-ride the walltime per job for the single job files
         # this is to deal with outliers
-        self.walltime_job_hours=20
+        self.walltime_job_hours=4
 
         # don't put status, meta, or log here, they will get
         # over-written

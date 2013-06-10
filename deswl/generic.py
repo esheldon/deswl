@@ -234,9 +234,11 @@ exit $exit_status
                 return fd
         raise ValueError("tilename not found: %d" % tilename)
 
-    def write_by_tile(self):
+    def write_by_tile(self, tilename=None):
         """
         Write all scripts by tilename/band
+
+        Send tilename to only write that tile
         """
 
         all_fd = self.get_flists()
@@ -255,8 +257,14 @@ exit $exit_status
             dosplit=False
             basename='wlpipe_me_'
 
+        if tilename is not None:
+            tfd=all_fd
+            all_fd = [fd for fd in tfd if fd['tilename']==tilename]
+
         ne=len(all_fd)
         modnum=ne/MODFAC
+        if modnum <= 0:
+            modnum=1
         for i,fd in enumerate(all_fd):
 
             fd['run'] = self['run']
