@@ -1,0 +1,10 @@
+release: "Y1C2_COADD_PRERELEASE"
+min_boxsize: 32
+max_boxsize: 256
+detband: i
+fpack_dims: [10240,1]
+
+comment: |
+    Added release so we can get the magzp_ref
+
+    The last run, 007, had messed up metadata
