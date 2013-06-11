@@ -163,7 +163,10 @@ def main():
         cfobj = deswl.modules.im3shape.I3MEScripts(run)
     elif rc['run_type'] == 'gfme':
         is_se=False
-        cfobj = deswl.modules.gmix_fit_meds.GMixFitMEScripts(run)
+        if 'mcmeds' in rc['config']:
+            cfobj = deswl.modules.gmix_mcmc_meds.GMixMCMCMEScripts(run)
+        else:
+            cfobj = deswl.modules.gmix_fit_meds.GMixFitMEScripts(run)
     elif rc['run_type'] == 'eye_se':
         cfobj = deswl.modules.eyeball.EyeballScripts(run)
     else:

@@ -241,14 +241,14 @@ exit $exit_status
         Send tilename to only write that tile
         """
 
-        all_fd = self.get_flists()
+        all_fd = self.get_flists(tilename=tilename)
 
         detrun=self.get_detrun()
         detrun_fd = None
         if detrun is not None:
             if self.rc['detband'] != self.rc['band']:
                 # note these are the collated files
-                detrun_fd = self.get_flists(run=detrun, nper=None)
+                detrun_fd = self.get_flists(run=detrun, nper=None, tilename=tilename)
 
         if all_fd[0]['start'] is not None:
             dosplit=True
@@ -257,9 +257,9 @@ exit $exit_status
             dosplit=False
             basename='wlpipe_me_'
 
-        if tilename is not None:
-            tfd=all_fd
-            all_fd = [fd for fd in tfd if fd['tilename']==tilename]
+        #if tilename is not None:
+        #    tfd=all_fd
+        #    all_fd = [fd for fd in tfd if fd['tilename']==tilename]
 
         ne=len(all_fd)
         modnum=ne/MODFAC
@@ -334,7 +334,7 @@ exit $exit_status
                    end=end)
         return script, status, meta, log
 
-    def get_flists_by_tile(self, run=None, nper=None):
+    def get_flists_by_tile(self, run=None, nper=None, tilename=None):
         """
         For each tile and band, get the input and outputs
         files and some other data.  Return as a list of dicts
@@ -362,6 +362,11 @@ exit $exit_status
 
         print 'getting coadd info by release'
         flists0 = desdb.files.get_coadd_info_by_release(rc['dataset'], band)
+
+        if tilename is not None:
+            tfd=flists0
+            flists0 = [fd for fd in tfd if fd['tilename']==tilename]
+
 
         medsconf=rc['medsconf']
 
