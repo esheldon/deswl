@@ -1,0 +1,22 @@
+{
+ "PYTHON_VERS":"v2.7.2",
+ "DESWL_DIR":"/astro/u/esheldon/exports/deswl-local",
+ "run_type":"gfme",
+ "run":"gfme010it",
+ "version":"work",
+ "DESWL_VERS":"local",
+ "ESUTIL_VERS":"local",
+ "DESDB_DIR":"/astro/u/esheldon/exports/desdb-local",
+ "ppn":8,
+ "dataset":"Y1C2_COADD_PRERELEASE",
+ "detrun":null,
+ "band":"i",
+ "medsconf":"007",
+ "ESUTIL_DIR":"/astro/u/esheldon/exports/esutil-local",
+ "nper":250,
+ "DESDB_VERS":"local",
+ "nodes":64,
+ "config":"mcmeds-002",
+ "detband":null,
+ "serun":null
+}
