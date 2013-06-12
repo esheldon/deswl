@@ -7,3 +7,4 @@ from . import impyp
 from . import eyeball
 
 from . import gmix_fit_meds
+from . import gmix_mcmc_meds

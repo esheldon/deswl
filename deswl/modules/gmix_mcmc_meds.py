@@ -3,7 +3,7 @@ import desdb
 
 class GMixMCMCMEScripts(generic.GenericScripts):
     def __init__(self, run, **keys):
-        super(GMixFitMEScripts,self).__init__(run)
+        super(GMixMCMCMEScripts,self).__init__(run)
 
         # we set timeout much longer than expected time per
         # the time per is the mean plus one standard deviation
@@ -52,7 +52,7 @@ class GMixMCMCMEScripts(generic.GenericScripts):
 
         detband=self.rc.get('detband',None)
         if detband is not None and detband != self.rc['band']:
-            det_cat_str='%(lmfit_detband)s'
+            det_cat_str='%(mcmc_detband)s'
         else:
             det_cat_str=''
         
@@ -68,7 +68,7 @@ class GMixMCMCMEScripts(generic.GenericScripts):
     module unload gmix_meds && module load gmix_meds/$gmvers
 
     meds_file="%(meds)s"
-    out_file="%(lmfit)s"
+    out_file="%(mcmc)s"
     start=%(start)d
     end=%(end)d
     
@@ -78,7 +78,7 @@ class GMixMCMCMEScripts(generic.GenericScripts):
 
     conf=$GMIX_MEDS_DIR/share/config/$confname
 
-    $GMIX_MEDS_DIR/bin/gmix-fit-meds               \\
+    python -u $GMIX_MEDS_DIR/bin/gmix-fit-meds     \\
             --obj-range $start,$end                \\
             --det-cat "$det_cat"                   \\
             $conf $meds_file $out_file
