@@ -78,7 +78,7 @@ class GMixFitMEScripts(generic.GenericScripts):
 
     conf=$GMIX_MEDS_DIR/share/config/$confname
 
-    $GMIX_MEDS_DIR/bin/gmix-fit-meds               \\
+    python -u $GMIX_MEDS_DIR/bin/gmix-fit-meds     \\
             --obj-range $start,$end                \\
             --det-cat "$det_cat"                   \\
             $conf $meds_file $out_file
