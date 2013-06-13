@@ -37,6 +37,9 @@ parser.add_option("-q","--queue",default='serial',
 parser.add_option("-t","--types",default='scripts,check,minions,reduce', 
                   help="types to write, default %default")
 
+parser.add_option("-m","--master",action="store_true",
+                  help=("write a master script and command list"))
+
 parser.add_option("--tilename",default=None,
                   help="only generate pbs for this tilename")
 
@@ -151,6 +154,8 @@ def main():
 
     queue=options.queue
 
+    # this is a mess!
+
     is_se=True
     if rc['run_type'] == 'sse':
         cfobj = deswl.modules.shapelets.ShapeletsSEScripts(run)
@@ -166,35 +171,48 @@ def main():
         if 'mcmeds' in rc['config']:
             cfobj = deswl.modules.gmix_mcmc_meds.GMixMCMCMEScripts(run)
         else:
-            cfobj = deswl.modules.gmix_fit_meds.GMixFitMEScripts(run)
+            if options.master:
+                cfobj = deswl.modules.gmix_fit_meds.GMixFitMEMaster(run)
+            else:
+                cfobj = deswl.modules.gmix_fit_meds.GMixFitMEScripts(run)
     elif rc['run_type'] == 'eye_se':
         cfobj = deswl.modules.eyeball.EyeballScripts(run)
     else:
         raise ValueError("unsupported run type: '%s'" % rc['run_type'])
 
-
-    if 'check' in types:
+    if options.master:
         if is_se:
-            write_se_checkers(cfobj,queue)
+            raise ValueError("implement master mode for SE")
         else:
-            write_me_checkers(cfobj,queue)
+            cfobj.write_by_tile_master()
+            cfobj.write_minions()
+            cfobj.write_check_minions()
 
-    if 'scripts' in types:
-        # write all the config files by ccd
 
-        if is_se:
-            cfobj.write_by_ccd()
-        else:
-            cfobj.write_by_tile(tilename=tilename)
+    else:
 
-    if 'minions' in types:
-        cfobj.write_minions()
-        cfobj.write_check_minions()
+        if 'check' in types:
+            if is_se:
+                write_se_checkers(cfobj,queue)
+            else:
+                write_me_checkers(cfobj,queue)
 
-    if 'reduce' in types:
-        print >>stderr,"writing reducer"
-        flists=cfobj.get_flists()
-        expected_num=len(flists)
-        write_reducer(run,expected_num)
+        if 'scripts' in types:
+            # write all the config files by ccd
+
+            if is_se:
+                cfobj.write_by_ccd()
+            else:
+                cfobj.write_by_tile(tilename=tilename)
+
+        if 'minions' in types:
+            cfobj.write_minions()
+            cfobj.write_check_minions()
+
+        if 'reduce' in types:
+            print >>stderr,"writing reducer"
+            flists=cfobj.get_flists()
+            expected_num=len(flists)
+            write_reducer(run,expected_num)
 main()
 

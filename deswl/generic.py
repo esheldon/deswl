@@ -115,6 +115,65 @@ class GenericScripts(dict):
     def get_detrun(self):
         return self.rc.get('detrun',None)
 
+    def _get_allkeys(self, fdict):
+        rc=self.rc
+
+        template=self._get_master_script_template()
+
+        # now interpolate the rest
+        allkeys={}
+        allkeys.update(rc)
+        if self.module_uses is not None:
+            module_uses=' '.join(self.module_uses)
+            module_uses='wlpipe_module_use "%s"' % module_uses
+        else:
+            module_uses=''
+
+        if self.modules is not None:
+            modules=' '.join(self.modules)
+            module_loads='wlpipe_load_modules %s'
+        else:
+            module_loads=''
+        allkeys['module_uses']=module_uses
+        allkeys['module_loads'] = module_loads
+
+
+        for k,v in fdict.iteritems():
+            if k not in ['input_files','output_files']:
+                allkeys[k] = v
+        allkeys.update(fdict['input_files'])
+        allkeys.update(fdict['output_files'])
+
+        return allkeys
+
+    def get_me_master_script(self, fdict):
+        """
+        The user defines the script template and it gets filled here
+
+        We take an fdict that may have some details for a particular
+        split, but the meds file is fixed as is config, version, etc.
+        """
+
+        template=self._get_master_script_template()
+        allkeys=self._get_allkeys(fdict)
+        text = template % allkeys
+
+        return text
+
+    def get_me_master_command(self, fdict, have_detrun=False):
+        """
+        The user defines the script template and it gets filled here
+
+        We take an fdict that may have some details for a particular
+        split, but the meds file is fixed as is config, version, etc.
+        """
+
+        allkeys=self._get_allkeys(fdict)
+        template=self._get_command_template(have_detrun=have_detrun)
+        text=template % allkeys
+        return text
+
+
     def get_script(self, fdict):
         rc=self.rc
 
@@ -233,6 +292,90 @@ exit $exit_status
             if fd['tilename'] == tilename:
                 return fd
         raise ValueError("tilename not found: %d" % tilename)
+
+    def _write_me_master_script(self, fdict):
+        path=self._df.url(type='wlpipe_me_master_script',run=self['run'])
+
+        print >>stderr,path
+        eu.ostools.makedirs_fromfile(path)
+
+        with open(path,'w') as fobj:
+            text=self.get_me_master_script(fdict)
+            fobj.write(text)
+
+        cmd='chmod a+x %s' % path
+        print >>stderr,cmd
+        os.system(cmd)
+
+    def _write_me_command_list(self, all_fd):
+
+        path=self._df.url(type='wlpipe_me_commands',run=self['run'])
+        eu.ostools.makedirs_fromfile(path)
+
+        script_path=self._df.url(type='wlpipe_me_master_script',run=self['run'])
+
+        detrun=self.get_detrun()
+        detrun_fd = None
+        have_detrun=False
+        if detrun is not None:
+            if self.rc['detband'] != self.rc['band']:
+                # note these are the collated files
+                detrun_fd = self.get_flists(run=detrun, nper=None)
+                have_detrun=True
+
+        if all_fd[0]['start'] is not None:
+            dosplit=True
+            basename='wlpipe_me_split_'
+        else:
+            dosplit=False
+            basename='wlpipe_me_'
+
+        ne=len(all_fd)
+
+        print >>stderr,path
+        with open(path,'w') as fobj:
+            for i,fd in enumerate(all_fd):
+
+                fd['script_path']=script_path
+                fd['run'] = self['run']
+
+                # start/end are for 
+                script,status,meta,log=self._extract_tile_files(fd)
+
+                fd['script'] = script
+                fd['output_files']['log']=log
+                fd['output_files']['meta']=meta
+                fd['output_files']['status']=status
+
+                eu.ostools.makedirs_fromfile(log)
+
+                if detrun_fd is not None:
+                    # copy in collated files
+                    dfd = self._extract_tilename(detrun_fd,fd['tilename'])
+                    for key,val in dfd['output_files'].iteritems():
+                        new_key = '%s_detband' % (key,)
+                        fd['input_files'][new_key] = val
+
+
+                text=self.get_me_master_command(fd, have_detrun=have_detrun)
+                fobj.write(text)
+                fobj.write('\n')
+            
+                if i==0 or ((i+1) % 10000) == 0:
+                    print >>stderr,"%d/%d" % (i+1,ne)
+
+    def write_by_tile_master(self):
+        """
+        Instead of writing scripts for each job, write out
+        a list of commands.
+
+        These commands call a master script with minimal arguments
+        """
+
+        all_fd = self.get_flists()
+        self._write_me_master_script(all_fd[0])
+        self._write_me_command_list(all_fd)
+
 
     def write_by_tile(self, tilename=None):
         """
@@ -756,7 +899,7 @@ if [[ "Y${{PBS_O_WORKDIR}}" != "Y" ]]; then
 fi
 
 module load openmpi-gnu
-find . -name "*script.pbs" | mpirun -np {ncpu} minions
+mpirun -np {ncpu} < commands.txt
 
 echo "done minions"
         \n"""
@@ -806,7 +949,7 @@ if [[ "Y${{PBS_O_WORKDIR}}" != "Y" ]]; then
 fi
 
 module load openmpi-gnu
-find . -name "*check.pbs" | mpirun -np {ncpu} minions
+mpirun -np {ncpu} < check-commands.txt
 
 echo "done minions"
         \n"""
