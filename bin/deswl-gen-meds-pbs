@@ -22,7 +22,7 @@ parser.add_option("-q","--queue",default='serial',
 _template="""#!/bin/bash -l
 #PBS -q %(queue)s
 #PBS -l nodes=1:ppn=1
-#PBS -l walltime=48:00:00
+#PBS -l walltime=%(walltime)s
 #PBS -N %(job_name)s
 #PBS -j oe
 #PBS -o %(job_file)s.pbslog
@@ -38,6 +38,8 @@ meds_log="%(meds_log)s"
 
 $cmd &> "$meds_log"
 """
+
+_long_tiles=['DES0506-6331','DES0513-6331']
 
 def main():
     options, args = parser.parse_args(sys.argv[1:])
@@ -64,6 +66,7 @@ def main():
                     coadd_run=coadd_run,
                     tilename=cf['tilename'],
                     band=band)
+
     meds_log=df.url(medsconf=medsconf,
                     type='meds_log',
                     coadd_run=coadd_run,
@@ -74,7 +77,15 @@ def main():
     
     cmd="bash %s" % script_file
 
-    text=_template % {'queue':options.queue,
+    if cf['tilename'] in _long_tiles:
+        queue="regular"
+        walltime="168:00:00"
+    else:
+        queue="serial"
+        walltime="48:00:00"
+
+    text=_template % {'queue':queue,
+                      'walltime':walltime,
                       'job_name':job_name,
                       'job_file':pbs_file,
                       'cmd':cmd,

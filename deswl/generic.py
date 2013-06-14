@@ -307,8 +307,86 @@ exit $exit_status
         print >>stderr,cmd
         os.system(cmd)
 
+    def _write_me_command_list_by_tile(self, all_fd):
+
+        # a dictionary keyed by tilename with all the entries for
+        # that tile
+        fdd = eu.misc.collect_keyby(all_fd, 'tilename')
+
+        script_path=self._df.url(type='wlpipe_me_master_script',run=self['run'])
+
+        detrun=self.get_detrun()
+        detrun_fd = None
+        have_detrun=False
+        if detrun is not None:
+            if self.rc['detband'] != self.rc['band']:
+                # note these are the collated files
+                detrun_fd = self.get_flists(run=detrun, nper=None)
+                have_detrun=True
+
+        if all_fd[0]['start'] is not None:
+            dosplit=True
+            basename='wlpipe_me_split_'
+        else:
+            dosplit=False
+            basename='wlpipe_me_'
+
+
+        num=len(fdd)
+        i=0
+        for tilename,fdlist in fdd.iteritems():
+
+
+            commands_path=self._df.url(type='wlpipe_me_tile_commands',
+                                       run=self['run'],
+                                       tilename=tilename)
+            minions_path=self._df.url(type='wlpipe_me_tile_minions',
+                                      run=self['run'],
+                                      tilename=tilename)
+            eu.ostools.makedirs_fromfile(commands_path)
+            print >>stderr,commands_path
+            with open(commands_path,'w') as fobj:
+
+                for ifd,fd in enumerate(fdlist):
+
+                    fd['script_path']=script_path
+                    fd['run'] = self['run']
+
+                    # start/end are for 
+                    script,status,meta,log=self._extract_tile_files(fd)
+
+                    fd['script'] = script
+                    fd['output_files']['log']=log
+                    fd['output_files']['meta']=meta
+                    fd['output_files']['status']=status
+
+
+                    if detrun_fd is not None:
+                        # copy in collated files
+                        dfd = self._extract_tilename(detrun_fd,fd['tilename'])
+                        for key,val in dfd['output_files'].iteritems():
+                            new_key = '%s_detband' % (key,)
+                            fd['input_files'][new_key] = val
+
+                    if ifd==0:
+                        eu.ostools.makedirs_fromfile(log)
+
+                    text=self.get_me_master_command(fd, have_detrun=have_detrun)
+                    fobj.write(text)
+                    fobj.write('\n')
+                
+            print >>stderr,minions_path
+            njobs=len(fdd)
+            self.write_sub_minions(minions_path,commands_path,njobs)
+
+            if i==0 or ((i+1) % 10) == 0:
+                print >>stderr,"%d/%d" % (i+1,num)
+            i+=1
+
+
     def _write_me_command_list(self, all_fd):
 
+        path=self._df.url(type='wlpipe_me_commands',run=self['run'])
         path=self._df.url(type='wlpipe_me_commands',run=self['run'])
         eu.ostools.makedirs_fromfile(path)
 
@@ -374,7 +452,8 @@ exit $exit_status
 
         all_fd = self.get_flists()
         self._write_me_master_script(all_fd[0])
-        self._write_me_command_list(all_fd)
+        #self._write_me_command_list(all_fd)
+        self._write_me_command_list_by_tile(all_fd)
 
 
     def write_by_tile(self, tilename=None):
@@ -837,16 +916,17 @@ exit $exit_status
 
 
 
-    def calc_minions_walltime(self, ncpu, check=False):
+    def calc_minions_walltime(self, ncpu, njobs=None, check=False):
         """
+        If njobs is not sent, then the length entire list is used
+
         If check=True, use the time expected
         to for each check
         """
 
-        flists=self.get_flists()
-
-        # get the total cpu time
-        njobs = len(flists)
+        if njobs is None:
+            flists=self.get_flists()
+            njobs = len(flists)
 
         if check:
             seconds_per=self.seconds_per_check
@@ -866,6 +946,55 @@ exit $exit_status
         print '  ',walltime
         return walltime
 
+    def write_sub_minions(self, job_file, commands_file, njobs):
+        """
+        Batching individual jobs using mpi
+
+        requires the program minions installed
+        """
+        rc=self.rc
+        job_name='%s-minions' % self['run']
+        nodes=rc['nodes']
+        ppn=rc['ppn']
+        ncpu=nodes*ppn
+
+        print 'calculating wall time'
+        walltime=self.calc_minions_walltime(ncpu, njobs=njobs)
+
+        queue=self.get('queue','regular')
+
+        minions_text="""#!/bin/bash -l
+#PBS -N {job_name}
+#PBS -j oe
+#PBS -l nodes={nodes}:ppn={ppn},walltime={walltime}
+#PBS -q {queue}
+#PBS -o {job_file}.pbslog
+#PBS -A des
+
+if [[ "Y${{PBS_O_WORKDIR}}" != "Y" ]]; then
+    cd $PBS_O_WORKDIR
+fi
+
+module load openmpi-gnu
+mpirun -np {ncpu} < {commands_file}
+
+echo "done minions"
+        \n"""
+
+        minions_text=minions_text.format(job_name=job_name,
+                                         nodes=nodes,
+                                         ppn=ppn,
+                                         ncpu=ncpu,
+                                         walltime=walltime,
+                                         queue=queue,
+                                         commands_file=commands_file,
+                                         job_file=job_file)
+
+        print 'Writing minions pbs file:',job_file
+        eu.ostools.makedirs_fromfile(job_file)
+        with open(job_file,'w') as fobj:
+            fobj.write(minions_text)
+ 
     def write_minions(self):
         """
         Batching individual jobs using mpi

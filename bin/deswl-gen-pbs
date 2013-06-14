@@ -185,8 +185,8 @@ def main():
             raise ValueError("implement master mode for SE")
         else:
             cfobj.write_by_tile_master()
-            cfobj.write_minions()
-            cfobj.write_check_minions()
+            #cfobj.write_minions()
+            #cfobj.write_check_minions()
 
 
     else:
