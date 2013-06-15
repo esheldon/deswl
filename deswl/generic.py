@@ -383,7 +383,7 @@ exit $exit_status
             i+=1
 
 
-    def write_by_tile_master(self):
+    def write_by_tile_master(self, tilename=None):
         """
         Instead of writing scripts for each job, write out
         a list of commands.
@@ -391,9 +391,8 @@ exit $exit_status
         These commands call a master script with minimal arguments
         """
 
-        all_fd = self.get_flists()
+        all_fd = self.get_flists(tilename=tilename)
         self._write_me_master_script(all_fd[0])
-        #self._write_me_command_list(all_fd)
         self._write_me_command_list_by_tile(all_fd)
 
 
@@ -552,7 +551,7 @@ exit $exit_status
 
                 input_files={}
                 for b in band:
-                    n='meds_'+band
+                    n='meds_'+b
                     meds_file=df.url('meds',
                                      coadd_run=fd0['coadd_run'],
                                      medsconf=fd0['medsconf'],
@@ -560,7 +559,7 @@ exit $exit_status
                                      band=b)
 
                     input_files[n] = meds_file
-                    meds_files.append(meds_files)
+                    meds_files.append(meds_file)
                 fd0['meds'] = ','.join(meds_files)
  
             else:
