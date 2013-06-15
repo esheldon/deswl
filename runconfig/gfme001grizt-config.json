@@ -21,7 +21,7 @@
  "nper":250,
  "DESDB_VERS":"local",
  "nodes":16,
- "config":"gfmeds-mb-002",
+ "config":"gfmeds-mb-001",
  "detband":null,
  "serun":null
 }
