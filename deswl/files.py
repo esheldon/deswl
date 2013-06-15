@@ -177,9 +177,13 @@ class Runconfig(dict):
         return run_name
 
     def _run_name_from_type_number(self, run_type, band, number, test=False):
+        if isinstance(band,list):
+            bstr=''.join(band)
+        else:
+            bstr=band
         name='%(type)s%(num)03i%(band)s' % {'type':run_type,
                                             'num':number,
-                                            'band':band}
+                                            'band':bstr}
         if test:
             name += 't'
         return name

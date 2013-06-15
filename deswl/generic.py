@@ -360,7 +360,6 @@ exit $exit_status
                     fd['output_files']['meta']=meta
                     fd['output_files']['status']=status
 
-
                     if detrun_fd is not None:
                         # copy in collated files
                         dfd = self._extract_tilename(detrun_fd,fd['tilename'])
@@ -383,64 +382,6 @@ exit $exit_status
                 print >>stderr,"%d/%d" % (i+1,num)
             i+=1
 
-
-    def _write_me_command_list(self, all_fd):
-
-        path=self._df.url(type='wlpipe_me_commands',run=self['run'])
-        path=self._df.url(type='wlpipe_me_commands',run=self['run'])
-        eu.ostools.makedirs_fromfile(path)
-
-        script_path=self._df.url(type='wlpipe_me_master_script',run=self['run'])
-
-        detrun=self.get_detrun()
-        detrun_fd = None
-        have_detrun=False
-        if detrun is not None:
-            if self.rc['detband'] != self.rc['band']:
-                # note these are the collated files
-                detrun_fd = self.get_flists(run=detrun, nper=None)
-                have_detrun=True
-
-        if all_fd[0]['start'] is not None:
-            dosplit=True
-            basename='wlpipe_me_split_'
-        else:
-            dosplit=False
-            basename='wlpipe_me_'
-
-        ne=len(all_fd)
-
-        print >>stderr,path
-        with open(path,'w') as fobj:
-            for i,fd in enumerate(all_fd):
-
-                fd['script_path']=script_path
-                fd['run'] = self['run']
-
-                # start/end are for 
-                script,status,meta,log=self._extract_tile_files(fd)
-
-                fd['script'] = script
-                fd['output_files']['log']=log
-                fd['output_files']['meta']=meta
-                fd['output_files']['status']=status
-
-                eu.ostools.makedirs_fromfile(log)
-
-                if detrun_fd is not None:
-                    # copy in collated files
-                    dfd = self._extract_tilename(detrun_fd,fd['tilename'])
-                    for key,val in dfd['output_files'].iteritems():
-                        new_key = '%s_detband' % (key,)
-                        fd['input_files'][new_key] = val
-
-
-                text=self.get_me_master_command(fd, have_detrun=have_detrun)
-                fobj.write(text)
-                fobj.write('\n')
-            
-                if i==0 or ((i+1) % 10000) == 0:
-                    print >>stderr,"%d/%d" % (i+1,ne)
 
     def write_by_tile_master(self):
         """
@@ -517,7 +458,6 @@ exit $exit_status
         #import pprint
         run=self['run']
         tilename=fd['tilename']
-        band=fd['band']
         if 'start' in fd:
             extra='_split'
             start,end=_extract_start_end(**fd)
@@ -526,8 +466,8 @@ exit $exit_status
             start=None
             end=None
 
+        band=fd['band']
         df=self._df
-        #pprint.pprint( fd )
         script=df.url('wlpipe_me_script'+extra,
                       run=run,
                       tilename=tilename,
@@ -583,12 +523,18 @@ exit $exit_status
         band=rc['band']
 
         print 'getting coadd info by release'
-        flists0 = desdb.files.get_coadd_info_by_release(rc['dataset'], band)
+        if isinstance(band,list):
+            band_is_list=True
+            useband='i'
+        else:
+            band_is_list=False
+            useband=band
+
+        flists0 = desdb.files.get_coadd_info_by_release(rc['dataset'], useband)
 
         if tilename is not None:
             tfd=flists0
             flists0 = [fd for fd in tfd if fd['tilename']==tilename]
-
 
         medsconf=rc['medsconf']
 
@@ -596,19 +542,35 @@ exit $exit_status
         for fd0 in flists0:
 
             tilename=fd0['tilename']
-            #band=fd0['band']
 
             fd0['run'] = run
             fd0['medsconf']=medsconf
             fd0['timeout'] = self.timeout
 
-            meds_file=df.url('meds',
-                             coadd_run=fd0['coadd_run'],
-                             medsconf=fd0['medsconf'],
-                             tilename=tilename,
-                             band=band)
+            if band_is_list:
+                meds_files=[]
 
-            fd0['input_files'] = {'meds':meds_file}
+                input_files={}
+                for b in band:
+                    n='meds_'+band
+                    meds_file=df.url('meds',
+                                     coadd_run=fd0['coadd_run'],
+                                     medsconf=fd0['medsconf'],
+                                     tilename=tilename,
+                                     band=b)
+
+                    input_files[n] = meds_file
+                    meds_files.append(meds_files)
+                fd0['meds'] = ','.join(meds_files)
+ 
+            else:
+                meds_file=df.url('meds',
+                                 coadd_run=fd0['coadd_run'],
+                                 medsconf=fd0['medsconf'],
+                                 tilename=tilename,
+                                 band=band)
+                input_files={'meds':meds_file}
+            fd0['input_files'] = input_files
 
             if nper:
                 fd0['nper']=nper

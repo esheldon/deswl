@@ -130,6 +130,8 @@ class GMixFitMEMaster(generic.GenericScripts):
     def _get_command_template(self, have_detrun=False):
         """
         no newlines allowed!
+
+        note meds can be a list
         """
         t="./master.sh %(meds)s %(start)s %(end)s %(lmfit)s"
         if have_detrun:
@@ -158,6 +160,7 @@ if [ $# -lt 4 ]; then
     exit 1
 fi
 
+# this can be a list
 meds_file="$1"
 start="$2"
 end="$3"
