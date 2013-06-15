@@ -41,6 +41,12 @@ parser.add_option("--nper",default=None,
 parser.add_option("--version",default=None,
                   help="version of code. Default %default")
 
+def get_band(band):
+    blist=band.split(',')
+    if len(blist) == 1:
+        return band
+    else:
+        return blist
 def main():
     options, args = parser.parse_args(sys.argv[1:])
     if len(args) < 5:
@@ -52,6 +58,8 @@ def main():
     band=args[2]
     nodes=int(args[3])
     ppn=int(args[4])
+
+    band=get_band(band)
 
     rc=deswl.files.Runconfig()
 
