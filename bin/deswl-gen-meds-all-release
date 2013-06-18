@@ -15,6 +15,25 @@ import desdb
 from optparse import OptionParser
 parser = OptionParser(__doc__)
 
+def cut_blacklist(release, runs):
+    nr=len(runs)
+
+    blacklist = deswl.files.get_coadd_blacklist(release)
+
+    runs_new=[]
+    for run in runs:
+        found=False
+        for tile in blacklist:
+            if tile in run:
+                found=True
+
+        if not found:
+            runs_new.append(run)
+
+    nr_new=len(runs_new)
+    print 'black listed %d/%d' % (nr-nr_new, nr)
+    return runs_new
+
 def main():
     options, args = parser.parse_args(sys.argv[1:])
     if len(args) < 2:
@@ -25,8 +44,13 @@ def main():
     band=args[1]
 
     conf=deswl.files.read_meds_config(medsconf)
+    release=conf['release']
 
-    runs=desdb.files.get_release_runs(conf['release'])
+    runs=desdb.files.get_release_runs(release)
+
+    runs=cut_blacklist(release, runs)
+
+    stop
     nrun=len(runs)
 
     for i,run in enumerate(runs):

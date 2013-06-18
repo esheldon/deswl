@@ -39,7 +39,8 @@ meds_log="%(meds_log)s"
 $cmd &> "$meds_log"
 """
 
-_long_tiles=['DES0506-6331','DES0513-6331']
+_long_tiles=['DES0506-6331','DES0513-6331','DES0530-6414']
+# DES0530-6414 was g,r,z at least
 
 def main():
     options, args = parser.parse_args(sys.argv[1:])
@@ -54,6 +55,7 @@ def main():
     df=desdb.files.DESFiles()
     cf=desdb.files.Coadd(coadd_run=coadd_run, band=band)
     cf.load()
+
 
     script_file=df.url(medsconf=medsconf,
                        type='meds_script',
@@ -77,13 +79,8 @@ def main():
     
     cmd="bash %s" % script_file
 
-    if cf['tilename'] in _long_tiles:
-        queue="regular"
-        walltime="168:00:00"
-    else:
-        queue="serial"
-        walltime="48:00:00"
 
+    walltime="48:00:00"
     text=_template % {'queue':queue,
                       'walltime':walltime,
                       'job_name':job_name,

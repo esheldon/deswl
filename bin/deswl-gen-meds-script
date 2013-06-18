@@ -32,6 +32,7 @@ _template="""#!/bin/bash
 # in production this script is called by a pbs submit script and the
 # stderr is written to a log file (meds_log)
 
+nsetup_ess
 module unload shapelets && module load shapelets/{vers}
 module unload meds && module load meds/{vers}
 

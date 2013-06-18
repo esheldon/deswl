@@ -101,7 +101,6 @@ class GMixFitMEMaster(generic.GenericScripts):
         nper=self.rc['nper']
 
         # assuming 10 images in stack
-        # 5 is the worst I saw, so let's double it
         time_per_object=10.0
 
         # seconds per job

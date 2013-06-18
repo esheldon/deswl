@@ -18,7 +18,9 @@ scripts=[os.path.join('bin',s) for s in scripts]
 runconfig_files=glob.glob('runconfig/*.json')
 config_files=glob.glob('config/*/*.config')
 config_files += glob.glob('config/*/*.yaml')
-all_files=runconfig_files+config_files
+other_files = glob.glob('data/*.txt')
+
+all_files=runconfig_files+config_files+other_files
 
 data_files=[]
 for f in all_files:

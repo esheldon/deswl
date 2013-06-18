@@ -22,6 +22,26 @@ def get_meds_config_dir():
     d=os.path.join(d, 'share','config','meds')
     return d
 
+def get_data_dir():
+    if 'DESWL_DIR' not in os.environ:
+        raise ValueError("DESWL_DIR environment var not set")
+
+    d=os.environ['DESWL_DIR']
+    d=os.path.join(d, 'share','data')
+    return d
+
+
+def get_coadd_blacklist(release):
+    d=get_data_dir()
+    fname='%s-blacklist.txt' % release
+    fname=os.path.join(d,fname)
+    blacklist=[]
+    with open(fname) as fobj:
+        for line in fobj:
+            tilename=line.strip()
+            blacklist.append(tilename)
+
+    return blacklist
 def get_meds_config_url(config_id):
     d=get_meds_config_dir()
     fname=os.path.join(d, 'meds%s.yaml' % config_id)
