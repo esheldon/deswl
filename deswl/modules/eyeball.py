@@ -68,7 +68,7 @@ class EyeballScripts(generic.GenericScripts):
 def get_sqlite_dir(run):
     df = desdb.files.DESFiles()
     dir = df.dir(type='wlpipe_run', run=run)
-    dir = os.path.join(dir, 'www')
+    dir = os.path.join(dir, 'db')
     return dir
 
 def get_sqlite_url(run):

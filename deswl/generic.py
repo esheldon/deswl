@@ -375,7 +375,7 @@ exit $exit_status
                     fobj.write('\n')
                 
             print >>stderr,minions_path
-            njobs=len(fdd)
+            njobs=len(fdlist)
             self.write_sub_minions(minions_path,commands_path,njobs)
 
             if i==0 or ((i+1) % 10) == 0:
@@ -904,7 +904,9 @@ exit $exit_status
         walltime_hours=int(ceil(walltime_hours))
 
         walltime='%d:00:00' % walltime_hours
-        print '  ',walltime
+        print '  njobs:',njobs
+        print '  ncpu:',ncpu
+        print '  walltime:',walltime
         return walltime
 
     def write_sub_minions(self, job_file, commands_file, njobs):
