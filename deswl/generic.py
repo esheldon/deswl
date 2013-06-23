@@ -939,7 +939,7 @@ if [[ "Y${{PBS_O_WORKDIR}}" != "Y" ]]; then
 fi
 
 module load openmpi-gnu
-mpirun -np {ncpu} < {commands_file}
+mpirun -np {ncpu} minions < {commands_file}
 
 echo "done minions"
         \n"""
@@ -991,7 +991,7 @@ if [[ "Y${{PBS_O_WORKDIR}}" != "Y" ]]; then
 fi
 
 module load openmpi-gnu
-mpirun -np {ncpu} < commands.txt
+mpirun -np {ncpu} minions < commands.txt
 
 echo "done minions"
         \n"""
@@ -1041,7 +1041,7 @@ if [[ "Y${{PBS_O_WORKDIR}}" != "Y" ]]; then
 fi
 
 module load openmpi-gnu
-mpirun -np {ncpu} < check-commands.txt
+mpirun -np {ncpu} minions < check-commands.txt
 
 echo "done minions"
         \n"""
