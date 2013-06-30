@@ -16,10 +16,11 @@ class EyeballScripts(generic.GenericScripts):
         # over-written
         # using optional typename to allow different filetypes to have
         # same type name but different extensions
-        self.filetypes={'mosaic_jpg':  {'typename':'mosaic', 'ext':'jpg'},
-                        'mosaic_fits': {'typename':'mosaic', 'ext':'fits.fz'},
-                        'field_jpg2':  {'typename':'field2', 'ext':'jpg'},
-                        'field_jpg4':  {'typename':'field4', 'ext':'jpg'}}
+        #self.filetypes={'mosaic_jpg':  {'typename':'mosaic', 'ext':'jpg'},
+        #                'mosaic_fits': {'typename':'mosaic', 'ext':'fits.fz'},
+        #                'field_jpg2':  {'typename':'field2', 'ext':'jpg'},
+        #                'field_jpg4':  {'typename':'field4', 'ext':'jpg'}}
+        self.filetypes={'field_fits':  {'typename':'field', 'ext':'fits.fz'}}
 
         # don't need this, will just load my normal modules
         self.module_uses=None
@@ -46,16 +47,10 @@ class EyeballScripts(generic.GenericScripts):
 
     image=%(image)s
     bkg=%(bkg)s
-    cat=%(cat)s
-    mosaic_fits=%(mosaic_fits)s
-    mosaic_jpg=%(mosaic_jpg)s
-    field_jpg2=%(field_jpg2)s
-    field_jpg4=%(field_jpg4)s
+    field_fits=%(field_fits)s
 
-    timeout $timeout python $EYEBALLER_DIR/bin/make-se-eyeball.py \\
-            ${image} ${bkg} ${cat} \\
-            ${mosaic_fits} ${mosaic_jpg} \\
-            ${field_jpg2} ${field_jpg4} 2>&1 >> $log_file
+    python $EYEBALLER_DIR/bin/make-se-eyeball.py \\
+            ${image} ${bkg} ${field_fits} 2>&1 >> $log_file
 
     exit_status=$?
     
