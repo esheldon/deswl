@@ -9,8 +9,8 @@ class EyeballScripts(generic.GenericScripts):
         # 5 minutes is plenty
         self.timeout=5*60*60
 
-        # about a factor of 4 larger than what we expect
-        self.seconds_per = 20
+        # typical is 30 seconds
+        self.seconds_per = 40
 
         # don't put status, meta, or log here, they will get
         # over-written
@@ -59,6 +59,35 @@ class EyeballScripts(generic.GenericScripts):
 
         return commands
 
+    def _get_command_template(self, **keys):
+        """
+        no newlines allowed!
+        """
+        t="./master.sh %(image)s %(bkg)s %(field_fits)s &> %(log)s"
+        return t
+
+
+    def _get_master_script_template(self):
+        commands="""#!/bin/bash
+
+nsetup_ess
+
+if [ $# -lt 3 ]; then
+    echo "error: master.sh image bkg field_fits"
+    exit 1
+fi
+
+# this can be a list
+image="$1"
+bkg="$2"
+field_fits="$3"
+
+python $EYEBALLER_DIR/bin/make-se-eyeball.py ${image} ${bkg} ${field_fits}
+
+exit_status=$?
+exit $exit_status\n"""
+
+        return commands
 
 def get_sqlite_dir(run):
     df = desdb.files.DESFiles()

@@ -182,11 +182,9 @@ def main():
 
     if options.master:
         if is_se:
-            raise ValueError("implement master mode for SE")
+            cfobj.write_by_ccd_master()
         else:
             cfobj.write_by_tile_master(tilename=tilename)
-            #cfobj.write_minions()
-            #cfobj.write_check_minions()
 
 
     else:

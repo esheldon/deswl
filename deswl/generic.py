@@ -146,7 +146,7 @@ class GenericScripts(dict):
 
         return allkeys
 
-    def get_me_master_script(self, fdict):
+    def get_master_script(self, fdict):
         """
         The user defines the script template and it gets filled here
 
@@ -160,7 +160,7 @@ class GenericScripts(dict):
 
         return text
 
-    def get_me_master_command(self, fdict, have_detrun=False):
+    def get_master_command(self, fdict, have_detrun=False):
         """
         The user defines the script template and it gets filled here
 
@@ -293,14 +293,14 @@ exit $exit_status
                 return fd
         raise ValueError("tilename not found: %d" % tilename)
 
-    def _write_me_master_script(self, fdict):
-        path=self._df.url(type='wlpipe_me_master_script',run=self['run'])
+    def _write_master_script(self, fdict):
+        path=self._df.url(type='wlpipe_master_script',run=self['run'])
 
         print >>stderr,path
         eu.ostools.makedirs_fromfile(path)
 
         with open(path,'w') as fobj:
-            text=self.get_me_master_script(fdict)
+            text=self.get_master_script(fdict)
             fobj.write(text)
 
         cmd='chmod a+x %s' % path
@@ -313,7 +313,7 @@ exit $exit_status
         # that tile
         fdd = eu.misc.collect_keyby(all_fd, 'tilename')
 
-        script_path=self._df.url(type='wlpipe_me_master_script',run=self['run'])
+        script_path=self._df.url(type='wlpipe_master_script',run=self['run'])
 
         detrun=self.get_detrun()
         detrun_fd = None
@@ -370,7 +370,7 @@ exit $exit_status
                     if ifd==0:
                         eu.ostools.makedirs_fromfile(log)
 
-                    text=self.get_me_master_command(fd, have_detrun=have_detrun)
+                    text=self.get_master_command(fd, have_detrun=have_detrun)
                     fobj.write(text)
                     fobj.write('\n')
                 
@@ -392,7 +392,7 @@ exit $exit_status
         """
 
         all_fd = self.get_flists(tilename=tilename)
-        self._write_me_master_script(all_fd[0])
+        self._write_master_script(all_fd[0])
         self._write_me_command_list_by_tile(all_fd)
 
 
@@ -665,6 +665,74 @@ exit $exit_status
                                         end=end)
         return fdict
 
+    def write_by_ccd_master(self):
+        """
+        Instead of writing scripts for each job, write out
+        a list of commands.
+
+        These commands call a master script with minimal arguments
+        """
+
+        all_fd = self.get_flists()
+        num=len(all_fd)
+        df=self._df
+
+        self._write_master_script(all_fd[0])
+
+        # also makes directory
+        minions_path=df.url(type='wlpipe_minions', run=self['run'])
+        commands_path=df.url(type='wlpipe_commands', run=self['run'])
+        self.write_sub_minions(minions_path,commands_path,num)
+
+        self._write_se_command_list_by_ccd(all_fd)
+
+
+    def _write_se_command_list_by_ccd(self, all_fd):
+        num=len(all_fd)
+        df=self._df
+
+        commands_path=df.url(type='wlpipe_commands', run=self['run'])
+        with open(commands_path,'w') as fobj:
+            for i,fd in enumerate(all_fd):
+                
+                run=self['run']
+                expname=fd['expname']
+                ccd=fd['ccd']
+
+                # not all of these will be used by every pipeline
+                log_file=df.url('wlpipe_se_log',
+                                run=run,
+                                expname=expname,
+                                ccd=ccd)
+                status_file=df.url('wlpipe_se_status',
+                                   run=run,
+                                   expname=expname,
+                                   ccd=ccd)
+
+                meta_file=df.url('wlpipe_se_meta',
+                                 run=run,
+                                 expname=expname,
+                                 ccd=ccd)
+                log_file=df.url('wlpipe_se_log',
+                                run=run,
+                                expname=expname,
+                                ccd=ccd)
+                eu.ostools.makedirs_fromfile(log_file)
+
+                fd['output_files']['log']=log_file
+
+                # need to make these optional
+                fd['output_files']['meta']=meta_file
+                fd['output_files']['status']=status_file
+
+                text=self.get_master_command(fd)
+                fobj.write(text)
+                fobj.write('\n')
+
+                if i==0 or (i % 10000) == 0:
+                    print >>stderr,"%d/%d" % (i,num)
+
+
     def write_by_ccd(self):
         """
         Write all scripts by expname/ccd
@@ -754,7 +822,7 @@ exit $exit_status
             print 'cache not found, generating raw red info list'
             eu.ostools.makedirs_fromfile(fname)
             flists = desdb.files.get_red_info_by_release(self.rc['dataset'],
-                                                         self.rc['band'])
+                                                         band=self.rc['band'])
             print 'writing cache:',fname
             eu.io.write(fname, flists)
         else:
@@ -944,13 +1012,14 @@ mpirun -np {ncpu} minions < {commands_file}
 echo "done minions"
         \n"""
 
+        cbase=os.path.basename(commands_file)
         minions_text=minions_text.format(job_name=job_name,
                                          nodes=nodes,
                                          ppn=ppn,
                                          ncpu=ncpu,
                                          walltime=walltime,
                                          queue=queue,
-                                         commands_file=commands_file,
+                                         commands_file=cbase,
                                          job_file=job_file)
 
         print 'Writing minions pbs file:',job_file
