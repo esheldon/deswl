@@ -1,0 +1,21 @@
+{
+ "PYTHON_VERS":"v2.7.3",
+ "detrun":null,
+ "run_type":"eye_se",
+ "run":"eye_se002it",
+ "DESWL_VERS":"local",
+ "DESDB_DIR":"/global/homes/e/esheldon/exports/desdb-local",
+ "ppn":8,
+ "dataset":"y1c1_finalcut_prerelease",
+ "DESWL_DIR":"/global/homes/e/esheldon/exports/deswl-local",
+ "band":"i",
+ "version":"work",
+ "ESUTIL_DIR":"/global/homes/e/esheldon/exports/esutil-local",
+ "nper":null,
+ "medsconf":null,
+ "DESDB_VERS":"local",
+ "nodes":8,
+ "config":null,
+ "ESUTIL_VERS":"local",
+ "serun":null
+}
