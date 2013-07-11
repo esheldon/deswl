@@ -2,6 +2,10 @@ import os
 from deswl import generic, files
 import desdb
 
+def make_sqlite_database(run):
+    sm=SqliteMaker(run)
+    sm.go()
+
 class EyeballScripts(generic.GenericScripts):
     def __init__(self, run, **keys):
         super(EyeballScripts,self).__init__(run)
@@ -121,12 +125,12 @@ class SqliteMaker(object):
         os.chdir(self.dir)
 
     def go(self):
+        #self.make_qa_table()
         self.make_files_table()
-        self.make_qa_table()
         self.populate_files_table()
 
         self.add_indices(self.files_table, self.files_index_fields)
-        self.add_indices(self.qa_table, self.qa_index_fields)
+        #self.add_indices(self.qa_table, self.qa_index_fields)
     
     def add_indices(self, tablename, index_fields):
         curs=self.conn.cursor()
@@ -148,12 +152,12 @@ class SqliteMaker(object):
         import glob
         print 'populating files table'
 
-        fzlist = glob.glob('../*/*mosaic.fits.fz')
+        fzlist = glob.glob('../*/*field.fits.fz')
         nf=len(fzlist)
         band=self.rc['band']
 
         insert_query="""
-        INSERT INTO {tablename} VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO {tablename} VALUES (?, ?, ?, ?, ?)
         """.format(tablename=self.files_table)
 
         curs=self.conn.cursor()
@@ -167,12 +171,7 @@ class SqliteMaker(object):
             ccdname='%s_%s_%s' % (sp[2], sp[3], sp[4])
             ccd = int(sp[4])
 
-            mosaic_jpeg=fzfile.replace('.fits.fz','.jpg')
-            field_jpeg2=fzfile.replace('mosaic.fits.fz','field2.jpg')
-            field_jpeg4=fzfile.replace('mosaic.fits.fz','field4.jpg')
-
-            data=(ccdname, expname, ccd, band,
-                  fzfile, mosaic_jpeg, field_jpeg2, field_jpeg4)
+            data=(ccdname, expname, ccd, band, fzfile)
 
             curs.execute(insert_query, data)
          
@@ -188,10 +187,7 @@ create table {tablename} (
     expname text,
     ccd integer,
     band text,
-    mosaic text,
-    mosaic_jpeg text,
-    field_jpeg2 text,
-    field_jpeg4 text
+    field text
 )
         """.format(tablename=self.files_table)
 
@@ -232,6 +228,4 @@ create table {tablename} (
         print 'opening database:',self.url
         self.conn=sqlite.Connection(self.url)
 
-def make_sqlite_database(run):
-    sm=SqliteMaker(run)
-    sm.go()
+

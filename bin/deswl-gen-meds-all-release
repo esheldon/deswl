@@ -50,7 +50,6 @@ def main():
 
     runs=cut_blacklist(release, runs)
 
-    stop
     nrun=len(runs)
 
     for i,run in enumerate(runs):

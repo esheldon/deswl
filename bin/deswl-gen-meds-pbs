@@ -81,7 +81,7 @@ def main():
 
 
     walltime="48:00:00"
-    text=_template % {'queue':queue,
+    text=_template % {'queue':options.queue,
                       'walltime':walltime,
                       'job_name':job_name,
                       'job_file':pbs_file,
