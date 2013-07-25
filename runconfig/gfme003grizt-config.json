@@ -1,0 +1,27 @@
+{
+ "PYTHON_VERS":"v2.7.3",
+ "DESWL_DIR":"/global/homes/e/esheldon/exports/deswl-local",
+ "run_type":"gfme",
+ "run":"gfme003grizt",
+ "version":"work",
+ "DESWL_VERS":"local",
+ "ESUTIL_VERS":"local",
+ "DESDB_DIR":"/global/homes/e/esheldon/exports/desdb-local",
+ "ppn":8,
+ "dataset":"Y1C2_COADD_PRERELEASE",
+ "detrun":null,
+ "band":[
+  "g",
+  "r",
+  "i",
+  "z"
+ ],
+ "medsconf":"009",
+ "ESUTIL_DIR":"/global/homes/e/esheldon/exports/esutil-local",
+ "nper":250,
+ "DESDB_VERS":"local",
+ "nodes":16,
+ "config":"gfmeds-mb-002",
+ "detband":null,
+ "serun":null
+}
