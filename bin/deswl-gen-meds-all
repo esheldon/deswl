@@ -11,4 +11,5 @@ band=$3
 
 deswl-gen-meds-script $medsconf $coadd_run $band
 deswl-gen-meds-pbs $medsconf $coadd_run $band
+deswl-gen-meds-wq $medsconf $coadd_run $band
 deswl-gen-meds-srclist $medsconf $coadd_run $band

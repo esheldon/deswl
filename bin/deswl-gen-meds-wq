@@ -2,8 +2,7 @@
 """
     %prog [options] medsconf coadd_run band
 
-Generate a pbs script.  It will call the meds script and write
-the stderr and stdout to a log file and exit status to a .status file
+Generate a wq script.  It will call the meds script.
 """
 
 import os,sys
@@ -19,28 +18,12 @@ parser.add_option("-q","--queue",default='serial',
 
 # 8 hours should be more than enough, but hard to say.  Jobs
 # run very slowly in the serial queue due to memory pressure
-_template="""#!/bin/bash -l
-#PBS -q %(queue)s
-#PBS -l nodes=1:ppn=1
-#PBS -l walltime=%(walltime)s
-#PBS -N %(job_name)s
-#PBS -j oe
-#PBS -o %(job_file)s.pbslog
-#PBS -V
-#PBS -A des
+_template="""
+command: |
+    %(cmd)s
 
-if [[ "Y${PBS_O_WORKDIR}" != "Y" ]]; then
-    cd $PBS_O_WORKDIR
-fi
-
-cmd="%(cmd)s"
-meds_log="%(meds_log)s"
-
-$cmd &> "$meds_log"
+job_name: %(job_name)s
 """
-
-_long_tiles=['DES0506-6331','DES0513-6331','DES0530-6414']
-# DES0530-6414 was g,r,z at least
 
 def main():
     options, args = parser.parse_args(sys.argv[1:])
@@ -63,37 +46,26 @@ def main():
                        tilename=cf['tilename'],
                        band=band)
 
-    pbs_file=df.url(medsconf=medsconf,
-                    type='meds_pbs',
+    wq_file=df.url(medsconf=medsconf,
+                    type='meds_wq',
                     coadd_run=coadd_run,
                     tilename=cf['tilename'],
                     band=band)
 
-    meds_log=df.url(medsconf=medsconf,
-                    type='meds_log',
-                    coadd_run=coadd_run,
-                    tilename=cf['tilename'],
-                    band=band)
 
     job_name='%s-%s' % (cf['tilename'],band)
     
     cmd="bash %s" % script_file
 
+    text=_template % {'job_name':job_name,
+                      'cmd':cmd}
 
-    walltime="48:00:00"
-    text=_template % {'queue':options.queue,
-                      'walltime':walltime,
-                      'job_name':job_name,
-                      'job_file':pbs_file,
-                      'cmd':cmd,
-                      'meds_log':meds_log}
-
-    d=os.path.dirname(pbs_file)
+    d=os.path.dirname(wq_file)
     if not os.path.exists(d):
         os.makedirs(d)
 
-    print 'writing pbs script:',pbs_file
+    print 'writing wq script:',wq_file
 
-    with open(pbs_file,'w') as fobj:
+    with open(wq_file,'w') as fobj:
         fobj.write(text)
 main()
