@@ -12,7 +12,8 @@ import desdb
 from optparse import OptionParser
 parser=OptionParser(__doc__)
 
-parser.add_option('-c','--check',help="check that files exist")
+parser.add_option('-c','--check',action='store_true',
+                  help="check that files exist")
 
 def do_check(r):
     nmissing=0
