@@ -12,6 +12,17 @@ import desdb
 from optparse import OptionParser
 parser=OptionParser(__doc__)
 
+parser.add_option('-c','--check',help="check that files exist")
+
+def do_check(r):
+    nmissing=0
+    for ftype in ['red_image','red_bkg','red_seg']:
+        if not os.path.exists(r[ftype]):
+            print "missing %s: %s" % (ftype,r['red_image'])
+        nmissing+=1
+
+    return nmissing
+
 def main():
     options,args = parser.parse_args(sys.argv[1:])
 
@@ -41,10 +52,16 @@ def main():
 
     print 'writing:',srclist
 
+    nmissing=0
     with open(srclist,'w') as fobj:
         for r in cf.srclist:
+
+            if options.check:
+                nmissing += do_check(r)
+
             line='%s %s %s %s\n'
             line = line % (r['red_image'],r['red_bkg'],r['red_seg'],r['magzp'])
             fobj.write(line)
-                         
+    if options.check:
+        print 'nmissing: ',nmissing
 main()
