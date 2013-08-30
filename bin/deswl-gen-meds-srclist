@@ -19,7 +19,7 @@ def do_check(r):
     nmissing=0
     for ftype in ['red_image','red_bkg','red_seg']:
         if not os.path.exists(r[ftype]):
-            print "missing %s: %s" % (ftype,r['red_image'])
+            print "missing %s: %s" % (ftype,r[ftype])
         nmissing+=1
 
     return nmissing
