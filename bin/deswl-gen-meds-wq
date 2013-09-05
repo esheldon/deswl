@@ -16,10 +16,9 @@ parser = OptionParser(__doc__)
 parser.add_option("-q","--queue",default='serial', 
                   help="queue for processing, default: %default")
 
-# 8 hours should be more than enough, but hard to say.  Jobs
-# run very slowly in the serial queue due to memory pressure
 _template="""
 command: |
+    source ~/.bashrc
     %(cmd)s
 
 job_name: %(job_name)s

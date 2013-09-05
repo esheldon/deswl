@@ -53,8 +53,8 @@ def main():
     nrun=len(runs)
 
     for i,run in enumerate(runs):
-        print '-'*70
-        print '%d/%d' % (i+1,nrun)
+        print >>stderr,'-'*70
+        print >>stderr,'%d/%d' % (i+1,nrun)
         cmd='deswl-gen-meds-all %s %s %s' % (medsconf,run,band)
         os.system(cmd)
 

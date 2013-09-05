@@ -36,10 +36,13 @@ def get_coadd_blacklist(release):
     fname='%s-blacklist.txt' % release
     fname=os.path.join(d,fname)
     blacklist=[]
-    with open(fname) as fobj:
-        for line in fobj:
-            tilename=line.strip()
-            blacklist.append(tilename)
+
+    if os.path.exists(fname):
+        print >>stderr,'reading blacklist:',fname
+        with open(fname) as fobj:
+            for line in fobj:
+                tilename=line.strip()
+                blacklist.append(tilename)
 
     return blacklist
 def get_meds_config_url(config_id):

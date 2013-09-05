@@ -9,7 +9,14 @@ medsconf=$1
 coadd_run=$2
 band=$3
 
+deswl-gen-meds-srclist --check $medsconf $coadd_run $band
+res=$?
+
+if [[ $res != "0" ]]; then
+    echo "error making srclist for $medsconf $coadd_run $band not creating other files"
+    exit 1
+fi
+
 deswl-gen-meds-script $medsconf $coadd_run $band
 deswl-gen-meds-pbs $medsconf $coadd_run $band
 deswl-gen-meds-wq $medsconf $coadd_run $band
-deswl-gen-meds-srclist $medsconf $coadd_run $band
