@@ -1,4 +1,4 @@
-release: "SVA1_COADD"
+release: "SVA1-CLUSTERS1"
 min_boxsize: 32
 max_boxsize: 256
 detband: i
