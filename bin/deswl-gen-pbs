@@ -185,8 +185,6 @@ def main():
             cfobj.write_by_ccd_master()
         else:
             cfobj.write_by_tile_master(tilename=tilename)
-
-
     else:
 
         if 'check' in types:
