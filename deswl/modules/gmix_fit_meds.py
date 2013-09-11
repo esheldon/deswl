@@ -173,6 +173,7 @@ function go {
 
     python -u $GMIX_MEDS_DIR/bin/gmix-fit-meds     \\
             --obj-range $start,$end                \\
+            --work-dir $_CONDOR_SCRATCH_DIR        \\
             $conf $meds_file $out_file
     
     exit_status=$?
