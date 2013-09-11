@@ -216,8 +216,8 @@ class Runconfig(dict):
                                run_type, 
                                dataset, 
                                band,
-                               nodes,
-                               ppn,
+                               nodes=None,
+                               ppn=None,
                                run_name=None,
                                test=False, 
                                dryrun=False, 
@@ -237,9 +237,9 @@ class Runconfig(dict):
             e.g. 'dr012'
         band: string
             'g','r','i','z','Y'
-        nodes:
+        nodes: optional
             number of nodes to use
-        ppn:
+        ppn: optional
             processors per node
 
         medsconf: 

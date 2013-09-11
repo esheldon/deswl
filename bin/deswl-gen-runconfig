@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-    %prog [options] run_type dataset band nodes ppn
+    %prog [options] run_type dataset band [nodes ppn]
 
 Generate a new runconfig.  You should set up all the versions of code you will use before running this.
 
@@ -49,15 +49,20 @@ def get_band(band):
         return blist
 def main():
     options, args = parser.parse_args(sys.argv[1:])
-    if len(args) < 5:
+    if len(args) < 3:
         parser.print_help()
         sys.exit(45)
 
     run_type=args[0]
     dataset=args[1]
     band=args[2]
-    nodes=int(args[3])
-    ppn=int(args[4])
+
+    if len(args) == 5:
+        nodes=int(args[3])
+        ppn=int(args[4])
+    else:
+        nodes=None
+        ppn=None
 
     band=get_band(band)
 
@@ -70,8 +75,8 @@ def main():
     config=rc.generate_new_runconfig(run_type, 
                                      dataset, 
                                      band,
-                                     nodes,
-                                     ppn,
+                                     nodes=nodes,
+                                     ppn=ppn,
                                      config=options.config,
                                      run_name=options.run_name,
                                      test=options.test, 

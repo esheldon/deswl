@@ -307,6 +307,82 @@ exit $exit_status
         print >>stderr,cmd
         os.system(cmd)
 
+    def _get_condor_template(self, master_script, overall_name):
+        template="""Universe        = vanilla
+
+Notification    = Never 
+
+# Run this exe with these args
+Executable      = {master_script}
+
+Image_Size      = 700000
+
+GetEnv = True
+
+kill_sig        = SIGINT
+
++Experiment     = "astro"
+
+Output          = ./{overall_name}.$(cluster).out
+Error           = ./{overall_name}.$(cluster).err
+Log             = /data/esheldon/tmp/{overall_name}.$(cluster).log\n\n"""
+        return template.format(overall_name=overall_name,
+                               master_script=master_script)
+
+    def _write_condor_me(self, all_fd):
+        """
+        Write the file to do all at once as well as one per tile
+        """
+        # a dictionary keyed by tilename with all the entries for
+        # that tile
+        fdd = eu.misc.collect_keyby(all_fd, 'tilename')
+
+        master_script=self._df.url(type='wlpipe_master_script',run=self['run'])
+
+        num=len(fdd)
+        i=0
+        for tilename,fdlist in fdd.iteritems():
+
+
+            condor_path=self._df.url(type='wlpipe_me_tile_condor',
+                                     run=self['run'],
+                                     tilename=tilename)
+            eu.ostools.makedirs_fromfile(condor_path)
+            print >>stderr,condor_path
+            with open(condor_path,'w') as fobj:
+
+                overall_name= fdlist[0]['tilename']
+                text=self._get_condor_template(master_script,overall_name)
+                fobj.write(text)
+
+                for ifd,fd in enumerate(fdlist):
+
+                    fd['run'] = self['run']
+
+                    # start/end are for 
+                    script,status,meta,log=self._extract_tile_files(fd)
+
+                    fd['script'] = script
+                    fd['output_files']['log']=log
+                    fd['output_files']['meta']=meta
+                    fd['output_files']['status']=status
+
+                    if ifd==0:
+                        eu.ostools.makedirs_fromfile(log)
+
+                    text=self.get_master_command(fd)
+
+                    job_name="%s-%s-%s" % (overall_name,fd['start'],fd['end'])
+                    fobj.write('+job_name = "%s"\n' % job_name)
+                    fobj.write("Arguments = %s\n" % text)
+                    fobj.write("Queue\n\n")
+
+            if i==0 or ((i+1) % 10) == 0:
+                print >>stderr,"%d/%d" % (i+1,num)
+            i+=1
+
+
+
     def _write_me_command_list_by_tile(self, all_fd):
 
         # a dictionary keyed by tilename with all the entries for
@@ -393,7 +469,10 @@ exit $exit_status
 
         all_fd = self.get_flists(tilename=tilename)
         self._write_master_script(all_fd[0])
-        self._write_me_command_list_by_tile(all_fd)
+        if self.rc['ppn'] is None:
+            self._write_condor_me(all_fd)
+        else:
+            self._write_me_command_list_by_tile(all_fd)
 
 
     def write_by_tile(self, tilename=None):

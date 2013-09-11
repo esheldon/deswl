@@ -128,7 +128,14 @@ class GMixFitMEMaster(generic.GenericScripts):
 
     def _get_command_template(self, have_detrun=False):
         """
-        no newlines allowed!
+        For condor these are the arguments
+        """
+        t="%(meds)s %(start)s %(end)s %(lmfit)s %(log)s"
+        return t
+
+    def _get_command_template_old(self, have_detrun=False):
+        """
+        note if using for minions no newlines allowed
 
         note meds can be a list
         """
@@ -139,23 +146,44 @@ class GMixFitMEMaster(generic.GenericScripts):
         t += " &> %(log)s"
         return t
 
+
     def _get_master_script_template(self):
         """
         timeout and log_file are defined on entry
         """
-
-        detband=self.rc.get('detband',None)
-        if detband is not None and detband != self.rc['band']:
-            det_cat_str='%(lmfit_detband)s'
-        else:
-            det_cat_str=''
         
         commands="""#!/bin/bash
 
-nsetup_ess
+function go {
+    hostname
 
-if [ $# -lt 4 ]; then
-    echo "error: meds_file start end out_file [det_cat]"
+    ls /opt/astro/SL53/bin/setup.astro.sh
+    echo $PATH
+    which python
+
+    gmvers="%(version)s"
+    module unload gmix_image && module load gmix_image/work
+    module unload psfex && module load psfex/work
+    module unload meds && module load meds/work
+    module unload gmix_meds && module load gmix_meds/$gmvers
+
+
+    confname="%(config)s.yaml"
+    conf="$GMIX_MEDS_DIR/share/config/$confname"
+
+    python -u $GMIX_MEDS_DIR/bin/gmix-fit-meds     \\
+            --obj-range $start,$end                \\
+            $conf $meds_file $out_file
+    
+    exit_status=$?
+
+}
+
+#nsetup_ess
+source ~/.bashrc
+
+if [ $# -lt 5 ]; then
+    echo "error: meds_file start end out_file"
     exit 1
 fi
 
@@ -164,28 +192,18 @@ meds_file="$1"
 start="$2"
 end="$3"
 out_file="$4"
+log_file="$5"
 
-# this arg may be missing, resulting in an empty string
-det_cat="$5"
+outdir=$(dirname $out_file)
+mkdir -p $outdir
 
-# need to make these configurable.  Can put in a single
-# module gmix_meds_run
-gmvers="%(version)s"
-module unload gmix_image && module load gmix_image/work
-module unload psfex && module load psfex/work
-module unload meds && module load meds/work
-module unload gmix_meds && module load gmix_meds/$gmvers
+lbase=$(basename $log_file)
+tmplog="$_CONDOR_SCRATCH_DIR/$lbase"
 
-confname="%(config)s.yaml"
-conf="$GMIX_MEDS_DIR/share/config/$confname"
+go &> "$tmplog"
+cp "$tmplog" "$log_file"
 
-python -u $GMIX_MEDS_DIR/bin/gmix-fit-meds     \\
-        --obj-range $start,$end                \\
-        --det-cat "$det_cat"                   \\
-        $conf $meds_file $out_file
-
-exit_status=$?
-exit $exit_status\n""".format(det_cat_str=det_cat_str)
+exit $exit_status\n"""
 
         return commands
 
