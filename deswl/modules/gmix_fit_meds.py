@@ -158,8 +158,6 @@ function go {
     hostname
 
     ls /opt/astro/SL53/bin/setup.astro.sh
-    echo $PATH
-    which python
 
     gmvers="%(version)s"
     module unload gmix_image && module load gmix_image/work

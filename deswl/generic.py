@@ -339,47 +339,72 @@ Log             = /data/esheldon/tmp/{overall_name}.$(cluster).log\n\n"""
 
         master_script=self._df.url(type='wlpipe_master_script',run=self['run'])
 
-        num=len(fdd)
-        i=0
-        for tilename,fdlist in fdd.iteritems():
+        condor_path_all=self._df.url(type='wlpipe_me_condor',run=self['run'])
+        checker_all=self._df.url(type='wlpipe_me_checker',run=self['run'])
+
+        print condor_path_all,'\n', checker_all
+        with open(condor_path_all,'w') as fobjall, open(checker_all,'w') as chall:
+
+            overall_name = self['run']
+            text=self._get_condor_template(master_script,overall_name)
+            fobjall.write(text)
+
+            num=len(fdd)
+            i=0
+            for tilename,fdlist in fdd.iteritems():
 
 
-            condor_path=self._df.url(type='wlpipe_me_tile_condor',
-                                     run=self['run'],
-                                     tilename=tilename)
-            eu.ostools.makedirs_fromfile(condor_path)
-            print >>stderr,condor_path
-            with open(condor_path,'w') as fobj:
+                condor_path=self._df.url(type='wlpipe_me_tile_condor',
+                                         run=self['run'],
+                                         tilename=tilename)
+                checker_path=self._df.url(type='wlpipe_me_tile_checker',
+                                          run=self['run'],
+                                          tilename=tilename)
+                eu.ostools.makedirs_fromfile(condor_path)
+                print >>stderr,condor_path
+                with open(condor_path,'w') as fobj,open(checker_path,'w') as ch:
 
-                overall_name= fdlist[0]['tilename']
-                text=self._get_condor_template(master_script,overall_name)
-                fobj.write(text)
+                    overall_name= fdlist[0]['tilename']
+                    text=self._get_condor_template(master_script,overall_name)
+                    fobj.write(text)
 
-                for ifd,fd in enumerate(fdlist):
+                    for ifd,fd in enumerate(fdlist):
 
-                    fd['run'] = self['run']
+                        fd['run'] = self['run']
 
-                    # start/end are for 
-                    script,status,meta,log=self._extract_tile_files(fd)
+                        # start/end are for 
+                        script,status,meta,log=self._extract_tile_files(fd)
 
-                    fd['script'] = script
-                    fd['output_files']['log']=log
-                    fd['output_files']['meta']=meta
-                    fd['output_files']['status']=status
+                        fd['script'] = script
+                        fd['output_files']['log']=log
+                        fd['output_files']['meta']=meta
+                        fd['output_files']['status']=status
 
-                    if ifd==0:
-                        eu.ostools.makedirs_fromfile(log)
+                        if ifd==0:
+                            eu.ostools.makedirs_fromfile(log)
 
-                    text=self.get_master_command(fd)
+                        text=self.get_master_command(fd)
 
-                    job_name="%s-%s-%s" % (overall_name,fd['start'],fd['end'])
-                    fobj.write('+job_name = "%s"\n' % job_name)
-                    fobj.write("Arguments = %s\n" % text)
-                    fobj.write("Queue\n\n")
+                        job_name="%s-%s-%s" % (overall_name,fd['start'],fd['end'])
+                        fobj.write('+job_name = "%s"\n' % job_name)
+                        fobj.write("Arguments = %s\n" % text)
+                        fobj.write("Queue\n\n")
 
-            if i==0 or ((i+1) % 10) == 0:
-                print >>stderr,"%d/%d" % (i+1,num)
-            i+=1
+                        fobjall.write('+job_name = "%s"\n' % job_name)
+                        fobjall.write("Arguments = %s\n" % text)
+                        fobjall.write("Queue\n\n")
+
+                        for key,o in fd['output_files'].iteritems():
+                            chall.write('f="%s"\n' % o)
+                            chall.write('if [ ! -e "$f" ]; then echo "missing: $f"; fi\n')
+
+                            ch.write('f="%s"\n' % o)
+                            ch.write('if [ ! -e "$f" ]; then echo "missing: $f"; fi\n')
+
+
+                if i==0 or ((i+1) % 10) == 0:
+                    print >>stderr,"%d/%d" % (i+1,num)
+                i+=1
 
 
 
@@ -538,7 +563,7 @@ Log             = /data/esheldon/tmp/{overall_name}.$(cluster).log\n\n"""
         tilename=fd['tilename']
         if 'start' in fd:
             extra='_split'
-            start,end=_extract_start_end(**fd)
+            start,end=extract_start_end(**fd)
         else:
             extra=''
             start=None
@@ -680,7 +705,7 @@ Log             = /data/esheldon/tmp/{overall_name}.$(cluster).log\n\n"""
     def _set_me_outputs_by_chunk(self, run, fd0, filetypes):
         nper=fd0['nper']
         nrows=self._get_nrows(fd0['cat_url'])
-        startlist,endlist=self._get_chunks(nrows, nper)
+        startlist,endlist=get_chunks(nrows, nper)
 
         flists=[]
         for start,end in zip(startlist,endlist):
@@ -724,7 +749,7 @@ Log             = /data/esheldon/tmp/{overall_name}.$(cluster).log\n\n"""
         run=keys['run']
         tilename=keys['tilename']
         band=keys['band']
-        start,end=_extract_start_end(**keys)
+        start,end=extract_start_end(**keys)
 
         if start is not None:
             type='wlpipe_me_split'
@@ -1209,26 +1234,6 @@ echo "done minions"
  
 
 
-    def _get_chunks(self, nrow, nper):
-        """
-        These are not slices!
-        """
-        startlist=[]
-        endlist=[]
-
-        nchunk, nleft = divmod(nrow, nper)
-        if nleft != 0:
-            nchunk += 1
-
-        for i in xrange(nchunk):
-            start=i*nper
-            end=(i+1)*nper-1
-            if end > (nrow-1):
-                end=nrow-1
-
-            startlist.append(start)
-            endlist.append(end)
-        return startlist, endlist
 
     def _get_nrows(self, cat_file):
         import fitsio
@@ -1388,7 +1393,7 @@ class GenericMEChecker(dict):
         self['band'] = band
         self['queue'] = keys.get('queue','serial')
 
-        start,end=_extract_start_end(start=start,end=end)
+        start,end=extract_start_end(start=start,end=end)
         self['start']=start
         self['end']=end
         if self['start'] is None:
@@ -1506,7 +1511,7 @@ nsetup_ess
 def get_run_command(config_file):
     return 'deswl-run %s' % config_file
 
-def _extract_start_end(**keys):
+def extract_start_end(**keys):
     """
     get start and end as strings
     """
@@ -1522,6 +1527,26 @@ def _extract_start_end(**keys):
         end='%06d' % end
     return start, end
 
+def get_chunks(nrow, nper):
+    """
+    These are not slices!
+    """
+    startlist=[]
+    endlist=[]
+
+    nchunk, nleft = divmod(nrow, nper)
+    if nleft != 0:
+        nchunk += 1
+
+    for i in xrange(nchunk):
+        start=i*nper
+        end=(i+1)*nper-1
+        if end > (nrow-1):
+            end=nrow-1
+
+        startlist.append(start)
+        endlist.append(end)
+    return startlist, endlist
 
 
 # not using these right now

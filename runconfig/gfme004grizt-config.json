@@ -18,7 +18,7 @@
  ],
  "medsconf":"010",
  "ESUTIL_DIR":"/astro/u/esheldon/exports/esutil-local",
- "nper":250,
+ "nper":100,
  "DESDB_VERS":"local",
  "nodes":null,
  "config":"gfmeds-mb-002",
