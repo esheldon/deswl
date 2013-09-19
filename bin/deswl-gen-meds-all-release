@@ -44,11 +44,13 @@ def main():
     band=args[1]
 
     conf=deswl.files.read_meds_config(medsconf)
+
+    # can be a list
     release=conf['release']
 
     runs=desdb.files.get_release_runs(release)
 
-    runs=cut_blacklist(release, runs)
+    #runs=cut_blacklist(release, runs)
 
     nrun=len(runs)
 

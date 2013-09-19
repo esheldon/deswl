@@ -25,6 +25,16 @@ def do_check(r):
 
     return nmissing
 
+def is_sva1(release):
+    if isinstance(release,basestring):
+        return 'sva1' in release.lower()
+    else:
+        for r in release:
+            if 'sva1' in r.lower():
+                return True
+
+    return False
+
 def get_magzp_offset(medsconf):
     """
     For SVA1 an artificial offset was added to the zeropoints
@@ -34,7 +44,7 @@ def get_magzp_offset(medsconf):
     """
     conf=deswl.files.read_meds_config(medsconf)
     
-    if 'sva1' in conf['release'].lower():
+    if is_sva1(conf['release']):
         offset=0.057
         print 'using magzp offset:',offset
     else:
