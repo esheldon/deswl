@@ -43,19 +43,24 @@ def main():
     medsconf=args[0]
     band=args[1]
 
+    # we require the tiles have at least these bands
+    allbands=['g','r','i','z']
+    if band not in allbands:
+        raise ValueError("bad band '%s'" % band)
+
     conf=deswl.files.read_meds_config(medsconf)
 
     # can be a list
     release=conf['release']
 
-    runs=desdb.files.get_release_runs(release)
+    print 'getting run list'
+    runs=desdb.files.get_release_runs(release, withbands=allbands)
 
     #runs=cut_blacklist(release, runs)
 
     nrun=len(runs)
-
     for i,run in enumerate(runs):
-        print >>stderr,'-'*70
+        print >>stderr,'*'*70
         print >>stderr,'%d/%d' % (i+1,nrun)
         cmd='deswl-gen-meds-all %s %s %s' % (medsconf,run,band)
         os.system(cmd)

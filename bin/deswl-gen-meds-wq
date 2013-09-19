@@ -63,7 +63,10 @@ def main():
 
     d=os.path.dirname(wq_file)
     if not os.path.exists(d):
-        os.makedirs(d)
+        try:
+            os.makedirs(d)
+        except:
+            pass
 
     print 'writing wq script:',wq_file
 

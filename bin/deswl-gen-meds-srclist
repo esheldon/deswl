@@ -79,7 +79,10 @@ def main():
 
     d=os.path.dirname(srclist)
     if not os.path.exists(d):
-        os.makedirs(d)
+        try:
+            os.makedirs(d)
+        except:
+            pass
 
     print 'writing:',srclist
 

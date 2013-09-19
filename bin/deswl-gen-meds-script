@@ -238,11 +238,17 @@ def make_dirs(script_file, meds_file):
     d=os.path.dirname(script_file)
     if not os.path.exists(d):
         print 'making dir:',d
-        os.makedirs(d)
+        try:
+            os.makedirs(d)
+        except:
+            pass
     d=os.path.dirname(meds_file)
     if not os.path.exists(d):
         print 'making dir:',d
-        os.makedirs(d)
+        try:
+            os.makedirs(d)
+        except:
+            pass
 
 def check_fz(name):
     if not os.path.exists(name):
