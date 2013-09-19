@@ -40,6 +40,7 @@ module unload meds && module load meds/{vers}
 magzp_ref={magzp_ref}
 coadd_file="{coadd_image}"
 coaddseg_file="{coadd_seg}"
+coadd_seg_hdu={coadd_seg_hdu}
 coaddcat_file="{coadd_cat}"
 coadd_srclist="{meds_srclist}"
 cutout_file="{meds_file}"
@@ -87,6 +88,7 @@ if [[ $exit_status == "0" ]]; then
         magzp_ref=$magzp_ref
         coadd_file=$coadd_file
         coaddseg_file=$coaddseg_file
+        coadd_seg_hdu=$coadd_seg_hdu
         cat_file=$meds_input
         coadd_srclist=$coadd_srclist
         cutout_file=$tmpfile_uc
@@ -242,6 +244,17 @@ def make_dirs(script_file, meds_file):
         print 'making dir:',d
         os.makedirs(d)
 
+def check_fz(name):
+    if not os.path.exists(name):
+        is_fz=False
+        name=name.replace('.fits.fz','.fits')
+        if not os.path.exists(name):
+            raise ValueError("fits file missing: %s{.fz}" % name)
+    else:
+        is_fz=True
+
+    return name, is_fz
+
 def main():
 
     options, args = parser.parse_args(sys.argv[1:])
@@ -276,6 +289,12 @@ def main():
                      coadd_run=coadd_run,
                      tilename=cf['tilename'],
                      band=band)
+    
+    coadd_seg, is_fz =check_fz(coadd_seg)
+    if is_fz:
+        coadd_seg_hdu=2
+    else:
+        coadd_seg_hdu=1
 
     coadd_cat=df.url(type='coadd_cat',
                      coadd_run=coadd_run,
@@ -311,6 +330,7 @@ def main():
                           vers=options.vers,
                           coadd_image=coadd_image,
                           coadd_seg=coadd_seg,
+                          coadd_seg_hdu=coadd_seg_hdu,
                           coadd_cat=coadd_cat,
                           meds_input=meds_input,
                           meds_srclist=meds_srclist,
