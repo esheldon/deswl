@@ -171,7 +171,7 @@ function go {
 
     python -u $GMIX_MEDS_DIR/bin/gmix-fit-meds     \\
             --obj-range $start,$end                \\
-            --work-dir $_CONDOR_SCRATCH_DIR        \\
+            --work-dir $tmpdir                     \\
             $conf $meds_file $out_file
     
     exit_status=$?
@@ -193,11 +193,17 @@ end="$3"
 out_file="$4"
 log_file="$5"
 
+if [[ -n $_CONDOR_SCRATCH_DIR ]]; then
+    tmpdir=$_CONDOR_SCRATCH_DIR
+else
+    tmpdir=$TMPDIR
+fi
+
 outdir=$(dirname $out_file)
 mkdir -p $outdir
 
 lbase=$(basename $log_file)
-tmplog="$_CONDOR_SCRATCH_DIR/$lbase"
+tmplog="$tmpdir/$lbase"
 
 go &> "$tmplog"
 cp "$tmplog" "$log_file"
