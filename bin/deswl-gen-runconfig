@@ -54,7 +54,7 @@ def main():
         sys.exit(45)
 
     run_type=args[0]
-    dataset=args[1]
+    dataset=args[1].split(',')
     band=args[2]
 
     if len(args) == 5:

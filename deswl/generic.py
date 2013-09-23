@@ -633,7 +633,9 @@ Log             = /data/esheldon/tmp/{overall_name}.$(cluster).log\n\n"""
             band_is_list=False
             useband=band
 
-        flists0 = desdb.files.get_coadd_info_by_release(rc['dataset'], useband)
+        flists0 = desdb.files.get_coadd_info_by_release(rc['dataset'],
+                                                        useband,
+                                                        withbands=band)
 
         if tilename is not None:
             tfd=flists0
