@@ -1,0 +1,32 @@
+{
+ "PYTHON_VERS":"v2.7.2",
+ "DESWL_DIR":"/astro/u/esheldon/exports/deswl-local",
+ "run_type":"gfme",
+ "run":"gfme005grizt",
+ "version":"work",
+ "DESWL_VERS":"local",
+ "ESUTIL_VERS":"local",
+ "DESDB_DIR":"/astro/u/esheldon/exports/desdb-local",
+ "ppn":null,
+ "dataset":[
+  "SVA1_COADD_SPTE",
+  "SVA1_COADD_ELGORDO",
+  "SVA1_COADD_RXJ",
+  "SVA1_COADD_BULLET"
+ ],
+ "detrun":null,
+ "band":[
+  "g",
+  "r",
+  "i",
+  "z"
+ ],
+ "medsconf":"011",
+ "ESUTIL_DIR":"/astro/u/esheldon/exports/esutil-local",
+ "nper":100,
+ "DESDB_VERS":"local",
+ "nodes":null,
+ "config":"gfmeds-mb-003",
+ "detband":null,
+ "serun":null
+}
