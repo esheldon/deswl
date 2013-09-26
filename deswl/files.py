@@ -288,6 +288,8 @@ class Runconfig(dict):
             self._setup_im3shape(runconfig, extra)
         elif run_type in ['gfme']:
             self._setup_gmix_fit(runconfig, extra)
+        elif run_type in ['eye_se']:
+            self._setup_eye_se(runconfig, extra)
 
         if run_type in ['sme','sse']:
             config=extra.get('config',None)
@@ -318,6 +320,14 @@ class Runconfig(dict):
         else:
             stdout.write(" .... dry run, skipping file write\n")
 
+
+    def _setup_eye_se(self, runconfig, extra):
+        version=extra.get('version',None)
+        if (version is None):
+            raise ValueError("version required for run_type 'eye_se'")
+
+        del extra['version']
+        runconfig['version'] = version
 
     def _setup_gmix_fit(self, runconfig, extra):
         config=extra.get('config',None)
