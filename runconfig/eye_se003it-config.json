@@ -1,0 +1,23 @@
+{
+ "PYTHON_VERS":"v2.7.2",
+ "detrun":null,
+ "run_type":"eye_se",
+ "run":"eye_se003it",
+ "DESWL_VERS":"local",
+ "DESDB_DIR":"/astro/u/esheldon/exports/desdb-local",
+ "ppn":null,
+ "dataset":[
+  "sva1_finalcut"
+ ],
+ "DESWL_DIR":"/astro/u/esheldon/exports/deswl-local",
+ "band":"i",
+ "version":"work",
+ "ESUTIL_DIR":"/astro/u/esheldon/exports/esutil-local",
+ "nper":null,
+ "medsconf":null,
+ "DESDB_VERS":"local",
+ "nodes":null,
+ "config":null,
+ "ESUTIL_VERS":"local",
+ "serun":null
+}
