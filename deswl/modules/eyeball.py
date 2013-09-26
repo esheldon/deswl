@@ -47,11 +47,15 @@ class EyeballScripts(generic.GenericScripts):
         
         # indent because this is written within the function
         commands="""
-    nsetup_ess
+    #nsetup_ess
+    source ~/.bashrc
 
     image=%(image)s
     bkg=%(bkg)s
     field_fits=%(field_fits)s
+
+    vers="%(version)s"
+    module unload eyeballer && module load eyeballer/${vers}
 
     python $EYEBALLER_DIR/bin/make-se-eyeball.py \\
             ${image} ${bkg} ${field_fits} 2>&1 >> $log_file
@@ -74,7 +78,8 @@ class EyeballScripts(generic.GenericScripts):
     def _get_master_script_template(self):
         commands="""#!/bin/bash
 
-nsetup_ess
+#nsetup_ess
+source ~/.bashrc
 
 if [ $# -lt 3 ]; then
     echo "error: master.sh image bkg field_fits"
@@ -85,6 +90,9 @@ fi
 image="$1"
 bkg="$2"
 field_fits="$3"
+
+vers="%(version)s"
+module unload eyeballer && module load eyeballer/${vers}
 
 python $EYEBALLER_DIR/bin/make-se-eyeball.py ${image} ${bkg} ${field_fits}
 
