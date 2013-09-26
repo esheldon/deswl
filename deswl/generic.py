@@ -1084,6 +1084,16 @@ Log             = /data/esheldon/tmp/{overall_name}.$(cluster).log\n\n"""
         return walltime
 
     def write_sub_minions(self, job_file, commands_file, njobs):
+        if self.rc['ppn'] is not None:
+            self.write_sub_minions_pbs(job_file, commands_file, njobs)
+        else:
+            self.write_sub_minions_wq(job_file, commands_file, njobs)
+
+    def write_sub_minions_wq(self, job_file, commands_file, njobs):
+        print 'no wq minions submit available yet'
+        pass
+
+    def write_sub_minions_pbs(self, job_file, commands_file, njobs):
         """
         Batching individual jobs using mpi
 

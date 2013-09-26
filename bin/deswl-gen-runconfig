@@ -1,8 +1,10 @@
 #!/usr/bin/env python
 """
-    %prog [options] run_type dataset band [nodes ppn]
+    %prog [options] run_type dataset bands [nodes ppn]
 
 Generate a new runconfig.  You should set up all the versions of code you will use before running this.
+
+bands can be a csv
 
 Also, names are checked against a checked out version of deswl, so make
 sure DESWL_CHECKOUT points to your git checkout.
@@ -41,12 +43,6 @@ parser.add_option("--nper",default=None,
 parser.add_option("--version",default=None,
                   help="version of code. Default %default")
 
-def get_band(band):
-    blist=band.split(',')
-    if len(blist) == 1:
-        return band
-    else:
-        return blist
 def main():
     options, args = parser.parse_args(sys.argv[1:])
     if len(args) < 3:
@@ -55,7 +51,7 @@ def main():
 
     run_type=args[0]
     dataset=args[1].split(',')
-    band=args[2]
+    bands=args[2].split(',')
 
     if len(args) == 5:
         nodes=int(args[3])
@@ -63,8 +59,6 @@ def main():
     else:
         nodes=None
         ppn=None
-
-    band=get_band(band)
 
     rc=deswl.files.Runconfig()
 
@@ -74,7 +68,7 @@ def main():
 
     config=rc.generate_new_runconfig(run_type, 
                                      dataset, 
-                                     band,
+                                     bands,
                                      nodes=nodes,
                                      ppn=ppn,
                                      config=options.config,
