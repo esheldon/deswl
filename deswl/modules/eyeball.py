@@ -157,34 +157,53 @@ class SqliteMaker(object):
         self.conn.commit()
 
     def populate_files_table(self):
-        import glob
-        print 'populating files table'
+        import desdb
+        import esutil as eu
 
-        fzlist = glob.glob('../*/*field.fits.fz')
-        nf=len(fzlist)
-        band=self.rc['band']
+        print 'populating files table'
+        df=desdb.files.DESFiles()
+
+        fname=df.url(type='wlpipe_flist_red', run=self.run)
+        print 'reading red info list'
+        red_info = eu.io.read(fname)
+
+        nf=len(red_info)
+        nmissing=0
 
         insert_query="""
         INSERT INTO {tablename} VALUES (?, ?, ?, ?, ?)
         """.format(tablename=self.files_table)
 
+
         curs=self.conn.cursor()
-        for i,fzfile in enumerate(fzlist):
+        for i,ri in enumerate(red_info):
+
+
+            fzfile=df.url(type='wlpipe_se_generic',
+                          run=self.run,
+                          expname=ri['expname'],
+                          ccd=ri['ccd'],
+                          filetype='field',
+                          ext='fits.fz')
+
             if (i % 1000) == 0:
-                print '    %d/%d' % (i+1,nf)
+                print '    %d/%d %s' % (i+1,nf,fzfile)
 
-            bname=os.path.basename(fzfile)
-            sp=bname.split('_')
-            expname='%s_%s' % (sp[2], sp[3])
-            ccdname='%s_%s_%s' % (sp[2], sp[3], sp[4])
-            ccd = int(sp[4])
+            if os.path.exists(fzfile):
+                ccdname='%s_%02i' % (ri['expname'], ri['ccd'])
+                data=(ccdname, ri['expname'], ri['ccd'], ri['band'], fzfile)
 
-            data=(ccdname, expname, ccd, band, fzfile)
+                #print data
+                curs.execute(insert_query, data)
+            else:
+                nmissing += 1
+                print 'missing:',fzfile
 
-            curs.execute(insert_query, data)
          
         curs.close()
         self.conn.commit()
+
+        print '%d/%d were missing' % (nmissing, nf)
 
     def make_files_table(self):
         curs=self.conn.cursor()
