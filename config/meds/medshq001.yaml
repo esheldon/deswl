@@ -1,0 +1,10 @@
+release: ["SVA1_COADD"]
+min_boxsize: 32
+max_boxsize: 256
+detband: i
+fpack_dims: [10240,1]
+
+magzp_ref: 30.0
+
+comment: |
+    First MEDS file for high redshift qso folks

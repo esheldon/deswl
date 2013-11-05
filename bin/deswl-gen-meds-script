@@ -17,6 +17,9 @@ parser = OptionParser(__doc__)
 
 parser.add_option('--vers',default='work',
                   help="Code version, default %default")
+parser.add_option('--catalog',default=None,
+                  help="Use this catalog instead of the coadd catalog for the tile")
+
 
 
 _template="""#!/bin/bash
@@ -302,10 +305,13 @@ def main():
     else:
         coadd_seg_hdu=1
 
-    coadd_cat=df.url(type='coadd_cat',
-                     coadd_run=coadd_run,
-                     tilename=cf['tilename'],
-                     band=detband)
+    if options.catalog is not None:
+        coadd_cat=options.catalog
+    else:
+        coadd_cat=df.url(type='coadd_cat',
+                         coadd_run=coadd_run,
+                         tilename=cf['tilename'],
+                         band=detband)
 
     meds_srclist=df.url(medsconf=medsconf,
                         type='meds_srclist',
