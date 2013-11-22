@@ -288,6 +288,8 @@ class Runconfig(dict):
             self._setup_im3shape(runconfig, extra)
         elif run_type in ['gfme']:
             self._setup_gmix_fit(runconfig, extra)
+        elif run_type in ['gmme']:
+            self._setup_gmix_mcmc(runconfig, extra)
         elif run_type in ['eye_se']:
             self._setup_eye_se(runconfig, extra)
 
@@ -353,6 +355,22 @@ class Runconfig(dict):
         else:
             detband=None
         runconfig['detband'] = detband
+
+    def _setup_gmix_mcmc(self, runconfig, extra):
+        config=extra.get('config',None)
+        medsconf=extra.get('medsconf',None)
+        nper=extra.get('nper',None)
+        version=extra.get('version',None)
+        if (medsconf is None or nper is None 
+                or version is None or config is None):
+            raise ValueError("config,medsconf,nper,version "
+                             "required for run_type 'gmme'")
+
+        del extra['version']
+        runconfig['config']=config
+        runconfig['medsconf']=medsconf
+        runconfig['nper']=nper
+        runconfig['version'] = version
 
 
     def _setup_im3shape(self, runconfig, extra):

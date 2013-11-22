@@ -1,9 +1,9 @@
 from deswl import generic
 import desdb
 
-class GMixMCMCMEScripts(generic.GenericScripts):
+class GMixMCMCMaster(generic.GenericScripts):
     def __init__(self, run, **keys):
-        super(GMixMCMCMEScripts,self).__init__(run)
+        super(GMixFitMEMaster,self).__init__(run)
 
         # we set timeout much longer than expected time per
         # the time per is the mean plus one standard deviation
@@ -13,18 +13,13 @@ class GMixMCMCMEScripts(generic.GenericScripts):
         nper=self.rc['nper']
 
         # assuming 10 images in stack
-        # 5 is the worst I saw, so let's double it
-        time_per_object=60.0
+        time_per_object=20.0
 
         # seconds per job
         self.seconds_per = nper*time_per_object
 
         # buffer a lot
         self.timeout=self.seconds_per
-
-        # over-ride the walltime per job for the single job files
-        # this is to deal with outliers
-        self.walltime_job_hours=4
 
         # don't put status, meta, or log here, they will get
         # over-written
@@ -33,8 +28,6 @@ class GMixMCMCMEScripts(generic.GenericScripts):
         # we just put nsetup_ess in the commands
         self.module_uses=None
         self.modules=None
-
-        self.commands=self._get_commands()
 
     def get_flists(self, **keys):
         return self.get_flists_by_tile(**keys)
@@ -45,47 +38,78 @@ class GMixMCMCMEScripts(generic.GenericScripts):
         return job_name
 
 
-    def _get_commands(self):
+    def _get_command_template(self, have_detrun=False):
+        """
+        For condor these are the arguments
+
+        mcmc is the output file type
+        """
+        t="%(meds)s %(start)s %(end)s %(mcmc)s %(log)s"
+        return t
+
+    def _get_master_script_template(self):
         """
         timeout and log_file are defined on entry
         """
-
-        detband=self.rc.get('detband',None)
-        if detband is not None and detband != self.rc['band']:
-            det_cat_str='%(mcmc_detband)s'
-        else:
-            det_cat_str=''
         
-        commands="""
-    nsetup_ess
-    gmvers=%(version)s
+        commands="""#!/bin/bash
 
-    # need to make these configurable.  Can put in a single
-    # module gmix_meds_run
+function go {
+    hostname
+
+    ls /opt/astro/SL53/bin/setup.astro.sh
+
+    gmvers="%(version)s"
     module unload gmix_image && module load gmix_image/work
+    module unload ngmix && module load ngmix/work
     module unload psfex && module load psfex/work
     module unload meds && module load meds/work
     module unload gmix_meds && module load gmix_meds/$gmvers
 
-    meds_file="%(meds)s"
-    out_file="%(mcmc)s"
-    start=%(start)d
-    end=%(end)d
-    
-    det_cat="{det_cat_str}"
 
-    confname=%(config)s.yaml
-
-    conf=$GMIX_MEDS_DIR/share/config/$confname
+    confname="%(config)s.yaml"
+    conf="$GMIX_MEDS_DIR/share/config/$confname"
 
     python -u $GMIX_MEDS_DIR/bin/gmix-fit-meds     \\
             --obj-range $start,$end                \\
-            --det-cat "$det_cat"                   \\
+            --work-dir $tmpdir                     \\
             $conf $meds_file $out_file
-
+    
     exit_status=$?
-    return $exit_status
-        """.format(det_cat_str=det_cat_str)
+
+}
+
+#nsetup_ess
+source ~/.bashrc
+
+if [ $# -lt 5 ]; then
+    echo "error: meds_file start end out_file"
+    exit 1
+fi
+
+# this can be a list
+meds_file="$1"
+start="$2"
+end="$3"
+out_file="$4"
+log_file="$5"
+
+if [[ -n $_CONDOR_SCRATCH_DIR ]]; then
+    tmpdir=$_CONDOR_SCRATCH_DIR
+else
+    tmpdir=$TMPDIR
+fi
+
+outdir=$(dirname $out_file)
+mkdir -p $outdir
+
+lbase=$(basename $log_file)
+tmplog="$tmpdir/$lbase"
+
+go &> "$tmplog"
+cp "$tmplog" "$log_file"
+
+exit $exit_status\n"""
 
         return commands
 
