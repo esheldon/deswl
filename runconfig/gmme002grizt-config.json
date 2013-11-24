@@ -2,7 +2,7 @@
  "PYTHON_VERS":"v2.7.5",
  "detrun":null,
  "run_type":"gmme",
- "run":"gmme001grizt",
+ "run":"gmme002grizt",
  "version":"work",
  "DESWL_VERS":"local",
  "DESDB_DIR":"/astro/u/esheldon/exports/desdb-local",
@@ -21,10 +21,10 @@
  ],
  "medsconf":"011",
  "ESUTIL_DIR":"/astro/u/esheldon/exports/esutil-local",
- "nper":1000,
+ "nper":30,
  "DESDB_VERS":"local",
  "nodes":null,
- "config":"nmeds-test",
+ "config":"nmeds-test2",
  "ESUTIL_VERS":"local",
  "serun":null
 }

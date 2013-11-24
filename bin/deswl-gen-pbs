@@ -167,6 +167,7 @@ def main():
     elif run_type == 'i3me':
         is_se=False
         cfobj = deswl.modules.im3shape.I3MEScripts(run)
+
     elif run_type == 'gfme':
         is_se=False
         if 'mcmeds' in rc['config']:
@@ -176,6 +177,7 @@ def main():
                 cfobj = deswl.modules.gmix_fit_meds.GMixFitMEMaster(run)
             else:
                 cfobj = deswl.modules.gmix_fit_meds.GMixFitMEScripts(run)
+
     elif run_type=='gmme':
         is_se=False
         if options.master:

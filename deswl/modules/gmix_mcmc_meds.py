@@ -3,7 +3,7 @@ import desdb
 
 class GMixMCMCMaster(generic.GenericScripts):
     def __init__(self, run, **keys):
-        super(GMixFitMEMaster,self).__init__(run)
+        super(GMixMCMCMaster,self).__init__(run)
 
         # we set timeout much longer than expected time per
         # the time per is the mean plus one standard deviation
