@@ -57,12 +57,10 @@ class GMixMCMCMaster(generic.GenericScripts):
 function go {
     hostname
 
-    ls /opt/astro/SL53/bin/setup.astro.sh
-
     gmvers="%(version)s"
     module unload gmix_image && module load gmix_image/work
     module unload ngmix && module load ngmix/work
-    module unload psfex && module load psfex/work
+    module unload psfex-ess && module load psfex-ess/work
     module unload meds && module load meds/work
     module unload gmix_meds && module load gmix_meds/$gmvers
 
