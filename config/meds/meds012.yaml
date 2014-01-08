@@ -1,0 +1,17 @@
+release: 
+    - SVA1_COADD_SNS
+    - SVA1_COADD_SNX
+    - SVA1_COADD_SNC
+    - SVA1_COADD_SNE
+    - SVA1_COADD_SPTW
+    - SVA1_COADD_COSMOS
+
+min_boxsize: 32
+max_boxsize: 256
+detband: i
+fpack_dims: [10240,1]
+
+magzp_ref: 30.0
+
+comment: |
+    Same as 011 but with some new tiles
