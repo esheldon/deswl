@@ -385,7 +385,7 @@ Log             = /data/esheldon/tmp/{overall_name}.$(cluster).log\n\n"""
 
                         text=self.get_master_command(fd)
 
-                        job_name="%s-%s-%s" % (overall_name,fd['start'],fd['end'])
+                        job_name="%s-%06d-%06d" % (overall_name,fd['start'],fd['end'])
                         fobj.write('+job_name = "%s"\n' % job_name)
                         fobj.write("Arguments = %s\n" % text)
                         fobj.write("Queue\n\n")
@@ -1453,7 +1453,7 @@ class GenericMEChecker(dict):
         queue = self['queue']
 
         if self['start'] is not None:
-            job_name='%s-%s' % (self['start'],self['end'])
+            job_name='%06d-%06d' % (self['start'],self['end'])
         else:
             job_name='%s-%s' % (tilename,band)
 
