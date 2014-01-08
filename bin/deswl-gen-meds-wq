@@ -13,17 +13,16 @@ import desdb
 from optparse import OptionParser
 parser = OptionParser(__doc__)
 
-parser.add_option("-q","--queue",default='serial', 
-                  help="queue for processing, default: %default")
-
 _template="""
 command: |
     source ~/.bashrc
+    module load tmv/0.71
+    module load wl-ess/work
     %(cmd)s
 
 job_name: %(job_name)s
 
-group: [gen4,gen5]
+%(requirements)s
 """
 
 def main():
@@ -40,6 +39,7 @@ def main():
     cf=desdb.files.Coadd(coadd_run=coadd_run, band=band)
     cf.load()
 
+    req='mode: bynode'
 
     script_file=df.url(medsconf=medsconf,
                        type='meds_script',
@@ -59,7 +59,8 @@ def main():
     cmd="bash %s" % script_file
 
     text=_template % {'job_name':job_name,
-                      'cmd':cmd}
+                      'cmd':cmd,
+                      'requirements':req}
 
     d=os.path.dirname(wq_file)
     if not os.path.exists(d):
