@@ -16,8 +16,6 @@ parser = OptionParser(__doc__)
 _template="""
 command: |
     source ~/.bashrc
-    module load tmv/0.71
-    module load wl-ess/work
     %(cmd)s
 
 job_name: %(job_name)s
