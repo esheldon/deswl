@@ -47,7 +47,6 @@ class EyeballScripts(generic.GenericScripts):
         
         # indent because this is written within the function
         commands="""
-    #nsetup_ess
     source ~/.bashrc
 
     image=%(image)s
@@ -78,8 +77,24 @@ class EyeballScripts(generic.GenericScripts):
     def _get_master_script_template(self):
         commands="""#!/bin/bash
 
-#nsetup_ess
-source ~/.bashrc
+# assuming the environment is empty, as in a wq job
+source ~/shell_scripts/eyeball-prepare.sh
+
+image="$1"
+bkg="$2"
+field_fits="$3"
+
+python $EYEBALLER_DIR/bin/make-se-eyeball.py ${image} ${bkg} ${field_fits}
+
+exit_status=$?
+exit $exit_status\n"""
+
+        return commands
+
+    def _get_master_script_template_old(self):
+        commands="""#!/bin/bash
+
+#source ~/.bashrc
 
 if [ $# -lt 3 ]; then
     echo "error: master.sh image bkg field_fits"
@@ -91,8 +106,8 @@ image="$1"
 bkg="$2"
 field_fits="$3"
 
-vers="%(version)s"
-module unload eyeballer && module load eyeballer/${vers}
+#vers="%(version)s"
+#module unload eyeballer && module load eyeballer/${vers}
 
 python $EYEBALLER_DIR/bin/make-se-eyeball.py ${image} ${bkg} ${field_fits}
 
@@ -100,6 +115,8 @@ exit_status=$?
 exit $exit_status\n"""
 
         return commands
+
+
 
 def get_sqlite_dir(run):
     df = desdb.files.DESFiles()

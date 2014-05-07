@@ -904,11 +904,18 @@ Log             = /data/esheldon/tmp/{overall_name}.$(cluster).log\n\n"""
             ccd=fd['ccd']
 
             fd['run'] = self['run']
-            fd['bkg_url']=fd['image_url'].replace('.fits.fz','_bkg.fits.fz')
-            fd['cat_url']=fd['image_url'].replace('.fits.fz','_cat.fits')
-            fd['input_files'] = {'image':fd['image_url'],
-                                 'bkg':fd['bkg_url'],
-                                 'cat':fd['cat_url']}
+            if 'red_bkg' in fd:
+                # in this case we already have what we need
+                fd['input_files'] = {'image': fd['red_image'],
+                                     'bkg':   fd['red_bkg'],
+                                     'cat':   fd['red_cat']}
+
+            else:
+                fd['bkg_url']=fd['image_url'].replace('.fits.fz','_bkg.fits.fz')
+                fd['cat_url']=fd['image_url'].replace('.fits.fz','_cat.fits')
+                fd['input_files'] = {'image':fd['image_url'],
+                                     'bkg':fd['bkg_url'],
+                                     'cat':fd['cat_url']}
             fd['output_files']=self.get_se_outputs(self.filetypes,
                                                    expname=expname,
                                                    ccd=ccd)
@@ -927,8 +934,14 @@ Log             = /data/esheldon/tmp/{overall_name}.$(cluster).log\n\n"""
         if not os.path.exists(fname):
             print 'cache not found, generating raw red info list'
             eu.ostools.makedirs_fromfile(fname)
-            flists = desdb.files.get_red_info_by_release(self.rc['dataset'],
-                                                         band=self.rc['band'])
+
+            release = self.rc['dataset']
+            bands = self.rc['band']
+            if 'coadd' in release[0]:
+                print 'getting runs/expnames associated with coadd'
+                flists = desdb.files.get_coadd_srclist_by_release(release, bands)
+            else:
+                flists = desdb.files.get_red_info_by_release(release, bands=bands)
             print 'writing cache:',fname
             eu.io.write(fname, flists)
         else:
