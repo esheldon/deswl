@@ -69,10 +69,6 @@ class GenericScripts(dict):
             timeout for job
         filetypes
             output file types
-        module_uses
-            module use dirs to add
-        modules
-            a *list* of modules to load
         commands
             A single string with commands, can be
             multi-line, should do error checking etc.
@@ -87,7 +83,6 @@ class GenericScripts(dict):
         self.rc = deswl.files.Runconfig(self['run'])
 
         self.flists =None
-        self._make_module_loads()
 
         self._df=desdb.files.DESFiles()
 
@@ -98,8 +93,6 @@ class GenericScripts(dict):
         self.seconds_per=None
         self.timeout=None
         self.filetypes=None
-        self.modules=None
-        self.module_uses=None
         self.commands=None
 
     def get_flists(self, **keys):
@@ -118,29 +111,14 @@ class GenericScripts(dict):
     def _get_allkeys(self, fdict):
         rc=self.rc
 
-        template=self._get_master_script_template()
-
         # now interpolate the rest
         allkeys={}
         allkeys.update(rc)
-        if self.module_uses is not None:
-            module_uses=' '.join(self.module_uses)
-            module_uses='wlpipe_module_use "%s"' % module_uses
-        else:
-            module_uses=''
-
-        if self.modules is not None:
-            modules=' '.join(self.modules)
-            module_loads='wlpipe_load_modules %s'
-        else:
-            module_loads=''
-        allkeys['module_uses']=module_uses
-        allkeys['module_loads'] = module_loads
-
 
         for k,v in fdict.iteritems():
             if k not in ['input_files','output_files']:
                 allkeys[k] = v
+
         allkeys.update(fdict['input_files'])
         allkeys.update(fdict['output_files'])
 
@@ -190,25 +168,6 @@ class GenericScripts(dict):
 
 # this script is auto-generated
 
-function wlpipe_module_use {
-    for mod_dir; do
-        module use $mod_dir >> $log_file 2>&1 
-    done
-}
-# workaround because the module command does
-# not indicate an error status
-function wlpipe_load_modules() {
-    for mod; do
-        module load $mod >> $log_file 2>&1 
-
-        res=$(module show $mod 2>&1 | grep -i error)
-        if [[ $res != "" ]]; then
-            return 1
-        fi
-    done
-    return 0
-}
-
 # rules for commmands
 # - commands is a single string
 # - test for errors and use return to indicate a status
@@ -225,14 +184,15 @@ if [[ "Y${PBS_O_WORKDIR}" != "Y" ]]; then
     cd $PBS_O_WORKDIR
 fi
 
+# preamble
+%(head)s
+
 log_file=%(log)s
 status_file=%(status)s
 timeout=%(timeout)d
 
 echo "host: $(hostname)" > $log_file
 
-%(module_uses)s
-%(module_loads)s
 exit_status=$?
 
 if [[ $exit_status == "0" ]]; then
@@ -253,20 +213,6 @@ exit $exit_status
         # now interpolate the rest
         allkeys={}
         allkeys.update(rc)
-        if self.module_uses is not None:
-            module_uses=' '.join(self.module_uses)
-            module_uses='wlpipe_module_use "%s"' % module_uses
-        else:
-            module_uses=''
-
-        if self.modules is not None:
-            modules=' '.join(self.modules)
-            module_loads='wlpipe_load_modules %s'
-        else:
-            module_loads=''
-        allkeys['module_uses']=module_uses
-        allkeys['module_loads'] = module_loads
-
 
         for k,v in fdict.iteritems():
             if k not in ['input_files','output_files']:
@@ -315,17 +261,15 @@ Notification    = Never
 # Run this exe with these args
 Executable      = {master_script}
 
-Image_Size      = 700000
+Image_Size      = 1000000
 
 GetEnv = True
 
 kill_sig        = SIGINT
 
 +Experiment     = "astro"
+        \n\n"""
 
-Output          = ./{overall_name}.$(cluster).out
-Error           = ./{overall_name}.$(cluster).err
-Log             = /data/esheldon/tmp/{overall_name}.$(cluster).log\n\n"""
         return template.format(overall_name=overall_name,
                                master_script=master_script)
 
@@ -494,7 +438,9 @@ Log             = /data/esheldon/tmp/{overall_name}.$(cluster).log\n\n"""
 
         all_fd = self.get_flists(tilename=tilename)
         self._write_master_script(all_fd[0])
-        if self.rc['ppn'] is None:
+
+        ppn=self.rc.get('ppn',None)
+        if ppn is None:
             self._write_condor_me(all_fd)
         else:
             self._write_me_command_list_by_tile(all_fd)
@@ -512,6 +458,7 @@ Log             = /data/esheldon/tmp/{overall_name}.$(cluster).log\n\n"""
         detrun=self.get_detrun()
         detrun_fd = None
         if detrun is not None:
+            detband=self.rc.get('detband',None)
             if self.rc['detband'] != self.rc['band']:
                 # note these are the collated files
                 detrun_fd = self.get_flists(run=detrun, nper=None, tilename=tilename)
@@ -626,6 +573,7 @@ Log             = /data/esheldon/tmp/{overall_name}.$(cluster).log\n\n"""
         band=rc['band']
 
         print 'getting coadd info by release'
+        print 'releases:',rc['dataset']
         if isinstance(band,list):
             band_is_list=True
             useband='i'
@@ -1097,7 +1045,8 @@ Log             = /data/esheldon/tmp/{overall_name}.$(cluster).log\n\n"""
         return walltime
 
     def write_sub_minions(self, job_file, commands_file, njobs):
-        if self.rc['ppn'] is not None:
+        ppn=self.rc.get('ppn',None)
+        if ppn is not None:
             self.write_sub_minions_pbs(job_file, commands_file, njobs)
         else:
             self.write_sub_minions_wq(job_file, commands_file, njobs)
@@ -1265,21 +1214,6 @@ echo "done minions"
         with fitsio.FITS(cat_file) as fobj:
             nrows=fobj[1].get_nrows()
         return nrows
-
-    def _make_module_loads(self):
-        """
-        Not using these right now
-        """
-        for module in ['desdb','deswl','esutil']:
-            load_key='%s_load' % module
-            mup=module.upper()
-            vers=self.rc['%s_VERS'% mup]
-
-            lcmd='module unload {module} && module load {module}/{vers}'
-            lcmd=lcmd.format(module=module,vers=vers)
-
-            self[load_key] = lcmd
-
 
 class GenericSEPBSJob(dict):
     """

@@ -3,7 +3,6 @@ import platform
 import os
 import re
 import esutil as eu
-from esutil import json_util
 from esutil.ostools import path_join, getenv_check
 
 import pprint
@@ -153,7 +152,7 @@ class Runconfig(dict):
             else:
                 run=self.run
         rdir = self.get_basedir(checkout=checkout)
-        return path_join(rdir, run+'-config.json')
+        return path_join(rdir, run+'-config.yaml')
     
 
     def generate_new_runconfig_name(self, run_type, band, test=False,
@@ -317,7 +316,7 @@ class Runconfig(dict):
         stdout.write('Writing to file: %s\n' % fullpath)
         eu.ostools.makedirs_fromfile(fullpath)
         if not dryrun:
-            json_util.write(runconfig, fullpath)
+            eu.io.write(fullpath, runconfig)
             stdout.write("Don't forget to check in the file!\n")
         else:
             stdout.write(" .... dry run, skipping file write\n")
@@ -444,7 +443,7 @@ class Runconfig(dict):
         if not os.path.exists(name):
             mess="runconfig for '%s' not found: %s\n" % (run, name)
             raise RuntimeError(mess)
-        runconfig = json_util.read(name)
+        runconfig = eu.io.read(name)
         return runconfig
 
 
@@ -1359,7 +1358,7 @@ class MultishearCondorJob(dict):
 
         if not self['dryrun']:
             with open(self['config_file'],'w') as fobj:
-                eu.json_util.write(self['config'], fobj)
+                eu.io.write(fobj, self['config'])
 
     def condor_text(self):
         condor_dir = self.condor_dir()

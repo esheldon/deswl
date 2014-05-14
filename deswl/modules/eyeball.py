@@ -84,9 +84,27 @@ image="$1"
 bkg="$2"
 field_fits="$3"
 
-python $EYEBALLER_DIR/bin/make-se-eyeball.py ${image} ${bkg} ${field_fits}
+if [[ -e $field_fits ]]; then
+    echo "file exists, skipping"
+    exit 0
+fi
 
+bname=$(basename $field_fits)
+dname=$(dirname $field_fits)
+
+mkdir -p ${dname}
+mkdir -p /data/esheldon/tmp
+tmpname=/data/esheldon/tmp/${bname}
+
+python $EYEBALLER_DIR/bin/make-se-eyeball.py ${image} ${bkg} ${tmpname}
 exit_status=$?
+
+if [[ -e ${tmpname} ]]; then
+    mv -v ${tmpname} ${field_fits}
+else
+    echo "file is missing: ${tmpname}"
+fi
+
 exit $exit_status\n"""
 
         return commands
@@ -181,7 +199,7 @@ class SqliteMaker(object):
         df=desdb.files.DESFiles()
 
         fname=df.url(type='wlpipe_flist_red', run=self.run)
-        print 'reading red info list'
+        print 'reading red info list:',fname
         red_info = eu.io.read(fname)
 
         nf=len(red_info)

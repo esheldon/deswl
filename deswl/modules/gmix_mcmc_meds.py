@@ -57,33 +57,26 @@ class GMixMCMCMaster(generic.GenericScripts):
 function go {
     hostname
 
-    gmvers="%(version)s"
-    module unload gmix_image && module load gmix_image/work
-    module unload ngmix && module load ngmix/work
-    module unload psfex-ess && module load psfex-ess/work
-    module unload meds && module load meds/work
-    module unload gmix_meds && module load gmix_meds/$gmvers
-
-
-    confname="%(config)s.yaml"
-    conf="$GMIX_MEDS_DIR/share/config/$confname"
+    config_file="$GMIX_MEDS_DIR/share/config/${config}.yaml"
 
     python -u $GMIX_MEDS_DIR/bin/gmix-fit-meds     \\
             --obj-range $start,$end                \\
             --work-dir $tmpdir                     \\
-            $conf $meds_file $out_file
+            $config_file $meds_file $out_file
     
     exit_status=$?
 
 }
 
-#nsetup_ess
-source ~/.bashrc
 
 if [ $# -lt 5 ]; then
     echo "error: meds_file start end out_file"
     exit 1
 fi
+
+# put all preamble here
+%(head)s
+config=%(config)s
 
 # this can be a list
 meds_file="$1"
