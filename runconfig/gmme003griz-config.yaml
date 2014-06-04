@@ -1,0 +1,27 @@
+run_type: "gmme"
+run: "gmme003grizt"
+
+#dataset:
+#  - "SVA1_COADD_BULLET"
+dataset:
+  - "SVA1_COADD_SPTE"
+  - "SVA1_COADD_ELGORDO"
+  - "SVA1_COADD_RXJ"
+  - "SVA1_COADD_BULLET"
+
+band: [ "g", "r", "i", "z" ]
+medsconf: "011"
+nper: 10
+
+# this is the gmix_meds config file
+config: "nmeds004"
+
+# this must exist
+# this greatly simplifies everything because we put the entire
+# header into a single environment load.
+#
+# but we need in the future to record this environment
+head: |
+    source $HOME/shell_scripts/nsim-prepare.sh
+
+    
