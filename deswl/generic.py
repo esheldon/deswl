@@ -267,7 +267,8 @@ GetEnv = True
 
 kill_sig        = SIGINT
 
-requirements = (cpu_experiment == "star") || (cpu_experiment == "phenix")
+#requirements = (cpu_experiment == "star") || (cpu_experiment == "phenix")
+requirements = (cpu_experiment == "star")
 
 +Experiment     = "astro"
         \n\n"""
@@ -275,7 +276,7 @@ requirements = (cpu_experiment == "star") || (cpu_experiment == "phenix")
         return template.format(overall_name=overall_name,
                                master_script=master_script)
 
-    def _write_condor_me(self, all_fd):
+    def _write_condor_me(self, all_fd, missing=False):
         """
         Write the file to do all at once as well as one per tile
         """
@@ -285,7 +286,14 @@ requirements = (cpu_experiment == "star") || (cpu_experiment == "phenix")
 
         master_script=self._df.url(type='wlpipe_master_script',run=self['run'])
 
-        condor_path_all=self._df.url(type='wlpipe_me_condor',run=self['run'])
+        if missing:
+            all_condor_type='wlpipe_me_condor_missing'
+            condor_type='wlpipe_me_tile_condor_missing'
+        else:
+            all_condor_type='wlpipe_me_condor'
+            condor_type='wlpipe_me_tile_condor'
+
+        condor_path_all=self._df.url(type=all_condor_type,run=self['run'])
         checker_all=self._df.url(type='wlpipe_me_checker',run=self['run'])
 
         print condor_path_all,'\n', checker_all
@@ -300,7 +308,7 @@ requirements = (cpu_experiment == "star") || (cpu_experiment == "phenix")
             for tilename,fdlist in fdd.iteritems():
 
 
-                condor_path=self._df.url(type='wlpipe_me_tile_condor',
+                condor_path=self._df.url(type=condor_type,
                                          run=self['run'],
                                          tilename=tilename)
                 checker_path=self._df.url(type='wlpipe_me_tile_checker',
@@ -316,6 +324,8 @@ requirements = (cpu_experiment == "star") || (cpu_experiment == "phenix")
                 eu.ostools.makedirs_fromfile(condor_path)
                 eu.ostools.makedirs_fromfile(checker_path)
                 print >>stderr,condor_path
+
+                nwrite=0
                 with open(condor_path,'w') as fobj,open(checker_path,'w') as ch:
 
                     overall_name= fdlist[0]['tilename']
@@ -337,16 +347,36 @@ requirements = (cpu_experiment == "star") || (cpu_experiment == "phenix")
                         if ifd==0:
                             eu.ostools.makedirs_fromfile(log)
 
+                        if missing:
+                            ftypes=self.filetypes
+                            ok=True
+                            for ft in ftypes:
+                                path=fd['output_files'][ft]
+                                if not os.path.exists(path):
+                                    ok=False
+
+                            if ok:
+                                continue
+
                         text=self.get_master_command(fd)
 
                         job_name="%s-%06d-%06d" % (overall_name,fd['start'],fd['end'])
-                        fobj.write('+job_name = "%s"\n' % job_name)
-                        fobj.write("Arguments = %s\n" % text)
-                        fobj.write("Queue\n\n")
+                        text="""
++job_name = "%s"
+Arguments = %s
+Queue
+                        \n""" % (job_name, text)
+                        fobj.write(text)
+                        fobjall.write(text)
+                        #fobj.write('+job_name = "%s"\n' % job_name)
+                        #fobj.write("Arguments = %s\n" % text)
+                        #fobj.write("Queue\n\n")
 
-                        fobjall.write('+job_name = "%s"\n' % job_name)
-                        fobjall.write("Arguments = %s\n" % text)
-                        fobjall.write("Queue\n\n")
+                        #fobjall.write('+job_name = "%s"\n' % job_name)
+                        #fobjall.write("Arguments = %s\n" % text)
+                        #fobjall.write("Queue\n\n")
+
+                        nwrite+=1
 
                         for key,o in fd['output_files'].iteritems():
                             chall.write('f="%s"\n' % o)
@@ -354,7 +384,9 @@ requirements = (cpu_experiment == "star") || (cpu_experiment == "phenix")
 
                             ch.write('f="%s"\n' % o)
                             ch.write('if [ ! -e "$f" ]; then echo "missing: $f"; fi\n')
-
+                print >>stderr,nwrite,'were written'
+                if nwrite==0:
+                    os.remove(condor_path)
 
                 if i==0 or ((i+1) % 10) == 0:
                     print >>stderr,"%d/%d" % (i+1,num)
@@ -438,7 +470,7 @@ requirements = (cpu_experiment == "star") || (cpu_experiment == "phenix")
             i+=1
 
 
-    def write_by_tile_master(self, tilename=None):
+    def write_by_tile_master(self, tilename=None, missing=False):
         """
         Instead of writing scripts for each job, write out
         a list of commands.
@@ -451,9 +483,9 @@ requirements = (cpu_experiment == "star") || (cpu_experiment == "phenix")
 
         ppn=self.rc.get('ppn',None)
         if ppn is None:
-            self._write_condor_me(all_fd)
+            self._write_condor_me(all_fd, missing=missing)
         else:
-            self._write_me_command_list_by_tile(all_fd)
+            self._write_me_command_list_by_tile(all_fd, missing=missing)
 
 
     def write_by_tile(self, tilename=None):

@@ -42,6 +42,9 @@ parser.add_option("-m","--master",action="store_true",
 
 parser.add_option("--tilename",default=None,
                   help="only generate pbs for this tilename")
+parser.add_option("--missing",action='store_true',
+                  help="only write for missing")
+
 
 
 def write_reducer(run,expected_num):
@@ -194,7 +197,7 @@ def main():
         if is_se:
             cfobj.write_by_ccd_master()
         else:
-            cfobj.write_by_tile_master(tilename=tilename)
+            cfobj.write_by_tile_master(tilename=tilename, missing=options.missing)
     else:
 
         if 'check' in types:
