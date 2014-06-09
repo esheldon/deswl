@@ -267,6 +267,8 @@ GetEnv = True
 
 kill_sig        = SIGINT
 
+requirements = (cpu_experiment == "star") || (cpu_experiment == "phenix")
+
 +Experiment     = "astro"
         \n\n"""
 
@@ -304,7 +306,15 @@ kill_sig        = SIGINT
                 checker_path=self._df.url(type='wlpipe_me_tile_checker',
                                           run=self['run'],
                                           tilename=tilename)
+                tdir=self._df.dir(type='wlpipe_tile',
+                                  run=self['run'],
+                                  tilename=tilename)
+                if not os.path.exists(tdir):
+                    print >>stderr,'making dir:',tdir
+                    os.makedirs(tdir)
+
                 eu.ostools.makedirs_fromfile(condor_path)
+                eu.ostools.makedirs_fromfile(checker_path)
                 print >>stderr,condor_path
                 with open(condor_path,'w') as fobj,open(checker_path,'w') as ch:
 
@@ -572,8 +582,9 @@ kill_sig        = SIGINT
 
         band=rc['band']
 
+        release=rc['dataset']
         print 'getting coadd info by release'
-        print 'releases:',rc['dataset']
+        print 'releases:',release
         if isinstance(band,list):
             band_is_list=True
             useband='i'
@@ -581,61 +592,88 @@ kill_sig        = SIGINT
             band_is_list=False
             useband=band
 
-        flists0 = desdb.files.get_coadd_info_by_release(rc['dataset'],
-                                                        useband,
-                                                        withbands=band)
 
-        if tilename is not None:
-            tfd=flists0
-            flists0 = [fd for fd in tfd if fd['tilename']==tilename]
+        d=self._df.dir(type='wlpipe_flists', run=self['run'])
+        if isinstance(release,list):
+            rstr='-'.join(release)
+        else:
+            rstr=release
+        fname='%s-coadd-info-%s-%s' % (self['run'],rstr, useband)
+        bstr='-'.join(band)
+        fname='%s-%s' % (fname, bstr)
 
-        medsconf=rc['medsconf']
+        fname=fname+'.json'
+        path=os.path.join(d, fname)
 
-        flists=[]
-        for fd0 in flists0:
+        #if not os.path.exists(path):
+        if True:
+            #print 'cache not found, generating coadd info list'
 
-            tilename=fd0['tilename']
+            flists0 = desdb.files.get_coadd_info_by_release(release,
+                                                            useband,
+                                                            withbands=band)
+            #flists0 = self.cache_coadd_info_by_release(release,
+            #                                           useband,
+            #                                           withbands=band)
 
-            fd0['run'] = run
-            fd0['medsconf']=medsconf
-            fd0['timeout'] = self.timeout
 
-            if band_is_list:
-                meds_files=[]
+            if tilename is not None:
+                tfd=flists0
+                flists0 = [fd for fd in tfd if fd['tilename']==tilename]
 
-                input_files={}
-                for b in band:
-                    n='meds_'+b
+            medsconf=rc['medsconf']
+
+            flists=[]
+            for fd0 in flists0:
+
+                tilename=fd0['tilename']
+
+                fd0['run'] = run
+                fd0['medsconf']=medsconf
+                fd0['timeout'] = self.timeout
+
+                if band_is_list:
+                    meds_files=[]
+
+                    input_files={}
+                    for b in band:
+                        n='meds_'+b
+                        meds_file=df.url('meds',
+                                         coadd_run=fd0['coadd_run'],
+                                         medsconf=fd0['medsconf'],
+                                         tilename=tilename,
+                                         band=b)
+
+                        input_files[n] = meds_file
+                        meds_files.append(meds_file)
+                    fd0['meds'] = ','.join(meds_files)
+     
+                else:
                     meds_file=df.url('meds',
                                      coadd_run=fd0['coadd_run'],
                                      medsconf=fd0['medsconf'],
                                      tilename=tilename,
-                                     band=b)
+                                     band=band)
+                    input_files={'meds':meds_file}
+                fd0['input_files'] = input_files
 
-                    input_files[n] = meds_file
-                    meds_files.append(meds_file)
-                fd0['meds'] = ','.join(meds_files)
- 
-            else:
-                meds_file=df.url('meds',
-                                 coadd_run=fd0['coadd_run'],
-                                 medsconf=fd0['medsconf'],
-                                 tilename=tilename,
-                                 band=band)
-                input_files={'meds':meds_file}
-            fd0['input_files'] = input_files
+                if nper:
+                    fd0['nper']=nper
+                    fd_bychunk=self._set_me_outputs_by_chunk(run, fd0, self.filetypes)
+                    flists += fd_bychunk
+                else:
+                    # copies into fd0
+                    self._set_me_outputs(run, fd0, self.filetypes)
+                    fd0['start']=None
+                    fd0['end']=None
+                    fd0['nobj']=None
+                    flists.append(fd0)
 
-            if nper:
-                fd0['nper']=nper
-                fd_bychunk=self._set_me_outputs_by_chunk(run, fd0, self.filetypes)
-                flists += fd_bychunk
-            else:
-                # copies into fd0
-                self._set_me_outputs(run, fd0, self.filetypes)
-                fd0['start']=None
-                fd0['end']=None
-                fd0['nobj']=None
-                flists.append(fd0)
+            #print 'writing cache:',path
+            #eu.io.write(path, flists)
+        else:
+            print 'reading cache:',path
+            flists=eu.io.read(path)
 
         self.flists = flists
         return flists
