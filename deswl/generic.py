@@ -267,8 +267,8 @@ GetEnv = True
 
 kill_sig        = SIGINT
 
-#requirements = (cpu_experiment == "star") || (cpu_experiment == "phenix")
-requirements = (cpu_experiment == "star")
+requirements = (cpu_experiment == "star") || (cpu_experiment == "phenix")
+#requirements = (cpu_experiment == "star")
 
 +Experiment     = "astro"
         \n\n"""
