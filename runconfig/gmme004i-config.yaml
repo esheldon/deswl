@@ -9,6 +9,7 @@ dataset:
 #  - "SVA1_COADD_RXJ"
 #  - "SVA1_COADD_BULLET"
 
+withbands: ["g","r","i","z"]
 band: [ "i" ]
 medsconf: "011"
 nper: 30

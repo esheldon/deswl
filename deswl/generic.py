@@ -613,6 +613,7 @@ Queue
         df=desdb.files.DESFiles()
 
         band=rc['band']
+        withbands=rc.get('withbands', band)
 
         release=rc['dataset']
         print 'getting coadd info by release'
@@ -643,10 +644,7 @@ Queue
 
             flists0 = desdb.files.get_coadd_info_by_release(release,
                                                             useband,
-                                                            withbands=band)
-            #flists0 = self.cache_coadd_info_by_release(release,
-            #                                           useband,
-            #                                           withbands=band)
+                                                            withbands=withbands)
 
 
             if tilename is not None:
