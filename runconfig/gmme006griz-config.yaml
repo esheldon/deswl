@@ -1,0 +1,21 @@
+run_type: "gmme"
+run: "gmme006griz"
+
+dataset:
+  - "SVA1_COADD_RXJ"
+#dataset:
+#  - "SVA1_COADD_SPTE"
+#  - "SVA1_COADD_ELGORDO"
+#  - "SVA1_COADD_RXJ"
+#  - "SVA1_COADD_BULLET"
+
+withbands: ["g","r","i","z"]
+band: [ "g","r","i","z" ]
+medsconf: "011"
+nper: 10
+
+# this is the gmix_meds config file
+# flat priors
+config: "nmeds006"
+
+head: ""
