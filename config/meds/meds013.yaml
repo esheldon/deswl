@@ -1,7 +1,6 @@
-release: 
-    - Y1P1_COADD
+release: ["SVA1_COADD_SPTE","SVA1_COADD_ELGORDO","SVA1_COADD_RXJ","SVA1_COADD_BULLET"]
 
-Min_boxsize: 32
+min_boxsize: 32
 max_boxsize: 256
 detband: i
 fpack_dims: [10240,1]
@@ -9,4 +8,7 @@ fpack_dims: [10240,1]
 magzp_ref: 30.0
 
 comment: |
-    Same as 011,012
+    These meds files include
+
+        - image id from desdm for SE images (to be tested)
+        - coadd_objects_id (not yet implemented)

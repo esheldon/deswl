@@ -2,7 +2,8 @@
 """
     %prog [options] medsconf coadd_run band
 
-Generate shell script to run make-meds-input and make-cutouts.
+Generate shell script to run make-meds-input and make-cutouts, as well
+as the id file holding the coadd_objects_id
 
 meds_config is a meds config id, e.g. meds001
 """
@@ -41,9 +42,11 @@ module unload shapelets && module load shapelets/{vers}
 
 magzp_ref={magzp_ref}
 coadd_file="{coadd_image}"
+coadd_image_id="{coadd_image_id}"
 coaddseg_file="{coadd_seg}"
 coadd_seg_hdu={coadd_seg_hdu}
 coaddcat_file="{coadd_cat}"
+coadd_objects_id_file="{coadd_objects_id_file}"
 coadd_srclist="{meds_srclist}"
 cutout_file="{meds_file}"
 meds_input="{meds_input}"
@@ -77,7 +80,7 @@ if [[ -e "$cutout_file" ]]; then
 fi
 
 echo "creating meds input $meds_input"
-make-meds-input "$coaddcat_file" $min_boxsize $max_boxsize > "$meds_input"
+make-meds-input "$coaddcat_file" $min_boxsize $max_boxsize $coadd_objects_id_file > "$meds_input"
 
 exit_status=$?
 if [[ $exit_status == "0" ]]; then
@@ -89,6 +92,7 @@ if [[ $exit_status == "0" ]]; then
     make-cutouts
         magzp_ref=$magzp_ref
         coadd_file=$coadd_file
+        coadd_image_id=$coadd_image_id
         coaddseg_file=$coaddseg_file
         coadd_seg_hdu=$coadd_seg_hdu
         cat_file=$meds_input
@@ -228,6 +232,11 @@ def main():
                       coadd_run=coadd_run,
                       tilename=cf['tilename'],
                       band=band)
+    coadd_objects_id_file=df.url(medsconf=medsconf,
+                                 type='meds_coadd_objects_id',
+                                 coadd_run=coadd_run,
+                                 tilename=cf['tilename'],
+                                 band=band)
 
     meds_file=df.url(medsconf=medsconf,
                      type='meds',
@@ -246,10 +255,12 @@ def main():
                           magzp_ref=magzp_ref,
                           vers=options.vers,
                           coadd_image=coadd_image,
+                          coadd_image_id=cf['image_id'],
                           coadd_seg=coadd_seg,
                           coadd_seg_hdu=coadd_seg_hdu,
                           coadd_cat=coadd_cat,
                           meds_input=meds_input,
+                          coadd_objects_id_file=coadd_objects_id_file,
                           meds_srclist=meds_srclist,
                           min_boxsize=conf['min_boxsize'],
                           max_boxsize=conf['max_boxsize'],

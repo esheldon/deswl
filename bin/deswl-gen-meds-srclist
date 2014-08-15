@@ -95,8 +95,8 @@ def main():
 
             magzp = r['magzp'] + magzp_offset
 
-            line='%s %s %s %s\n'
-            line = line % (r['red_image'],r['red_bkg'],r['red_seg'],r['magzp'])
+            line='%d %s %s %s %s\n'
+            line = line % (r['id'],r['red_image'],r['red_bkg'],r['red_seg'],r['magzp'])
             fobj.write(line)
     if options.check:
         print 'nmissing: ',nmissing
