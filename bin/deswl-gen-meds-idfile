@@ -1,0 +1,104 @@
+#!/usr/bin/env python
+"""
+    %prog [options] medsconf coadd_run band
+
+Generate shell script to run make-meds-input and make-cutouts, as well
+as the id file holding the coadd_objects_id
+
+meds_config is a meds config id, e.g. meds001
+"""
+from __future__ import print_function
+import os,sys
+from sys import stderr
+import numpy
+import deswl
+import desdb
+import fitsio
+
+from optparse import OptionParser
+parser = OptionParser(__doc__)
+
+
+def get_coadd_object_info(coadd_id, band):
+    query="""
+select
+    object_number, coadd_objects_id
+from
+    coadd_objects
+where
+    imageid_%(band)s = %(coadd_id)d 
+order by
+    object_number
+    """ % {'coadd_id':coadd_id,
+           'band':band}
+
+    #print(query)
+    print("getting coadd_object_ids info for:",coadd_id)
+    conn=desdb.Connection()
+    
+    res = conn.quick(query, array=True)
+
+    conn.close()
+
+    return res
+
+def verify_ids(coadd_info, coadd_cat):
+
+    w,=numpy.where(coadd_cat['number'] != coadd_info['object_number'])
+    if w.size > 0:
+        raise ValueError("number fields don't "
+                         "match %d/%d" % (w.size,cat.size))
+
+
+def main():
+
+    options, args = parser.parse_args(sys.argv[1:])
+    if len(args) < 3:
+        parser.print_help()
+        sys.exit(45)
+
+    medsconf=args[0]
+    coadd_run=args[1]
+    band=args[2]
+
+    conf=deswl.files.read_meds_config(medsconf)
+
+    df=desdb.files.DESFiles()
+    cf=desdb.files.Coadd(coadd_run=coadd_run, band=band)
+    cf.load()
+
+    detband=conf['detband']
+
+    
+    coadd_cat_file=df.url(type='coadd_cat',
+                          coadd_run=coadd_run,
+                          tilename=cf['tilename'],
+                          band=detband)
+
+    # 1-column ascii file holding the coadd_objects_id
+    coadd_objects_id_file=df.url(medsconf=medsconf,
+                                 type='meds_coadd_objects_id',
+                                 coadd_run=coadd_run,
+                                 tilename=cf['tilename'],
+                                 band=band)
+
+
+    coadd_info = get_coadd_object_info(cf['image_id'], cf['band'])
+
+    print("reading:",coadd_cat_file)
+    coadd_cat=fitsio.read(coadd_cat_file, lower=True)
+
+    print("verifying")
+    verify_ids(coadd_info, coadd_cat)
+
+    dname=os.path.dirname( coadd_objects_id_file )
+    if not os.path.exists(dname):
+        os.makedirs(dname)
+
+    print("writing:",coadd_objects_id_file)
+    with open(coadd_objects_id_file,'w') as fobj:
+        for i in xrange(coadd_info.size):
+            fobj.write("%s\n" % coadd_info['coadd_objects_id'][i])
+
+main()
+

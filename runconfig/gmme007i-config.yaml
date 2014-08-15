@@ -1,0 +1,18 @@
+run_type: "gmme"
+run: "gmme007i"
+
+dataset:
+  - "SVA1_COADD_SPTE"
+  - "SVA1_COADD_ELGORDO"
+  - "SVA1_COADD_RXJ"
+  - "SVA1_COADD_BULLET"
+
+withbands: ["g","r","i","z"]
+band: [ "i" ]
+medsconf: "011"
+nper: 30
+
+# this is the gmix_meds config file
+config: "nmeds005"
+
+head: ""
