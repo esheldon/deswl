@@ -55,6 +55,8 @@ meds_status="{meds_status}"
 
 min_boxsize={min_boxsize}
 max_boxsize={max_boxsize}
+use_alt_wcs={use_alt_wcs}
+se_wcs_hdu={se_wcs_hdu}
 
 # temporary directory and filenames
 cutout_file_bname=$(basename $cutout_file)
@@ -102,6 +104,8 @@ if [[ $exit_status == "0" ]]; then
         coaddcat_file=$coaddcat_file
         min_boxsize=$min_boxsize
         max_boxsize=$max_boxsize
+        use_alt_wcs=$use_alt_wcs
+        se_wcs_hdu=$se_wcs_hdu
     "
 
     $cmd
@@ -185,6 +189,10 @@ def main():
     band=args[2]
 
     conf=deswl.files.read_meds_config(medsconf)
+    if 'astro_rerun_file' in conf:
+        use_alt_wcs=1
+    else:
+        use_alt_wcs=0
 
     df=desdb.files.DESFiles()
     cf=desdb.files.Coadd(coadd_run=coadd_run, band=band)
@@ -267,7 +275,9 @@ def main():
                           meds_file=meds_file,
                           meds_status=meds_status,
                           fpack_dim0=conf['fpack_dims'][0],
-                          fpack_dim1=conf['fpack_dims'][1])
+                          fpack_dim1=conf['fpack_dims'][1],
+                          use_alt_wcs=use_alt_wcs,
+                          se_wcs_hdu=1)
 
     script_file=df.url(medsconf=medsconf,
                        type='meds_script',

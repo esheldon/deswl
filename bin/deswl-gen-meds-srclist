@@ -4,9 +4,10 @@
 
 This is the list of red image files and background image files
 """
-
+from __future__ import print_function
 import sys
 import os
+import numpy
 import desdb
 import deswl
 
@@ -20,7 +21,7 @@ def do_check(r):
     nmissing=0
     for ftype in ['red_image','red_bkg','red_seg']:
         if not os.path.exists(r[ftype]):
-            print "missing %s %s %s: %s" % (r['run'],r['expname'],ftype,r[ftype])
+            print("missing %s %s %s: %s" % (r['run'],r['expname'],ftype,r[ftype]))
             nmissing+=1
 
     return nmissing
@@ -35,23 +36,177 @@ def is_sva1(release):
 
     return False
 
-def get_magzp_offset(medsconf):
+def get_magzp_offset(conf):
     """
     For SVA1 an artificial offset was added to the zeropoints
     in the zeropoint table.
 
     Still need to check if these are in the coadd_src table
     """
-    conf=deswl.files.read_meds_config(medsconf)
     
     if is_sva1(conf['release']):
         offset=0.057
-        print 'using magzp offset:',offset
+        print('using magzp offset:',offset)
     else:
         offset=0.0
 
     return offset
 
+def match_to_astro_rerun(srclist, conf, tilename):
+    """
+    So the ASTROM_FLAG has the following bits set.  Good ones have ASTROM_FLAG == 0.  The flags mean:
+    2^0: no Scamp solution (probably at boundary
+    2^1: too few scamp stars (rare)
+    2^2: no stats available: scamp crashed.  A few images at the boundary with this problem.
+    2^3: too few (<50) good matched stars.  Just a problem for boundary images that aren't in gold anyway.
+    2^4: internal use
+    2^5: bad MAG_PSF_OFFSET.  > 4sigma outlier for the band in question.  Probably bad GCM solution; use with caution!
+    2^6: bad RA offset: > 4sigma outlier for RA offset.  Probably bad astrometry solution.  use with caution!
+    2^7: bad Dec offset
+    2^8: bad RA rms (>30 mas for riz, 40mas for g)
+    2^9: bad Dec rms
+
+    You really want to filter out images with flags 2^0-2^3.  (And some of
+    these are missing from my new header files!) You probably want to filter
+    out images with the higher flags, but I leave this up to you.  These are
+    probably bad images anyway.  And many of them are at the boundary.
+    """
+    import fitsio
+    import esutil as eu
+    from esutil.numpy_util import ahelp
+    from pprint import pprint
+
+    fname=conf['astro_rerun_file']
+    print("reading:",fname)
+    t=fitsio.read(fname,lower=True)
+
+    remove=2**0 + 2**1 + 2**2 + 2**3
+
+    #w,=numpy.where( (t['astrom_flag'] & remove) == 0 )
+    #if w.size == 0:
+    #    raise RuntimeError("no good entries")
+
+    #print("found %d/%d good entries" % (w.size, t.size))
+
+    #bigind = make_bigind(t['expnum'][w], t['ccdnum'][w])
+    bigind = make_bigind(t['expnum'], t['ccdnum'])
+
+    mdict={}
+    for i,ind in enumerate(bigind):
+        #mdict[ind] = t[w[i]]
+        mdict[ind] = t[i]
+
+    new_srclist=[]
+    for s in srclist:
+        sbigind=s['bigind']
+        mdata=mdict.get(sbigind,None)
+        if mdata is not None:
+            wcs_file=get_wcs_file(s)
+            flags=mdata['astrom_flag']
+            if (flags & remove) != 0:
+                print("skipping bad:",s['expname'],s['ccd'])
+            else:
+                s['flags'] |= flags
+                s['wcs_file'] = wcs_file
+                new_srclist.append(s)
+        else:
+            print("not found:",sbigind)
+            pprint(s)
+            raise ValueError("image was not found!")
+
+            #pprint(s)
+            #ahelp(mdata)
+
+    print("kept %d/%d from srclist" % (len(new_srclist),len(srclist)))
+    return new_srclist
+
+
+def read_blacklist(fname):
+    import esutil as eu
+    dt=[('expnum','i8'),
+        ('ccd','i8')]
+
+    #print("reading:",fname)
+    with eu.recfile.Recfile(fname, 'r', delim=' ', dtype=dt) as fobj:
+        data=fobj.read()
+    return data
+
+def read_blacklist_as_dict(fname):
+    data=read_blacklist(fname)
+
+    bigind=make_bigind(data['expnum'], data['ccd'])
+    d={}
+    for i in xrange(data.size):
+        d[bigind[i]] = data[i]
+
+    return d
+
+def get_exp_blacklists():
+    subdirs=['EXTRA','blacklists']
+    dir=desdb.files.get_dir_generic(subdirs)
+
+    # Eli's flags go to 2**9
+
+    print("reading blackists")
+    ldict={}
+    fname=os.path.join(dir, 'ghost-scatter-sv-uniq.txt')
+    ldict['ghost-sv'] = {'blacklist':read_blacklist_as_dict(fname),
+                         'flag': 2**10}
+
+    fname=os.path.join(dir, 'ghost-scatter-y1-uniq.txt')
+    ldict['ghost-y1'] = {'blacklist':read_blacklist_as_dict(fname),
+                         'flag': 2**11}
+
+    fname=os.path.join(dir, 'noise-y1-uniq.txt')
+    ldict['noise-y1'] = {'blacklist':read_blacklist_as_dict(fname),
+                         'flag': 2**12}
+
+    fname=os.path.join(dir, 'streak-sv-uniq.txt')
+    ldict['streak-sv'] = {'blacklist':read_blacklist_as_dict(fname),
+                         'flag': 2**13}
+
+    fname=os.path.join(dir, 'streak-y1-uniq.txt')
+    ldict['streak-y1'] = {'blacklist':read_blacklist_as_dict(fname),
+                         'flag': 2**14}
+
+    return ldict
+
+def get_wcs_file(sdict):
+    subdirs=['EXTRA',
+             'red',
+             sdict['run'],
+             'astrorerun',
+             sdict['expname']]
+
+    ccdstr='%02d' % sdict['ccd']
+    fileparts=[sdict['expname'], ccdstr, 'header']
+
+    path = desdb.files.get_path_generic(subdirs, fileparts, ext='fits')
+    return path
+
+def add_blacklist_flags(srclist):
+    """
+    bigind and flags must be present already
+    """
+    blacklists = get_exp_blacklists()
+    for s in srclist:
+        for bname,blist in blacklists.iteritems():
+            if s['bigind'] in blist['blacklist']:
+                print("    found in blacklist:",bname)
+                s['flags'] |= blist['flag']
+
+
+def add_bigind(srclist):
+    for s in srclist:
+        expname=s['expname']
+        expnum=int( expname.split('_')[1] )
+        s['bigind'] = make_bigind(expnum, s['ccd'])
+
+
+def make_bigind(expnum, ccdnum):
+    return expnum + ccdnum*10**7
+
+    
 def main():
     options,args = parser.parse_args(sys.argv[1:])
 
@@ -63,41 +218,61 @@ def main():
     coadd_run=args[1]
     band=args[2]
 
-    magzp_offset = get_magzp_offset(medsconf)
+    conf=deswl.files.read_meds_config(medsconf)
 
+    magzp_offset = get_magzp_offset(conf)
+
+    df=desdb.files.DESFiles()
     cf=desdb.files.Coadd(coadd_run=coadd_run,
                          band=band)
 
     cf.load(srclist=True)
+    srclist=cf.srclist
 
-    df=desdb.files.DESFiles()
-    srclist=df.url(medsconf=medsconf,
-                   type='meds_srclist',
-                   coadd_run=coadd_run,
-                   tilename=cf['tilename'],
-                   band=band)
+    for s in srclist:
+        s['flags']=0
 
-    d=os.path.dirname(srclist)
+    add_bigind(srclist)
+
+    if 'astro_rerun_file' in conf:
+        include_wcs=True
+        srclist=match_to_astro_rerun(srclist, conf, cf['tilename'])
+    else:
+        include_wcs=False
+
+    add_blacklist_flags(srclist)
+
+    srclist_path=df.url(medsconf=medsconf,
+                        type='meds_srclist',
+                        coadd_run=coadd_run,
+                        tilename=cf['tilename'],
+                        band=band)
+
+    d=os.path.dirname(srclist_path)
     if not os.path.exists(d):
         try:
             os.makedirs(d)
         except:
             pass
 
-    print 'writing:',srclist
+    print('writing:',srclist_path)
 
     nmissing=0
-    with open(srclist,'w') as fobj:
-        for r in cf.srclist:
+    with open(srclist_path,'w') as fobj:
+        for r in srclist:
 
             if options.check:
                 nmissing += do_check(r)
 
             magzp = r['magzp'] + magzp_offset
 
-            line='%d %s %s %s %s\n'
-            line = line % (r['id'],r['red_image'],r['red_bkg'],r['red_seg'],r['magzp'])
+            if include_wcs:
+                line='%d %d %s %s %s %s %s\n'
+                line = line % (r['id'],r['flags'],r['red_image'],r['red_bkg'],r['red_seg'],r['magzp'],r['wcs_file'])
+            else:
+                line='%d %d %s %s %s %s\n'
+                line = line % (r['id'],r['flags'],r['red_image'],r['red_bkg'],r['red_seg'],r['magzp'])
             fobj.write(line)
     if options.check:
-        print 'nmissing: ',nmissing
+        print('nmissing: ',nmissing)
 main()

@@ -3,7 +3,7 @@ release: ["SVA1_COADD_SPTE",
           "SVA1_COADD_RXJ",
           "SVA1_COADD_BULLET"]
 
-astro_rerun_file: "/astro/u/astrodat/data/DES/EXTRA/sva1_astrom_run1.0_stats_flagged.fit"
+astro_rerun_file: "/astro/u/astrodat/data/DES/EXTRA/sva1_astrom_run1.0_stats_flagged_sheldon.fit"
 
 min_boxsize: 32
 max_boxsize: 256
