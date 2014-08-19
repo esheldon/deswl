@@ -42,7 +42,7 @@ setup(name="deswl",
       license = "GPL",
       author="Erin Scott Sheldon",
       author_email="erin.sheldon@gmail.com",
-      packages=['deswl','deswl/modules'], 
+      packages=['deswl','deswl/modules','deswl/desmeds'], 
       data_files=data_files,
       scripts=scripts)
 

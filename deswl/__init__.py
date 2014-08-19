@@ -78,3 +78,5 @@ from . import files
 from . import generic
 from . import modules
 
+from . import desmeds
+

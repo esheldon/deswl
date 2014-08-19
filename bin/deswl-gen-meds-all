@@ -1,3 +1,8 @@
+#!/usr/bin/env python
+"""
+    %prog [options] medsconf coadd_run band
+
+This is the list of red image files and background image files
 #!/bin/bash
 
 if [[ $# -lt 3 ]]; then
@@ -9,7 +14,7 @@ medsconf=$1
 coadd_run=$2
 band=$3
 
-deswl-gen-meds-srclist --check $medsconf $coadd_run $band
+python -u $(which deswl-gen-meds-srclist) --check $medsconf $coadd_run $band
 res=$?
 
 if [[ $res != "0" ]]; then
@@ -17,8 +22,41 @@ if [[ $res != "0" ]]; then
     exit 1
 fi
 
-deswl-gen-meds-idfile $medsconf $coadd_run $band
+python -u $(which deswl-gen-meds-idfile) $medsconf $coadd_run $band
+python -u $(which deswl-gen-meds-script) $medsconf $coadd_run $band
+python -u $(which deswl-gen-meds-wq) $medsconf $coadd_run $band
+"""
+from __future__ import print_function
+import sys
+import os
+import deswl
 
-deswl-gen-meds-script $medsconf $coadd_run $band
-#deswl-gen-meds-pbs $medsconf $coadd_run $band
-deswl-gen-meds-wq $medsconf $coadd_run $band
+
+from optparse import OptionParser
+parser=OptionParser(__doc__)
+
+parser.add_option('-c','--check',action='store_true',
+                  help="check that files exist")
+
+
+def main():
+    options,args = parser.parse_args(sys.argv[1:])
+
+    if len(args) < 3:
+        parser.print_help()
+        sys.exit(1)
+
+
+    medsconf=args[0]
+    coadd_run=args[1]
+    band=args[2]
+
+    gen=deswl.desmeds.Generator(medsconf)
+    gen.load_coadd(coadd_run, band)
+    gen.write_srclist()
+    gen.write_wq()
+    gen.write_idfile()
+    gen.write_script()
+
+main()
+

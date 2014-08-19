@@ -7,7 +7,6 @@ Generate a wq script.  It will call the meds script.
 
 import os,sys
 from sys import stderr
-import deswl
 import desdb
 
 from optparse import OptionParser
