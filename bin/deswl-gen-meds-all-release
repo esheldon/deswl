@@ -7,13 +7,25 @@ Generate shell scripts to run make-meds-input and make-cutouts.
 meds_config is a meds config id, e.g. meds001
 """
 
+from __future__ import print_function
 import os,sys
-from sys import stderr
 import deswl
 import desdb
 
+
+
 from optparse import OptionParser
 parser = OptionParser(__doc__)
+
+parser.add_option('-b','--bands',default=None,
+                  help="bands to do, default all")
+parser.add_option('-c','--check',action='store_true',
+                  help="check that files exist")
+parser.add_option('--vers',default='work',
+                  help="Code version, default %default")
+
+parser.add_option('--testbed',action='store_true',
+                  help="only write tiles in the testbed")
 
 def cut_blacklist(release, runs):
     nr=len(runs)
@@ -31,39 +43,75 @@ def cut_blacklist(release, runs):
             runs_new.append(run)
 
     nr_new=len(runs_new)
-    print 'black listed %d/%d' % (nr-nr_new, nr)
+    print('black listed %d/%d' % (nr-nr_new, nr))
     return runs_new
+
+def check_against_testbed(tiles, run):
+    keep=False
+    for tile in tiles:
+        if tile in run:
+            keep=True
+            break
+    return keep
+
+def extract_testbed_runs(runs):
+    tiles=deswl.desmeds.testbed.tiles
+
+    keep_runs=[]
+    for run in runs:
+        if check_against_testbed(tiles, run):
+            keep_runs.append(run)
+
+    return keep_runs
 
 def main():
     options, args = parser.parse_args(sys.argv[1:])
-    if len(args) < 2:
+    if len(args) < 1:
         parser.print_help()
         sys.exit(45)
 
     medsconf=args[0]
-    band=args[1]
-
-    # we require the tiles have at least these bands
-    allbands=['g','r','i','z']
-    if band not in allbands:
-        raise ValueError("bad band '%s'" % band)
-
-    conf=deswl.files.read_meds_config(medsconf)
+    gen=deswl.desmeds.Generator(medsconf,
+                                check=options.check,
+                                version=options.vers)
+    conf=gen.conf
+    if options.bands is not None:
+        bands=options.bands.split(',')
+        mbands=conf['bands']
+        for band in bands:
+            if band not in mbands:
+                raise ValueError("band '%s' not in meds conf" % band)
+    else:
+        bands=conf['bands']
 
     # can be a list
     release=conf['release']
 
-    print 'getting run list'
-    runs=desdb.files.get_release_runs(release, withbands=allbands)
+    print('getting run list')
+    coadd_runs=desdb.files.get_release_runs(release, withbands=bands)
+
+    if options.testbed:
+        truns = extract_testbed_runs(coadd_runs)
+        print("kept %d/%d from testbed" % (len(truns),len(coadd_runs)))
+        coadd_runs=truns
 
     #runs=cut_blacklist(release, runs)
+    print("not checking blacklist")
+    
+    nruns=len(coadd_runs)
+    ntot = nruns*len(bands)
 
-    nrun=len(runs)
-    for i,run in enumerate(runs):
-        print >>stderr,'*'*70
-        print >>stderr,'%d/%d' % (i+1,nrun)
-        cmd='deswl-gen-meds-all %s %s %s' % (medsconf,run,band)
-        os.system(cmd)
+    itot=0
+    for i,coadd_run in enumerate(coadd_runs):
+        for band in bands:
+            print('-'*70)
+            print('%d/%d: %s %s' % (itot+1,ntot,coadd_run,band))
+
+            gen.load_coadd(coadd_run, band)
+            gen.write_all()
+
+            itot += 1
+
 
 main()
 

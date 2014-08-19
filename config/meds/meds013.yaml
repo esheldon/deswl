@@ -12,6 +12,8 @@ fpack_dims: [10240,1]
 
 magzp_ref: 30.0
 
+bands: ["g","r","i","z"]
+
 comment: |
     These meds files include
         - image id from desdm for SE images

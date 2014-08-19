@@ -199,6 +199,15 @@ class Generator(object):
 
         self.set_srclist()
 
+    def write_all(self):
+        """
+        write all part
+        """
+        self.write_srclist()
+        self.write_wq()
+        self.write_idfile()
+        self.write_script()
+
     def write_srclist(self):
         """
         write the source list file

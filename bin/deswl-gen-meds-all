@@ -37,6 +37,9 @@ parser=OptionParser(__doc__)
 
 parser.add_option('-c','--check',action='store_true',
                   help="check that files exist")
+parser.add_option('--vers',default='work',
+                  help="Code version, default %default")
+
 
 
 def main():
@@ -51,12 +54,12 @@ def main():
     coadd_run=args[1]
     band=args[2]
 
-    gen=deswl.desmeds.Generator(medsconf)
+    gen=deswl.desmeds.Generator(medsconf,
+                                check=options.check,
+                                version=options.vers)
+
     gen.load_coadd(coadd_run, band)
-    gen.write_srclist()
-    gen.write_wq()
-    gen.write_idfile()
-    gen.write_script()
+    gen.write_all()
 
 main()
 
