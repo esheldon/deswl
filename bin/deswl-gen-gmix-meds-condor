@@ -37,20 +37,20 @@ def get_gmix_meds_config_file(config):
     dir=os.environ['GMIX_MEDS_DIR']
     dir=os.path.join(dir, 'share','config')
 
-    name='%s.yaml'
+    name='%s.yaml' % config
 
     return os.path.join(dir, name)
 
-def get_coadd_runs(gmconf):
-    dataset=gmconf['dataset']
+def get_coadd_runs(rc):
+    dataset=rc['dataset']
 
     if dataset == "testbed":
-        testbed=gmconf["testbed"]
+        testbed=rc["testbed"]
         print("using testbed:",testbed)
-        testbed_name=testbed["testbed"]["name"]
+        testbed_name=testbed["name"]
 
-        release=testbed["testbed"]["release"]
-        allruns=desdb.files.get_release_runs(release, withbands=gmconf['withbands'])
+        release=testbed["release"]
+        allruns=desdb.files.get_release_runs(release, withbands=rc['withbands'])
 
         keeptiles=deswl.desmeds.testbeds[testbed_name]
 
@@ -63,7 +63,7 @@ def get_coadd_runs(gmconf):
 
         print("kept %d/%d runs" % (len(runs), len(allruns)))
     else:
-        runs=desdb.files.get_release_runs(dataset, withbands=gmconf['withbands'])
+        runs=desdb.files.get_release_runs(dataset, withbands=rc['withbands'])
         print("found",len(runs),"runs")
 
 
@@ -109,7 +109,7 @@ def main():
     gmconfig_file=get_gmix_meds_config_file(runconfig['config'])
 
     gmconf=read_gmix_meds_config(runconfig['config'])
-    coadd_runs=get_coadd_runs(gmconf)
+    coadd_runs=get_coadd_runs(runconfig)
 
     df=desdb.files.DESFiles()
 
@@ -118,7 +118,8 @@ def main():
         print("%d/%d" % (i+1, nrun),coadd_run)
 
         tilename=coadd_run.split('_')[1]
-        meds_files=get_meds_files(coadd_run,
+        meds_files=get_meds_files(df,
+                                  coadd_run,
                                   tilename,
                                   runconfig['medsconf'],
                                   runconfig['bands'])
