@@ -70,6 +70,7 @@ def get_coadd_runs(rc):
     return runs
 
 def get_meds_files(df, coadd_run, tilename, medsconf, bands):
+    slist=[]
     flist=[]
 
     for band in bands:
@@ -81,17 +82,38 @@ def get_meds_files(df, coadd_run, tilename, medsconf, bands):
 
         flist.append(path)
 
-    return flist
+        spath=df.url('meds_stats',
+                     coadd_run=coadd_run,
+                     tilename=tilename,
+                     band=band,
+                     medsconf=medsconf)
+        slist.append(spath)
 
-def check_meds_exist(meds_files):
+    return flist, slist
 
-    check=True
-    for f in meds_files:
+def check_meds(meds_files, stats_files):
+    import yaml
+
+    for f,sf in zip(meds_files,stats_files):
+
+        # this is a failure somewhere and we die
+        if not os.path.exists(sf):
+            raise IOError("stats file is missing: %s" % sf)
+
+        # check that we had some source files
+        with open(sf) as fobj:
+            stats=yaml.load(sf)
+
+        # note we return right out
+        if stats['nsource'] == 0:
+            print("no sources were found for meds: %s" % sf)
+            return False
+
+        # if we get here, the meds file should exist. So die
         if not os.path.exists(f):
-            print("error: missing meds file: %s" % f)
-            check=False
+            raise  IOError("error: missing meds file: %s" % f)
 
-    return check
+    return True
 
 def main():
 
@@ -118,13 +140,14 @@ def main():
         print("%d/%d" % (i+1, nrun),coadd_run)
 
         tilename=coadd_run.split('_')[1]
-        meds_files=get_meds_files(df,
-                                  coadd_run,
-                                  tilename,
-                                  runconfig['medsconf'],
-                                  runconfig['bands'])
+        meds_files, stats_files=get_meds_files(df,
+                                               coadd_run,
+                                               tilename,
+                                               runconfig['medsconf'],
+                                               runconfig['bands'])
 
-        if not check_meds_exist(meds_files):
+        # there are valid reasons to skip certain tiles
+        if not check_meds(meds_files, stats_files):
             continue
 
         maker=CondorMaker(run,

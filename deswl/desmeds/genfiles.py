@@ -203,10 +203,32 @@ class Generator(object):
         """
         write all part
         """
-        self.write_srclist()
-        self.write_wq()
-        self.write_idfile()
-        self.write_script()
+        self.write_stats()
+
+        if len(self.srclist) > 0:
+            self.write_srclist()
+            self.write_wq()
+            self.write_idfile()
+            self.write_script()
+        else:
+            print("not writing srclist/wq/idfile/script "
+                  "because srclist is empty")
+
+    def write_stats(self):
+        """
+        write stats about the inputs
+        """
+
+        stats_path=self.df.url(medsconf=self.medsconf,
+                               type='meds_stats',
+                               coadd_run=self.coadd_run,
+                               tilename=self.cf['tilename'],
+                               band=self.band)
+
+
+        stats={'nsource':len(self.srclist)}
+        with open(stats_path,'w') as fobj:
+            yaml.dump(stats, stream=fobj)
 
     def write_srclist(self):
         """
