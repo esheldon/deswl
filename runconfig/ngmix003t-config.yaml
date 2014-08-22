@@ -1,0 +1,22 @@
+# t for testbed
+run: "ngmix003t"
+run_type: "mcmc"
+
+# testbeds are defined in deswl/desmeds/testbed
+dataset: "testbed"
+testbed:{"name":"sva1", "release":"SVA1_COADD_SPTE"}
+
+# must exist in tiles
+withbands: ["g","r","i","z"]
+
+# what we will process
+bands: [ "g","r","i","z" ]
+
+# if a testbed, we will only use a subset of the tiles
+# in here
+medsconf: "013"
+
+nper: 10
+
+# this is the gmix_meds config file
+config: "nmeds006"
