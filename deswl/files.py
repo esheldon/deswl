@@ -1,3 +1,6 @@
+"""
+much of this code is deprecated
+"""
 from sys import stdout,stderr
 import platform
 import os
@@ -12,6 +15,55 @@ from desdb.files import expand_desvars
 
 # for separating file elements
 file_el_sep = '-'
+
+
+def read_runconfig(run):
+    """
+    load a run config file
+
+    parameters
+    ----------
+    run: string
+        the run identifier
+
+    returns
+    -------
+    runconfig: dict
+        the run configuration data
+    """
+
+    import yaml
+    fname=get_runconfig_file(run)
+
+    with open(fname) as fobj:
+        data=yaml.load(fobj)
+
+    return data
+
+def get_runconfig_dir():
+    """
+    The directory holding runconfig files
+
+    $DESWL_DIR/share/runconfig
+    """
+    dir=os.environ['DESWL_DIR']
+    dir=os.path.join(dir,'share','runconfig')
+    return dir
+
+def get_runconfig_file(run):
+    """
+    run config files
+
+    $DESWL_DIR/share/runconfig/{run}-config.yaml
+
+    parameters
+    ----------
+    run: string
+        the run identifier
+    """
+    dir=get_runconfig_dir()
+    name='%s-config.yaml' % run
+    return path_join(dir, name)
 
 def get_meds_config_dir():
     if 'DESWL_DIR' not in os.environ:
@@ -74,7 +126,8 @@ def get_proc_environ(extra=None):
             e[k] = getenv_check(k)
     return e
 
-class Runconfig(dict):
+# deprecated
+class RunconfigOld(dict):
     def __init__(self, run=None):
         
         self.run=run

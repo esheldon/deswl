@@ -2,9 +2,7 @@ import os
 import glob
 from distutils.core import setup
 
-scripts= ['deswl-gen-runconfig',
-          'deswl-gen-pbs',
-          'deswl-gen-meds-script',
+scripts= ['deswl-gen-meds-script',
           'deswl-gen-meds-idfile',
           'deswl-gen-meds-pbs',
           'deswl-gen-meds-wq',
@@ -12,6 +10,10 @@ scripts= ['deswl-gen-runconfig',
           'deswl-gen-meds-all',
           'deswl-gen-meds-all-release',
           'deswl-check-meds',
+          'deswl-gen-gmix-meds-condor',
+          # deprecated
+          'deswl-gen-runconfig',
+          'deswl-gen-pbs',
           'deswl-run',
           'deswl-check']
 

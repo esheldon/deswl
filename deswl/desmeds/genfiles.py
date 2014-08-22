@@ -542,9 +542,10 @@ def match_to_astro_rerun(srclist, conf, tilename):
                 s['wcs_file'] = wcs_file
                 new_srclist.append(s)
         else:
-            print("not found:",sbigind)
+            print("error: not found:",sbigind)
             pprint(s)
-            raise ValueError("image was not found!")
+            print("continuing anyway")
+            #raise ValueError("image was not found!")
 
             #pprint(s)
             #ahelp(mdata)
