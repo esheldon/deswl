@@ -12,10 +12,11 @@ scripts= ['deswl-gen-meds-script',
           'deswl-check-meds',
           'deswl-gen-gmix-meds-condor',
           # deprecated
-          'deswl-gen-runconfig',
-          'deswl-gen-pbs',
-          'deswl-run',
-          'deswl-check']
+          #'deswl-gen-runconfig',
+          #'deswl-gen-pbs',
+          #'deswl-run',
+          #'deswl-check'
+         ]
 
 scripts=[os.path.join('bin',s) for s in scripts]
 
