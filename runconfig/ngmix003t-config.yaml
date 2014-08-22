@@ -4,7 +4,7 @@ run_type: "mcmc"
 
 # testbeds are defined in deswl/desmeds/testbed
 dataset: "testbed"
-testbed:{"name":"sva1", "release":"SVA1_COADD_SPTE"}
+testbed: {"name":"sva1", "release":"SVA1_COADD_SPTE"}
 
 # must exist in tiles
 withbands: ["g","r","i","z"]
