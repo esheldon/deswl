@@ -1,0 +1,139 @@
+#!/usr/bin/env python
+"""
+    %prog [options] run
+
+Generate all the condor job files for the given run.
+"""
+from __future__ import print_function
+import os,sys
+import gmix_meds
+from gmix_meds.files import CondorMaker
+import deswl
+import desdb
+import yaml
+
+
+from optparse import OptionParser
+parser = OptionParser(__doc__)
+parser.add_option("--tilename",default=None,
+                  help="only generate for this tilename")
+parser.add_option("--missing",action='store_true',
+                  help="only write for missing")
+
+def read_gmix_meds_config(config):
+    """
+    we currently use ones checked into gmix_meds
+    """
+    path=get_gmix_meds_config_file(config)
+    with open(path) as fobj:
+        data=yaml.load(fobj)
+    return data
+
+
+def get_gmix_meds_config_file(config):
+    """
+    we currently use ones checked into gmix_meds
+    """
+    dir=os.environ['GMIX_MEDS_DIR']
+    dir=os.path.join(dir, 'share','config')
+
+    name='%s.yaml'
+
+    return os.path.join(dir, name)
+
+def get_coadd_runs(gmconf):
+    dataset=gmconf['dataset']
+
+    if dataset == "testbed":
+        testbed=gmconf["testbed"]
+        print("using testbed:",testbed)
+        testbed_name=testbed["testbed"]["name"]
+
+        release=testbed["testbed"]["release"]
+        allruns=desdb.files.get_release_runs(release, withbands=gmconf['withbands'])
+
+        keeptiles=deswl.desmeds.testbeds[testbed_name]
+
+        runs=[]
+        for tile in keeptiles:
+            for run in allruns:
+                if tile in run:
+                    runs.append(run)
+                    continue
+
+        print("kept %d/%d runs" % (len(runs), len(allruns)))
+    else:
+        runs=desdb.files.get_release_runs(dataset, withbands=gmconf['withbands'])
+        print("found",len(runs),"runs")
+
+
+    return runs
+
+def get_meds_files(df, coadd_run, tilename, medsconf, bands):
+    flist=[]
+
+    for band in bands:
+        path=df.url('meds',
+                    coadd_run=coadd_run,
+                    tilename=tilename,
+                    band=band,
+                    medsconf=medsconf)
+
+        flist.append(path)
+
+    return flist
+
+def check_meds_exist(meds_files):
+
+    check=True
+    for f in meds_files:
+        if not os.path.exists(f):
+            print("error: missing meds file: %s" % f)
+            check=False
+
+    return check
+
+def main():
+
+    options, args = parser.parse_args(sys.argv[1:])
+    if len(args) < 1:
+        parser.print_help()
+        sys.exit(45)
+
+    run=args[0]
+    tilename=options.tilename
+    missing=options.missing
+
+    runconfig=deswl.files.read_runconfig(run)
+
+    gmconfig_file=get_gmix_meds_config_file(runconfig['config'])
+
+    gmconf=read_gmix_meds_config(runconfig['config'])
+    coadd_runs=get_coadd_runs(gmconf)
+
+    df=desdb.files.DESFiles()
+
+    nrun=len(coadd_runs)
+    for i,coadd_run in enumerate(coadd_runs):
+        print("%d/%d" % (i+1, nrun),coadd_run)
+
+        tilename=coadd_run.split('_')[1]
+        meds_files=get_meds_files(coadd_run,
+                                  tilename,
+                                  runconfig['medsconf'],
+                                  runconfig['bands'])
+
+        if not check_meds_exist(meds_files):
+            continue
+
+        maker=CondorMaker(run,
+                          gmconfig_file,
+                          meds_files,
+                          nper=runconfig['nper'],
+                          missing=options.missing,
+                          sub_dir=tilename)
+
+
+        maker.write()
+main()
+
