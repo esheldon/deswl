@@ -20,6 +20,10 @@ parser.add_option("--tilename",default=None,
 parser.add_option("--missing",action='store_true',
                   help="only write for missing")
 
+parser.add_option("--ignore-stats",action='store_true',
+                  help="for older meds file creation")
+
+
 def read_gmix_meds_config(config):
     """
     we currently use ones checked into gmix_meds
@@ -91,23 +95,24 @@ def get_meds_files(df, coadd_run, tilename, medsconf, bands):
 
     return flist, slist
 
-def check_meds(meds_files, stats_files):
+def check_meds(meds_files, stats_files, ignore_stats=False):
     import yaml
 
     for f,sf in zip(meds_files,stats_files):
 
         # this is a failure somewhere and we die
-        if not os.path.exists(sf):
-            raise IOError("stats file is missing: %s" % sf)
+        if not ignore_stats:
+            if not os.path.exists(sf):
+                raise IOError("stats file is missing: %s" % sf)
 
-        # check that we had some source files
-        with open(sf) as fobj:
-            stats=yaml.load(sf)
+            # check that we had some source files
+            with open(sf) as fobj:
+                stats=yaml.load(sf)
 
-        # note we return right out
-        if stats['nsource'] == 0:
-            print("no sources were found for meds: %s" % sf)
-            return False
+            # note we return right out
+            if stats['nsource'] == 0:
+                print("no sources were found for meds: %s" % sf)
+                return False
 
         # if we get here, the meds file should exist. So die
         if not os.path.exists(f):
@@ -137,6 +142,7 @@ def main():
 
     nrun=len(coadd_runs)
     for i,coadd_run in enumerate(coadd_runs):
+        print("-"*70)
         print("%d/%d" % (i+1, nrun),coadd_run)
 
         tilename=coadd_run.split('_')[1]
@@ -147,13 +153,14 @@ def main():
                                                runconfig['bands'])
 
         # there are valid reasons to skip certain tiles
-        if not check_meds(meds_files, stats_files):
+        if not check_meds(meds_files, stats_files,
+                          ignore_stats=options.ignore_stats):
             continue
 
         maker=CondorMaker(run,
                           gmconfig_file,
                           meds_files,
-                          nper=runconfig['nper'],
+                          nper=gmconf['nper'],
                           missing=options.missing,
                           sub_dir=tilename)
 
