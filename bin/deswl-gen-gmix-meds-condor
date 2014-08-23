@@ -15,13 +15,15 @@ import yaml
 
 from optparse import OptionParser
 parser = OptionParser(__doc__)
-parser.add_option("--tilename",default=None,
-                  help="only generate for this tilename")
+
 parser.add_option("--missing",action='store_true',
                   help="only write for missing")
 
 parser.add_option("--ignore-stats",action='store_true',
                   help="for older meds file creation")
+
+parser.add_option("--noblind",action='store_true',
+                  help="don't blind the shears")
 
 
 def read_gmix_meds_config(config):
@@ -128,7 +130,6 @@ def main():
         sys.exit(45)
 
     run=args[0]
-    tilename=options.tilename
     missing=options.missing
 
     runconfig=deswl.files.read_runconfig(run)
@@ -160,8 +161,10 @@ def main():
         maker=CondorMaker(run,
                           gmconfig_file,
                           meds_files,
-                          nper=gmconf['nper'],
+                          bands=runconfig['bands'],
+                          nper=runconfig['nper'],
                           missing=options.missing,
+                          noblind=options.noblind,
                           sub_dir=tilename)
 
 
