@@ -10,7 +10,7 @@ scripts= ['deswl-gen-meds-script',
           'deswl-gen-meds-all',
           'deswl-gen-meds-all-release',
           'deswl-check-meds',
-          'deswl-gen-gmix-meds-condor',
+          'deswl-gen-gmix-condor',
           # deprecated
           #'deswl-gen-runconfig',
           #'deswl-gen-pbs',
