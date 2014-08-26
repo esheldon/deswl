@@ -1,8 +1,10 @@
 #!/usr/bin/env python
 """
-    %prog [options] run
+    %prog [options] run [coadd_run1 coadd_run2 ...]
 
 Generate all the condor job files for the given run.
+
+Optionally send specific coadd runs
 """
 from __future__ import print_function
 import os,sys
@@ -137,7 +139,11 @@ def main():
     gmconfig_file=get_gmix_meds_config_file(runconfig['config'])
 
     gmconf=read_gmix_meds_config(runconfig['config'])
-    coadd_runs=get_coadd_runs(runconfig)
+
+    if len(args) > 1:
+        coadd_runs=args[1:]
+    else:
+        coadd_runs=get_coadd_runs(runconfig)
 
     df=desdb.files.DESFiles()
 
