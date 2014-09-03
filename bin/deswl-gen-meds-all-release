@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 """
-    %prog [options] medsconf band
+    %prog [options] medsconf
 
 Generate shell scripts to run make-meds-input and make-cutouts.
 
-meds_config is a meds config id, e.g. meds001
+meds_config is a meds config id, e.g. 013
 """
 
 from __future__ import print_function
@@ -17,6 +17,10 @@ import desdb
 from optparse import OptionParser
 parser = OptionParser(__doc__)
 
+parser.add_option('--clobber',action='store_true',
+                  help=("write scripts even if they already "
+                        "exist.  looks for the stats file"))
+
 parser.add_option('-b','--bands',default=None,
                   help="bands to do, default all")
 parser.add_option('-c','--check',action='store_true',
@@ -26,6 +30,8 @@ parser.add_option('--vers',default='work',
 
 parser.add_option('--testbed',action='store_true',
                   help="only write tiles in the testbed")
+
+_df=desdb.DESFiles()
 
 def cut_blacklist(release, runs):
     nr=len(runs)
@@ -63,6 +69,20 @@ def extract_testbed_runs(runs):
             keep_runs.append(run)
 
     return keep_runs
+
+def stats_exist(medsconf, coadd_run, band):
+    """
+    just check if exist
+    """
+
+    tilename=coadd_run.split('_')[1]
+
+    stats_path=_df.url(medsconf=medsconf,
+                       type='meds_stats',
+                       coadd_run=coadd_run,
+                       tilename=tilename,
+                       band=band)
+    return os.path.exists(stats_path)
 
 def main():
     options, args = parser.parse_args(sys.argv[1:])
@@ -107,10 +127,15 @@ def main():
             print('-'*70)
             print('%d/%d: %s %s' % (itot+1,ntot,coadd_run,band))
 
-            gen.load_coadd(coadd_run, band)
-            gen.write_all()
-
             itot += 1
+
+            if not options.clobber and stats_exist(medsconf, coadd_run, band):
+                print("skipping because stats file exists")
+            else:
+
+                gen.load_coadd(coadd_run, band)
+                gen.write_all()
+
 
 
 main()

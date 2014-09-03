@@ -203,6 +203,7 @@ class Generator(object):
         """
         write all part
         """
+
         self.write_stats()
 
         if len(self.srclist) > 0:
@@ -218,7 +219,7 @@ class Generator(object):
         """
         write stats about the inputs
         """
-
+        import yaml
         stats_path=self.df.url(medsconf=self.medsconf,
                                type='meds_stats',
                                coadd_run=self.coadd_run,
@@ -226,6 +227,7 @@ class Generator(object):
                                band=self.band)
 
 
+        make_dirs(stats_path)
         stats={'nsource':len(self.srclist)}
         with open(stats_path,'w') as fobj:
             yaml.dump(stats, stream=fobj)
@@ -240,12 +242,7 @@ class Generator(object):
                                  tilename=self.cf['tilename'],
                                  band=self.band)
 
-        d=os.path.dirname(srclist_path)
-        if not os.path.exists(d):
-            try:
-                os.makedirs(d)
-            except:
-                pass
+        make_dirs(srclist_path)
 
         print('writing:',srclist_path)
         nmissing=0
@@ -290,13 +287,7 @@ class Generator(object):
 
         text=_wq_template % {'job_name':job_name, 'cmd':cmd}
 
-        d=os.path.dirname(wq_file)
-        if not os.path.exists(d):
-            try:
-                os.makedirs(d)
-            except:
-                pass
-
+        make_dirs(wq_file)
         print('writing wq script:',wq_file)
 
         with open(wq_file,'w') as fobj:
@@ -330,9 +321,7 @@ class Generator(object):
         print("verifying")
         verify_coadd_ids(coadd_info, coadd_cat)
 
-        dname=os.path.dirname( coadd_objects_id_file )
-        if not os.path.exists(dname):
-            os.makedirs(dname)
+        make_dirs(coadd_objects_id_file)
 
         print("writing:",coadd_objects_id_file)
         with open(coadd_objects_id_file,'w') as fobj:
@@ -670,21 +659,16 @@ def verify_coadd_ids(coadd_info, coadd_cat):
                          "match %d/%d" % (w.size,cat.size))
 
 
-def make_dirs(script_file, meds_file):
-    d=os.path.dirname(script_file)
-    if not os.path.exists(d):
-        print('making dir:',d)
-        try:
-            os.makedirs(d)
-        except:
-            pass
-    d=os.path.dirname(meds_file)
-    if not os.path.exists(d):
-        print('making dir:',d)
-        try:
-            os.makedirs(d)
-        except:
-            pass
+def make_dirs(*args):
+
+    for f in args:
+        d=os.path.dirname(f)
+        if not os.path.exists(d):
+            print('making dir:',d)
+            try:
+                os.makedirs(d)
+            except:
+                pass
 
 def check_fz(name):
     if not os.path.exists(name):

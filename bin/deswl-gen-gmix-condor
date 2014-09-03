@@ -53,6 +53,9 @@ def get_coadd_runs(rc):
     dataset=rc['dataset']
 
     if dataset == "testbed":
+        runs=desdb.files.get_testbed_runs(rc)
+        
+        '''
         testbed=rc["testbed"]
         print("using testbed:",testbed)
         testbed_name=testbed["name"]
@@ -70,6 +73,7 @@ def get_coadd_runs(rc):
                     continue
 
         print("kept %d/%d runs" % (len(runs), len(allruns)))
+        '''
     else:
         runs=desdb.files.get_release_runs(dataset, withbands=rc['withbands'])
         print("found",len(runs),"runs")
