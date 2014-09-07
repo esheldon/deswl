@@ -54,26 +54,6 @@ def get_coadd_runs(rc):
 
     if dataset == "testbed":
         runs=desdb.files.get_testbed_runs(rc)
-        
-        '''
-        testbed=rc["testbed"]
-        print("using testbed:",testbed)
-        testbed_name=testbed["name"]
-
-        release=testbed["release"]
-        allruns=desdb.files.get_release_runs(release, withbands=rc['withbands'])
-
-        keeptiles=deswl.desmeds.testbeds[testbed_name]
-
-        runs=[]
-        for tile in keeptiles:
-            for run in allruns:
-                if tile in run:
-                    runs.append(run)
-                    continue
-
-        print("kept %d/%d runs" % (len(runs), len(allruns)))
-        '''
     else:
         runs=desdb.files.get_release_runs(dataset, withbands=rc['withbands'])
         print("found",len(runs),"runs")
