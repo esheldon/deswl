@@ -115,7 +115,7 @@ def check_meds(meds_files, stats_files, ignore_stats=False):
 
             # check that we had some source files
             with open(sf) as fobj:
-                stats=yaml.load(sf)
+                stats=yaml.load(fobj)
 
             # note we return right out
             if stats['nsource'] == 0:
