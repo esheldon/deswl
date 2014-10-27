@@ -1,0 +1,22 @@
+# for a quick test
+#release: ["SVA1_COADD_ELGORDO"]
+
+release:
+    - "SVA1_COADD_SNX"
+    - "SVA1_COADD_SNC"
+    - "SVA1_COADD_SNS"
+    - "SVA1_COADD_SNE"
+
+astro_rerun_file: "/astro/u/astrodat/data/DES/EXTRA/astrorerun/sva1_astrom_run1.0.1_stats_flagged_sheldon.fit"
+
+min_boxsize: 32
+max_boxsize: 256
+detband: i
+fpack_dims: [10240,1]
+
+magzp_ref: 30.0
+
+bands: ["g","r","i","z"]
+
+comment: |
+    Added mjd
