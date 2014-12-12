@@ -18,8 +18,10 @@ from optparse import OptionParser
 parser = OptionParser(__doc__)
 
 parser.add_option('--clobber',action='store_true',
-                  help=("write scripts even if they already "
+                  help=("don't write scripts even if they already "
                         "exist.  looks for the stats file"))
+parser.add_option('--missing',action='store_true',
+                  help="only write if meds file does not exist")
 
 parser.add_option('-b','--bands',default=None,
                   help="bands to do, default all")
@@ -30,6 +32,7 @@ parser.add_option('--vers',default='work',
 
 parser.add_option('--testbed',action='store_true',
                   help="only write tiles in the testbed")
+
 
 _df=desdb.DESFiles()
 
@@ -94,6 +97,9 @@ def main():
     gen=deswl.desmeds.Generator(medsconf,
                                 check=options.check,
                                 version=options.vers)
+
+    # try to make meds files for all the 'bands', but only
+    # for tiles 'withbands'
     conf=gen.conf
     if options.bands is not None:
         bands=options.bands.split(',')
@@ -103,12 +109,17 @@ def main():
                 raise ValueError("band '%s' not in meds conf" % band)
     else:
         bands=conf['bands']
+    
+    withbands=conf['withbands']
 
     # can be a list
     release=conf['release']
 
-    print('getting run list')
-    coadd_runs=desdb.files.get_release_runs(release, withbands=bands)
+    print("making meds for bands:",bands)
+    print('getting runs with bands:', withbands)
+    coadd_runs=desdb.files.get_release_runs(release, withbands=withbands)
+
+    print("found",len(coadd_runs),"runs")
 
     if options.testbed:
         truns = extract_testbed_runs(coadd_runs)
@@ -123,20 +134,41 @@ def main():
 
     itot=0
     for i,coadd_run in enumerate(coadd_runs):
+        tilename = coadd_run.split('_')[1]
         for band in bands:
+           
             print('-'*70)
             print('%d/%d: %s %s' % (itot+1,ntot,coadd_run,band))
 
             itot += 1
 
+            # because we might have a different "withbands" and "bands" we need
+            # to check the coadd cat is here
+
+            coadd_cat_file=_df.url(type='coadd_cat',
+                                   coadd_run=coadd_run,
+                                   tilename=tilename,
+                                   band=band)
+            meds_file=_df.url(medsconf=medsconf,
+                              type='meds',
+                              coadd_run=coadd_run,
+                              tilename=tilename,
+                              band=band)
+
+            if options.missing and os.path.exists(meds_file):
+                print("skipping because meds file already exists")
+                continue
+
+            if not os.path.exists(coadd_cat_file):
+                print("skipping because coadd does not exist for this band")
+                continue
+
             if not options.clobber and stats_exist(medsconf, coadd_run, band):
                 print("skipping because stats file exists")
-            else:
+                continue
 
-                gen.load_coadd(coadd_run, band)
-                gen.write_all()
-
-
+            gen.load_coadd(coadd_run, band)
+            gen.write_all()
 
 main()
 

@@ -15,6 +15,11 @@ fpack_dims: [10240,1]
 
 magzp_ref: 30.0
 
+# we search for tiles that have r,i,z
+withbands: ["r","i","z"]
+
+# we create for tiles that have any of these, so
+# some will not have g made
 bands: ["g","r","i","z"]
 
 comment: |

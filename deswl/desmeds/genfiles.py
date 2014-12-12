@@ -293,6 +293,13 @@ class Generator(object):
         with open(wq_file,'w') as fobj:
             fobj.write(text)
 
+    def get_coadd_cat_file(self, band):
+        coadd_cat_file=self.df.url(type='coadd_cat',
+                                   coadd_run=self.coadd_run,
+                                   tilename=self.cf['tilename'],
+                                   band=band)
+        return coadd_cat_file
+
     def write_idfile(self):
         """
         generate the file with the coadd_objects_ids
@@ -300,10 +307,7 @@ class Generator(object):
         detband=self.conf['detband']
 
         
-        coadd_cat_file=self.df.url(type='coadd_cat',
-                                   coadd_run=self.coadd_run,
-                                   tilename=self.cf['tilename'],
-                                   band=detband)
+        coadd_cat_file=self.get_coadd_cat_file(detband)
 
         # 1-column ascii file holding the coadd_objects_id
         coadd_objects_id_file=self.df.url(medsconf=self.medsconf,
